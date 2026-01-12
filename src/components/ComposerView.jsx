@@ -29,6 +29,10 @@ function ComposerView({ crops, originalImage }) {
     const [placedItems, setPlacedItems] = useState([])
     const [selectedItemId, setSelectedItemId] = useState(null)
 
+    // Sidebar visibility state
+    const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
+    const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+
     const exportCanvasRef = useRef(null)
 
     // Get current layout (for panel mode)
@@ -249,152 +253,161 @@ function ComposerView({ crops, originalImage }) {
     return (
         <div className="glass-card flex-1 flex overflow-hidden">
             {/* Left Sidebar */}
-            <div className="w-52 border-r border-[var(--border-color)] p-4 overflow-y-auto flex flex-col gap-4">
-                {/* Mode Toggle */}
-                <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                        Mode
-                    </h3>
-                    <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
-                        <button
-                            onClick={() => setMode('freeform')}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
-                                ? 'bg-[var(--accent-primary)] text-white'
-                                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
-                                }`}
-                        >
-                            Freeform
-                        </button>
-                        <button
-                            onClick={() => setMode('panels')}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
-                                ? 'bg-[var(--accent-primary)] text-white'
-                                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
-                                }`}
-                        >
-                            Panels
-                        </button>
-                    </div>
-                </div>
-
-                {/* Panel Layouts (only in panel mode) */}
-                {mode === 'panels' && (
-                    <>
-                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                            Layouts
+            <div className={`${leftSidebarOpen ? 'w-48' : 'w-12'} border-r border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
+                {/* Sidebar Toggle */}
+                <button
+                    onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+                    className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                    title={leftSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                >
+                    <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${leftSidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                </button>
+                {leftSidebarOpen && <div className="p-3 flex flex-col gap-4">
+                    {/* Mode Toggle */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                            Mode
                         </h3>
-                        <div className="grid grid-cols-2 gap-2">
-                            {allLayouts.map((layout) => (
-                                <button
-                                    key={layout.id}
-                                    onClick={() => handleLayoutChange(layout.id)}
-                                    className={`layout-thumbnail p-2 rounded-lg border transition-all ${composition.layoutId === layout.id
-                                        ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
-                                        : 'border-[var(--border-color)] hover:border-[var(--accent-secondary)] bg-[var(--bg-tertiary)]'
-                                        }`}
-                                    title={layout.description}
-                                >
-                                    <div className="aspect-[3/4] bg-[var(--bg-primary)] rounded relative overflow-hidden">
-                                        {layout.panels.map((panel, idx) => (
-                                            <div
-                                                key={idx}
-                                                style={{
-                                                    position: 'absolute',
-                                                    left: `${panel.x * 100}%`,
-                                                    top: `${panel.y * 100}%`,
-                                                    width: `${panel.width * 100}%`,
-                                                    height: `${panel.height * 100}%`,
-                                                    backgroundColor: composition.layoutId === layout.id
-                                                        ? 'var(--accent-primary)'
-                                                        : 'var(--bg-tertiary)',
-                                                    border: '1px solid var(--border-color)',
-                                                    boxSizing: 'border-box',
-                                                    opacity: 0.7
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                    <span className="text-xs text-[var(--text-muted)] mt-1 block truncate">
-                                        {layout.name}
-                                    </span>
-                                </button>
-                            ))}
+                        <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
+                            <button
+                                onClick={() => setMode('freeform')}
+                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
+                                    ? 'bg-[var(--accent-primary)] text-white'
+                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
+                                    }`}
+                            >
+                                Freeform
+                            </button>
+                            <button
+                                onClick={() => setMode('panels')}
+                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
+                                    ? 'bg-[var(--accent-primary)] text-white'
+                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
+                                    }`}
+                            >
+                                Panels
+                            </button>
                         </div>
-                    </>
-                )}
-
-                {/* Page Settings */}
-                <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                        Page Size
-                    </h3>
-                    <select
-                        value={composition.pagePreset}
-                        onChange={(e) => handlePagePresetChange(e.target.value)}
-                        className="w-full text-sm"
-                    >
-                        {Object.entries(PAGE_PRESETS).map(([key, preset]) => (
-                            <option key={key} value={key}>{preset.label}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Background Color */}
-                <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                        Background
-                    </h3>
-                    <div className="flex gap-2">
-                        <input
-                            type="color"
-                            value={composition.backgroundColor}
-                            onChange={(e) => setComposition(prev => ({
-                                ...prev,
-                                backgroundColor: e.target.value,
-                                updatedAt: Date.now()
-                            }))}
-                            className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                        />
-                        <input
-                            type="text"
-                            value={composition.backgroundColor}
-                            onChange={(e) => setComposition(prev => ({
-                                ...prev,
-                                backgroundColor: e.target.value,
-                                updatedAt: Date.now()
-                            }))}
-                            className="flex-1 text-xs"
-                        />
                     </div>
-                </div>
 
-                {/* Freeform tips */}
-                {mode === 'freeform' && (
-                    <div className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] p-3 rounded-lg">
-                        <p className="font-medium text-[var(--text-secondary)] mb-1">Freeform Mode</p>
-                        <ul className="space-y-1">
-                            <li>• Drag crops onto the canvas</li>
-                            <li>• Click to select, drag to move</li>
-                            <li>• Drag corner to resize</li>
-                            <li>• Click × to delete</li>
-                        </ul>
+                    {/* Panel Layouts (only in panel mode) */}
+                    {mode === 'panels' && (
+                        <>
+                            <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                Layouts
+                            </h3>
+                            <div className="grid grid-cols-2 gap-2">
+                                {allLayouts.map((layout) => (
+                                    <button
+                                        key={layout.id}
+                                        onClick={() => handleLayoutChange(layout.id)}
+                                        className={`layout-thumbnail p-2 rounded-lg border transition-all ${composition.layoutId === layout.id
+                                            ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
+                                            : 'border-[var(--border-color)] hover:border-[var(--accent-secondary)] bg-[var(--bg-tertiary)]'
+                                            }`}
+                                        title={layout.description}
+                                    >
+                                        <div className="aspect-[3/4] bg-[var(--bg-primary)] rounded relative overflow-hidden">
+                                            {layout.panels.map((panel, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: `${panel.x * 100}%`,
+                                                        top: `${panel.y * 100}%`,
+                                                        width: `${panel.width * 100}%`,
+                                                        height: `${panel.height * 100}%`,
+                                                        backgroundColor: composition.layoutId === layout.id
+                                                            ? 'var(--accent-primary)'
+                                                            : 'var(--bg-tertiary)',
+                                                        border: '1px solid var(--border-color)',
+                                                        boxSizing: 'border-box',
+                                                        opacity: 0.7
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span className="text-xs text-[var(--text-muted)] mt-1 block truncate">
+                                            {layout.name}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {/* Page Settings */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                            Page Size
+                        </h3>
+                        <select
+                            value={composition.pagePreset}
+                            onChange={(e) => handlePagePresetChange(e.target.value)}
+                            className="w-full text-sm"
+                        >
+                            {Object.entries(PAGE_PRESETS).map(([key, preset]) => (
+                                <option key={key} value={key}>{preset.label}</option>
+                            ))}
+                        </select>
                     </div>
-                )}
+
+                    {/* Background Color */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                            Background
+                        </h3>
+                        <div className="flex gap-2">
+                            <input
+                                type="color"
+                                value={composition.backgroundColor}
+                                onChange={(e) => setComposition(prev => ({
+                                    ...prev,
+                                    backgroundColor: e.target.value,
+                                    updatedAt: Date.now()
+                                }))}
+                                className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
+                            />
+                            <input
+                                type="text"
+                                value={composition.backgroundColor}
+                                onChange={(e) => setComposition(prev => ({
+                                    ...prev,
+                                    backgroundColor: e.target.value,
+                                    updatedAt: Date.now()
+                                }))}
+                                className="flex-1 text-xs"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Freeform tips */}
+                    {mode === 'freeform' && (
+                        <div className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] p-3 rounded-lg">
+                            <p className="font-medium text-[var(--text-secondary)] mb-1">Freeform Mode</p>
+                            <ul className="space-y-1">
+                                <li>• Drag crops onto the canvas</li>
+                                <li>• Click to select, drag to move</li>
+                                <li>• Drag corner to resize</li>
+                                <li>• Click × to delete</li>
+                            </ul>
+                        </div>
+                    )}
+                </div>}
             </div>
 
             {/* Main Canvas Area */}
-            <div className="flex-1 flex flex-col p-6 overflow-hidden">
-                {/* Toolbar */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-lg font-semibold gradient-text">
-                            {mode === 'freeform' ? 'Freeform Canvas' : currentLayout.name}
-                        </h2>
-                        <span className="text-sm text-[var(--text-muted)]">
-                            {mode === 'freeform'
-                                ? `${placedItems.length} items`
-                                : `${currentLayout.panels.length} panels`
-                            }
+            <div className="flex-1 flex flex-col p-2 overflow-hidden">
+                {/* Compact Toolbar */}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[var(--text-secondary)]">
+                            {mode === 'freeform' ? 'Freeform' : currentLayout.name}
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)]">
+                            ({mode === 'freeform' ? placedItems.length : currentLayout.panels.length})
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -404,26 +417,26 @@ function ComposerView({ crops, originalImage }) {
                                     setPlacedItems([])
                                     setSelectedItemId(null)
                                 }}
-                                className="btn btn-secondary"
+                                className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
                             >
-                                Clear All
+                                Clear
                             </button>
                         )}
                         <button
                             onClick={handleExport}
-                            className="btn btn-primary"
+                            className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            Export PNG
+                            Export
                         </button>
                     </div>
                 </div>
 
                 {/* Canvas Container */}
-                <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-xl p-8 min-h-0">
+                <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-lg p-2 min-h-0">
                     {mode === 'panels' ? (
                         <PageCanvas
                             composition={composition}
@@ -477,75 +490,90 @@ function ComposerView({ crops, originalImage }) {
                     </div>
                 )}
 
-                {/* Item Controls (freeform mode) */}
-                {mode === 'freeform' && selectedItem && (
-                    <div className="mt-4 p-4 bg-[var(--bg-tertiary)] rounded-xl flex items-center gap-6">
-                        <span className="text-sm font-medium text-[var(--text-secondary)]">
-                            Selected Item
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm text-[var(--text-muted)]">Fit:</label>
-                            <select
-                                value={selectedItem.objectFit || 'contain'}
-                                onChange={(e) => handleUpdateItem(selectedItem.id, { objectFit: e.target.value })}
-                                className="text-sm py-1"
-                            >
-                                <option value="contain">Contain</option>
-                                <option value="cover">Cover</option>
-                                <option value="fill">Fill</option>
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                            Size: {Math.round(selectedItem.width)}% × {Math.round(selectedItem.height)}%
-                        </div>
-                        <button
-                            onClick={() => handleDeleteItem(selectedItem.id)}
-                            className="btn btn-secondary text-sm py-2 px-4"
-                        >
-                            Delete
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* Crops Drawer */}
-            <div className="w-56 border-l border-[var(--border-color)] p-4 overflow-y-auto">
-                <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-                    Available Crops
-                </h3>
-                {crops.length === 0 ? (
-                    <p className="text-sm text-[var(--text-muted)]">
-                        No crops available. Create some in the Canvas view first.
-                    </p>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        {crops.map((crop) => (
-                            <div
-                                key={crop.id}
-                                draggable
-                                onDragStart={(e) => handleCropDragStart(e, crop)}
-                                className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
-                            >
-                                <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
-                                    <img
-                                        src={crop.imageData}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                        style={{
-                                            transform: `rotate(${crop.rotation || 0}deg)`
-                                        }}
-                                        draggable={false}
-                                    />
+            <div className={`${rightSidebarOpen ? 'w-48' : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
+                {/* Sidebar Toggle */}
+                <button
+                    onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+                    className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                    title={rightSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                >
+                    <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${rightSidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                </button>
+                {rightSidebarOpen && <div className="p-3 overflow-y-auto flex-1 flex flex-col">
+                    {/* Selected Item Controls */}
+                    {mode === 'freeform' && selectedItem && (
+                        <div className="mb-3 pb-3 border-b border-[var(--border-color)]">
+                            <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                                Selected
+                            </h3>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <label className="text-xs text-[var(--text-muted)]">Fit:</label>
+                                    <select
+                                        value={selectedItem.objectFit || 'contain'}
+                                        onChange={(e) => handleUpdateItem(selectedItem.id, { objectFit: e.target.value })}
+                                        className="text-xs py-1 flex-1"
+                                    >
+                                        <option value="contain">Contain</option>
+                                        <option value="cover">Cover</option>
+                                        <option value="fill">Fill</option>
+                                    </select>
                                 </div>
-                                <div className="p-2 bg-[var(--bg-secondary)]">
-                                    <span className="text-xs text-[var(--text-muted)]">
-                                        {crop.width} × {crop.height}
-                                    </span>
+                                <div className="text-xs text-[var(--text-muted)]">
+                                    {Math.round(selectedItem.width)}% × {Math.round(selectedItem.height)}%
                                 </div>
+                                <button
+                                    onClick={() => handleDeleteItem(selectedItem.id)}
+                                    className="w-full text-xs py-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                                >
+                                    Delete Item
+                                </button>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        </div>
+                    )}
+
+                    <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                        Crops
+                    </h3>
+                    {crops.length === 0 ? (
+                        <p className="text-xs text-[var(--text-muted)]">
+                            No crops yet. Create some in the Canvas view.
+                        </p>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {crops.map((crop) => (
+                                <div
+                                    key={crop.id}
+                                    draggable
+                                    onDragStart={(e) => handleCropDragStart(e, crop)}
+                                    className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
+                                >
+                                    <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
+                                        <img
+                                            src={crop.imageData}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                            style={{
+                                                transform: `rotate(${crop.rotation || 0}deg)`
+                                            }}
+                                            draggable={false}
+                                        />
+                                    </div>
+                                    <div className="p-2 bg-[var(--bg-secondary)]">
+                                        <span className="text-xs text-[var(--text-muted)]">
+                                            {crop.width} × {crop.height}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>}
             </div>
         </div>
     )
