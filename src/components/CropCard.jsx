@@ -211,7 +211,8 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
                                     className="pointer-events-none"
                                     style={{
                                         width: '100%',
-                                        height: '100%'
+                                        height: '100%',
+                                        filter: crop.filter || 'none'
                                     }}
                                     draggable={false}
                                 />

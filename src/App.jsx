@@ -2,9 +2,10 @@ import { useState } from 'react'
 import ImageUploader from './components/ImageUploader'
 import CanvasView from './components/CanvasView'
 import GalleryView from './components/GalleryView'
+import ComposerView from './components/ComposerView'
 
 function App() {
-  const [view, setView] = useState('canvas') // 'canvas' or 'gallery'
+  const [view, setView] = useState('canvas') // 'canvas', 'gallery', or 'composer'
   const [uploadedImage, setUploadedImage] = useState(null)
   const [crops, setCrops] = useState([])
 
@@ -27,7 +28,8 @@ function App() {
       rotation: 0,
       tags: [],
       notes: '',
-      sourceRotation: cropData.sourceRotation || 0
+      sourceRotation: cropData.sourceRotation || 0,
+      filter: cropData.filter || 'none'
     }
     setCrops(prev => [...prev, newCrop])
   }
@@ -93,6 +95,20 @@ function App() {
               )}
             </span>
           </button>
+          <button
+            onClick={() => setView('composer')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'composer'
+              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+              : 'text-[var(--text-secondary)] hover:text-white'
+              }`}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Composer
+            </span>
+          </button>
         </div>
 
         {/* Upload Button */}
@@ -108,12 +124,17 @@ function App() {
             onImageUpload={handleImageUpload}
             onSwitchToGallery={() => setView('gallery')}
           />
-        ) : (
+        ) : view === 'gallery' ? (
           <GalleryView
             crops={crops}
             originalImage={uploadedImage}
             onUpdateCrop={handleUpdateCrop}
             onDeleteCrop={handleDeleteCrop}
+          />
+        ) : (
+          <ComposerView
+            crops={crops}
+            originalImage={uploadedImage}
           />
         )}
       </main>

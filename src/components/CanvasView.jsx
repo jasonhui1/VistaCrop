@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FILTERS } from '../utils/filters'
 
 function CanvasView({ image, onAddCrop, onImageUpload }) {
     const containerRef = useRef(null)
@@ -11,6 +12,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
     const [selectionRotation, setSelectionRotation] = useState(0)
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 })
     const [displaySize, setDisplaySize] = useState({ width: 0, height: 0, offsetX: 0, offsetY: 0 })
+    const [activeFilter, setActiveFilter] = useState(FILTERS[0])
 
     useEffect(() => {
         if (!image || !containerRef.current) return
@@ -212,6 +214,11 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
 
         const img = new Image()
         img.onload = () => {
+            // Apply filter before drawing
+            if (activeFilter.filter !== 'none') {
+                ctx.filter = activeFilter.filter
+            }
+
             ctx.translate(rotatedWidth / 2, rotatedHeight / 2)
             ctx.rotate(radians)
             ctx.drawImage(img, -originalCenterX, -originalCenterY)
@@ -241,7 +248,8 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                 height: Math.round(originalHeight),
                 sourceRotation: selectionRotation,
                 originalImageWidth: imageSize.width,
-                originalImageHeight: imageSize.height
+                originalImageHeight: imageSize.height,
+                filter: activeFilter.filter
             })
 
             setSelection(null)
@@ -304,12 +312,13 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                 ref={canvasRef}
                 src={image}
                 alt="Artwork"
-                className="absolute pointer-events-none select-none"
+                className="absolute pointer-events-none select-none transition-[filter] duration-300"
                 style={{
                     left: displaySize.offsetX,
                     top: displaySize.offsetY,
                     width: displaySize.width,
-                    height: displaySize.height
+                    height: displaySize.height,
+                    filter: activeFilter.filter
                 }}
                 draggable={false}
             />
@@ -330,6 +339,31 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                     </div>
                 </div>
             )}
+
+            {/* Filter Toolbar - Middle Right */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20 pointer-events-auto">
+                <div className="bg-[var(--bg-card)]/90 backdrop-blur-xl border border-[var(--border-color)] p-2 rounded-2xl shadow-2xl flex flex-col gap-2">
+                    {FILTERS.map(filter => (
+                        <button
+                            key={filter.id}
+                            onClick={(e) => { e.stopPropagation(); setActiveFilter(filter); }}
+                            className={`group relative w-10 h-10 rounded-xl transition-all duration-200 flex items-center justify-center ${activeFilter.id === filter.id
+                                ? 'bg-white text-black shadow-lg scale-110'
+                                : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-white'
+                                }`}
+                            title={filter.name}
+                        >
+                            {/* Color preview dot */}
+                            <div className={`w-3 h-3 rounded-full ${filter.vibe} shadow-inner`}></div>
+
+                            {/* Tooltip */}
+                            <div className="absolute right-full mr-3 px-3 py-1.5 bg-black/80 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm">
+                                {filter.name}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Selection overlay */}
             {selectionRect && selectionRect.width > 0 && selectionRect.height > 0 && !isDraggingOver && (
@@ -374,10 +408,11 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                             <img
                                 src={image}
                                 alt=""
-                                className="pointer-events-none"
+                                className="pointer-events-none transition-[filter] duration-300"
                                 style={{
                                     width: displaySize.width,
-                                    height: displaySize.height
+                                    height: displaySize.height,
+                                    filter: activeFilter.filter
                                 }}
                                 draggable={false}
                             />
@@ -409,6 +444,13 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             {/* Bottom controls */}
             <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end gap-4 pointer-events-none">
                 <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl text-sm text-[var(--text-secondary)] pointer-events-auto">
+                    {/* Active filter display */}
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className={`w-2 h-2 rounded-full ${activeFilter.vibe}`}></span>
+                        <span className="font-medium text-[var(--text-primary)]">{activeFilter.name}</span>
+                        <span className="text-[var(--text-muted)] text-xs">- {activeFilter.description}</span>
+                    </div>
+
                     {selectionRect && selectionRect.width > 10 && selectionRect.height > 10 ? (
                         <>
                             <span className="text-[var(--accent-secondary)]">Drag outside selection</span> to rotate
