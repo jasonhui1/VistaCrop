@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 function CanvasView({ image, onAddCrop, onImageUpload }) {
     const containerRef = useRef(null)
@@ -53,6 +53,17 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
         }
     }, [displaySize])
 
+    const getSelectionRect = useCallback(() => {
+        if (!selection) return null
+        const x = Math.min(selection.startX, selection.endX)
+        const y = Math.min(selection.startY, selection.endY)
+        const width = Math.abs(selection.endX - selection.startX)
+        const height = Math.abs(selection.endY - selection.startY)
+        const centerX = x + width / 2
+        const centerY = y + height / 2
+        return { x, y, width, height, centerX, centerY }
+    }, [selection])
+
     const handleMouseDown = useCallback((e) => {
         if (!image) return
         const pos = getMousePosition(e)
@@ -93,7 +104,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             endY: pos.y
         })
         setSelectionRotation(0)
-    }, [image, getMousePosition, displaySize, selectionRotation, selection])
+    }, [image, getMousePosition, getSelectionRect, displaySize, selectionRotation])
 
     const handleMouseMove = useCallback((e) => {
         const pos = getMousePosition(e)
@@ -129,7 +140,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             endX: clampedX,
             endY: clampedY
         }))
-    }, [isDragging, isRotating, selection, getMousePosition, displaySize])
+    }, [isDragging, isRotating, selection, getMousePosition, getSelectionRect, displaySize])
 
     const handleMouseUp = useCallback(() => {
         setIsDragging(false)
@@ -140,7 +151,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
         e.preventDefault()
         e.stopPropagation()
         if (!isDraggingOver) {
-            console.log('Drag over started')
             setIsDraggingOver(true)
         }
     }, [isDraggingOver])
@@ -159,7 +169,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                 e.clientY >= rect.bottom;
 
             if (isOutside) {
-                console.log('Drag leave confirmed outside container')
                 setIsDraggingOver(false)
             }
         }
@@ -168,32 +177,17 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
     const handleDrop = useCallback((e) => {
         e.preventDefault()
         e.stopPropagation()
-        console.log('Drop event fired', e.dataTransfer.files)
         setIsDraggingOver(false)
 
         const file = e.dataTransfer.files?.[0]
         if (file && file.type.startsWith('image/')) {
-            console.log('Processing image file:', file.name)
             const reader = new FileReader()
             reader.onload = (event) => {
                 onImageUpload(event.target.result)
             }
             reader.readAsDataURL(file)
-        } else {
-            console.warn('Dropped item is not an image file')
         }
     }, [onImageUpload])
-
-    const getSelectionRect = () => {
-        if (!selection) return null
-        const x = Math.min(selection.startX, selection.endX)
-        const y = Math.min(selection.startY, selection.endY)
-        const width = Math.abs(selection.endX - selection.startX)
-        const height = Math.abs(selection.endY - selection.startY)
-        const centerX = x + width / 2
-        const centerY = y + height / 2
-        return { x, y, width, height, centerX, centerY }
-    }
 
     const handleCreateCrop = useCallback(() => {
         const rect = getSelectionRect()
@@ -254,7 +248,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             setSelectionRotation(0)
         }
         img.src = image
-    }, [selection, selectionRotation, displaySize, image, onAddCrop])
+    }, [getSelectionRect, selectionRotation, displaySize, image, imageSize, onAddCrop])
 
     const selectionRect = getSelectionRect()
 

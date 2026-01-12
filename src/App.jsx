@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import ImageUploader from './components/ImageUploader'
 import CanvasView from './components/CanvasView'
 import GalleryView from './components/GalleryView'

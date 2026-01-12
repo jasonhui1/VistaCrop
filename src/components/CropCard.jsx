@@ -1,4 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+// Constants for rotation and display calculations
+const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
+const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavailable
+const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
 
 function CropCard({ crop, originalImage, onUpdate, onDelete }) {
     const [tagInput, setTagInput] = useState('')
@@ -57,7 +62,7 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
         }
     }, [])
 
-    const handleMouseDown = useCallback((e) => {
+    const handleMouseDown = (e) => {
         if (!containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
         const pos = getMousePosition(e)
@@ -67,10 +72,9 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
         const centerY = rect.height / 2
 
         // Define inner area (the actual image content area, with some padding)
-        const innerPadding = 40   // pixels from edge that counts as "outside"
         const isOutsideInner =
-            pos.x < innerPadding || pos.x > rect.width - innerPadding ||
-            pos.y < innerPadding || pos.y > rect.height - innerPadding
+            pos.x < ROTATION_EDGE_THRESHOLD || pos.x > rect.width - ROTATION_EDGE_THRESHOLD ||
+            pos.y < ROTATION_EDGE_THRESHOLD || pos.y > rect.height - ROTATION_EDGE_THRESHOLD
 
         if (isOutsideInner) {
             // Start rotation mode
@@ -86,9 +90,9 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
             setIsRotating(true)
             e.preventDefault()
         }
-    }, [getMousePosition, imageRotation])
+    }
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = (e) => {
         if (!isRotating || !containerRef.current) return
 
         const rect = containerRef.current.getBoundingClientRect()
@@ -111,20 +115,45 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
         while (newRotation < -180) newRotation += 360
 
         setImageRotation(newRotation)
-    }, [isRotating, getMousePosition])
+    }
 
-    const handleMouseUp = useCallback(() => {
+    const handleMouseUp = () => {
         if (isRotating) {
             // Save the rotation to crop data
             onUpdate({ rotation: imageRotation })
         }
         setIsRotating(false)
-    }, [isRotating, imageRotation, onUpdate])
+    }
 
-    const handleResetRotation = useCallback(() => {
+    const handleResetRotation = () => {
         setImageRotation(0)
         onUpdate({ rotation: 0 })
-    }, [onUpdate])
+    }
+
+    // Memoize expensive rotation calculations - only recalculate when dependencies change
+    const rotationDisplayData = useMemo(() => {
+        if (imageRotation === 0 || !originalImage) return null
+
+        const containerWidth = containerSize.width || 200
+        const containerHeight = containerSize.height || 200
+        const boxWidth = containerWidth - (SELECTION_BOX_INSET * 2)
+        const boxHeight = containerHeight - (SELECTION_BOX_INSET * 2)
+
+        const scaleX = crop.width > 0 ? boxWidth / crop.width : 1
+        const scaleY = crop.height > 0 ? boxHeight / crop.height : 1
+
+        const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
+        const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
+
+        return {
+            displayedOrigWidth: origW * scaleX,
+            displayedOrigHeight: origH * scaleY,
+            offsetX: -crop.x * scaleX,
+            offsetY: -crop.y * scaleY,
+            cropCenterX: (crop.x + crop.width / 2) * scaleX,
+            cropCenterY: (crop.y + crop.height / 2) * scaleY
+        }
+    }, [imageRotation, originalImage, containerSize, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
 
     return (
         <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-color)] transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
@@ -150,80 +179,52 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
                 />
 
                 {/* When rotating with original image available, show original behind selection */}
-                {imageRotation !== 0 && originalImage && (() => {
-                    // Calculate the display dimensions
-                    const containerWidth = containerSize.width || 200
-                    const containerHeight = containerSize.height || 200
-                    const boxWidth = containerWidth - 24  // inset-[12px] = 12px on each side
-                    const boxHeight = containerHeight - 24
+                {rotationDisplayData && (
+                    <>
+                        {/* Dark overlay on full area */}
+                        <div className="absolute inset-0 bg-black/60 pointer-events-none" />
 
-                    // Scale factor: how much we need to scale the original to make crop.width = boxWidth
-                    const scaleX = boxWidth / crop.width
-                    const scaleY = boxHeight / crop.height
-
-                    // Use the original image dimensions to calculate displayed size
-                    const origW = crop.originalImageWidth || 1000
-                    const origH = crop.originalImageHeight || 1000
-
-                    // Displayed size of the full original image
-                    const displayedOrigWidth = origW * scaleX
-                    const displayedOrigHeight = origH * scaleY
-
-                    // Offset to position the crop area at the start of the box
-                    const offsetX = -crop.x * scaleX
-                    const offsetY = -crop.y * scaleY
-
-                    // Center of crop in displayed coordinates (for rotation origin)
-                    const cropCenterX = (crop.x + crop.width / 2) * scaleX
-                    const cropCenterY = (crop.y + crop.height / 2) * scaleY
-
-                    return (
-                        <>
-                            {/* Dark overlay on full area */}
-                            <div className="absolute inset-0 bg-black/60 pointer-events-none" />
-
-                            {/* Fixed selection box that clips the rotated original image */}
+                        {/* Fixed selection box that clips the rotated original image */}
+                        <div
+                            className="absolute inset-[12px] overflow-hidden pointer-events-none"
+                            style={{
+                                outline: '2px solid #a855f7',
+                                boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
+                            }}
+                        >
+                            {/* Original image that rotates - counter-rotated to show different parts */}
                             <div
-                                className="absolute inset-[12px] overflow-hidden pointer-events-none"
+                                className="absolute"
                                 style={{
-                                    outline: '2px solid #a855f7',
-                                    boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
+                                    left: rotationDisplayData.offsetX,
+                                    top: rotationDisplayData.offsetY,
+                                    width: rotationDisplayData.displayedOrigWidth,
+                                    height: rotationDisplayData.displayedOrigHeight,
+                                    transform: `rotate(${-imageRotation}deg)`,
+                                    transformOrigin: `${rotationDisplayData.cropCenterX}px ${rotationDisplayData.cropCenterY}px`,
+                                    transition: isRotating ? 'none' : 'transform 0.15s ease-out'
                                 }}
                             >
-                                {/* Original image that rotates - counter-rotated to show different parts */}
-                                <div
-                                    className="absolute"
+                                <img
+                                    src={originalImage}
+                                    alt=""
+                                    className="pointer-events-none"
                                     style={{
-                                        left: offsetX,
-                                        top: offsetY,
-                                        width: displayedOrigWidth,
-                                        height: displayedOrigHeight,
-                                        transform: `rotate(${-imageRotation}deg)`,
-                                        transformOrigin: `${cropCenterX}px ${cropCenterY}px`,
-                                        transition: isRotating ? 'none' : 'transform 0.15s ease-out'
+                                        width: '100%',
+                                        height: '100%'
                                     }}
-                                >
-                                    <img
-                                        src={originalImage}
-                                        alt=""
-                                        className="pointer-events-none"
-                                        style={{
-                                            width: '100%',
-                                            height: '100%'
-                                        }}
-                                        draggable={false}
-                                    />
-                                </div>
-
-                                {/* Corner handles */}
-                                <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                                <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                                <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
+                                    draggable={false}
+                                />
                             </div>
-                        </>
-                    )
-                })()}
+
+                            {/* Corner handles */}
+                            <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
+                            <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
+                            <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
+                            <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
+                        </div>
+                    </>
+                )}
 
                 {/* Rotation angle badge */}
                 {imageRotation !== 0 && (
@@ -246,6 +247,8 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
                 <button
                     onClick={(e) => { e.stopPropagation(); onDelete() }}
                     className="absolute top-3 left-3 w-9 h-9 bg-red-500/80 hover:bg-red-500 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10"
+                    aria-label="Delete crop"
+                    title="Delete crop"
                 >
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -291,6 +294,7 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
                                     <button
                                         onClick={() => handleRemoveTag(index)}
                                         className="hover:text-white transition-colors p-0"
+                                        aria-label={`Remove tag ${tag}`}
                                     >
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -332,4 +336,4 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
     )
 }
 
-export default CropCard
+export default memo(CropCard)
