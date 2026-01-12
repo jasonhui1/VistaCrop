@@ -17,16 +17,20 @@ function App() {
     const newCrop = {
       id: Date.now(),
       imageData: cropData.imageData,
+      originalImage: uploadedImage, // Store reference to original image
       x: cropData.x,
       y: cropData.y,
       width: cropData.width,
       height: cropData.height,
+      originalImageWidth: cropData.originalImageWidth,
+      originalImageHeight: cropData.originalImageHeight,
       rotation: 0,
       tags: [],
-      notes: ''
+      notes: '',
+      sourceRotation: cropData.sourceRotation || 0
     }
     setCrops(prev => [...prev, newCrop])
-  }, [])
+  }, [uploadedImage])
 
   const handleUpdateCrop = useCallback((id, updates) => {
     setCrops(prev => prev.map(crop =>
@@ -107,6 +111,7 @@ function App() {
         ) : (
           <GalleryView
             crops={crops}
+            originalImage={uploadedImage}
             onUpdateCrop={handleUpdateCrop}
             onDeleteCrop={handleDeleteCrop}
           />

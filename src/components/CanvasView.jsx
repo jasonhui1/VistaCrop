@@ -245,7 +245,9 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                 y: Math.round(originalCenterY - originalHeight / 2),
                 width: Math.round(originalWidth),
                 height: Math.round(originalHeight),
-                sourceRotation: selectionRotation
+                sourceRotation: selectionRotation,
+                originalImageWidth: imageSize.width,
+                originalImageHeight: imageSize.height
             })
 
             setSelection(null)
