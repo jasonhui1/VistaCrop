@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import ImageUploader from './components/ImageUploader'
 import CanvasView from './components/CanvasView'
 import GalleryView from './components/GalleryView'
@@ -8,12 +8,12 @@ function App() {
   const [uploadedImage, setUploadedImage] = useState(null)
   const [crops, setCrops] = useState([])
 
-  const handleImageUpload = useCallback((imageDataUrl) => {
+  const handleImageUpload = (imageDataUrl) => {
     setUploadedImage(imageDataUrl)
     setView('canvas')
-  }, [])
+  }
 
-  const handleAddCrop = useCallback((cropData) => {
+  const handleAddCrop = (cropData) => {
     const newCrop = {
       id: Date.now(),
       imageData: cropData.imageData,
@@ -30,17 +30,17 @@ function App() {
       sourceRotation: cropData.sourceRotation || 0
     }
     setCrops(prev => [...prev, newCrop])
-  }, [uploadedImage])
+  }
 
-  const handleUpdateCrop = useCallback((id, updates) => {
+  const handleUpdateCrop = (id, updates) => {
     setCrops(prev => prev.map(crop =>
       crop.id === id ? { ...crop, ...updates } : crop
     ))
-  }, [])
+  }
 
-  const handleDeleteCrop = useCallback((id) => {
+  const handleDeleteCrop = (id) => {
     setCrops(prev => prev.filter(crop => crop.id !== id))
-  }, [])
+  }
 
   return (
     <div className="h-screen flex flex-col bg-[var(--bg-primary)] overflow-hidden">

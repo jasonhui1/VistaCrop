@@ -64,7 +64,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
         return { x, y, width, height, centerX, centerY }
     }, [selection])
 
-    const handleMouseDown = useCallback((e) => {
+    const handleMouseDown = (e) => {
         if (!image) return
         const pos = getMousePosition(e)
 
@@ -104,9 +104,9 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             endY: pos.y
         })
         setSelectionRotation(0)
-    }, [image, getMousePosition, getSelectionRect, displaySize, selectionRotation])
+    }
 
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = (e) => {
         const pos = getMousePosition(e)
 
         if (isRotating) {
@@ -140,22 +140,22 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             endX: clampedX,
             endY: clampedY
         }))
-    }, [isDragging, isRotating, selection, getMousePosition, getSelectionRect, displaySize])
+    }
 
-    const handleMouseUp = useCallback(() => {
+    const handleMouseUp = () => {
         setIsDragging(false)
         setIsRotating(false)
-    }, [])
+    }
 
-    const handleDragOver = useCallback((e) => {
+    const handleDragOver = (e) => {
         e.preventDefault()
         e.stopPropagation()
         if (!isDraggingOver) {
             setIsDraggingOver(true)
         }
-    }, [isDraggingOver])
+    }
 
-    const handleDragLeave = useCallback((e) => {
+    const handleDragLeave = (e) => {
         e.preventDefault()
         e.stopPropagation()
 
@@ -172,9 +172,9 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                 setIsDraggingOver(false)
             }
         }
-    }, [])
+    }
 
-    const handleDrop = useCallback((e) => {
+    const handleDrop = (e) => {
         e.preventDefault()
         e.stopPropagation()
         setIsDraggingOver(false)
@@ -187,9 +187,9 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             }
             reader.readAsDataURL(file)
         }
-    }, [onImageUpload])
+    }
 
-    const handleCreateCrop = useCallback(() => {
+    const handleCreateCrop = () => {
         const rect = getSelectionRect()
         if (!rect || rect.width < 10 || rect.height < 10) return
 
@@ -248,7 +248,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
             setSelectionRotation(0)
         }
         img.src = image
-    }, [getSelectionRect, selectionRotation, displaySize, image, imageSize, onAddCrop])
+    }
 
     const selectionRect = getSelectionRect()
 
