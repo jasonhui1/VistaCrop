@@ -133,16 +133,45 @@ function FreeformCanvas({
 
                 const isSelected = selectedItemId === item.id
 
+                // For 'contain' mode, calculate the actual image bounds within the container
+                // This ensures the selection box matches the visible image, not the container
+                const cropAspect = crop.width / crop.height
+                const containerAspect = item.width / item.height
+
+                let imageWidth = item.width
+                let imageHeight = item.height
+                let offsetX = 0
+                let offsetY = 0
+
+                if (item.objectFit === 'contain' || !item.objectFit) {
+                    if (cropAspect > containerAspect) {
+                        // Image is wider - height will be letterboxed
+                        imageHeight = item.width / cropAspect
+                        offsetY = (item.height - imageHeight) / 2
+                    } else {
+                        // Image is taller - width will be pillarboxed
+                        imageWidth = item.height * cropAspect
+                        offsetX = (item.width - imageWidth) / 2
+                    }
+                }
+
+                // Use tight bounds for contain mode, full container for other modes
+                const useTightBounds = item.objectFit === 'contain' || !item.objectFit
+                const displayX = useTightBounds ? item.x + offsetX : item.x
+                const displayY = useTightBounds ? item.y + offsetY : item.y
+                const displayWidth = useTightBounds ? imageWidth : item.width
+                const displayHeight = useTightBounds ? imageHeight : item.height
+
                 return (
                     <div
                         key={item.id}
                         className={`freeform-item ${isSelected ? 'selected' : ''}`}
                         style={{
                             position: 'absolute',
-                            left: `${item.x}%`,
-                            top: `${item.y}%`,
-                            width: `${item.width}%`,
-                            height: `${item.height}%`,
+                            left: `${displayX}%`,
+                            top: `${displayY}%`,
+                            width: `${displayWidth}%`,
+                            height: `${displayHeight}%`,
                             border: isSelected ? '2px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.2)',
                             boxSizing: 'border-box',
                             cursor: 'grab',
@@ -158,7 +187,7 @@ function FreeformCanvas({
                             style={{
                                 width: '100%',
                                 height: '100%',
-                                objectFit: item.objectFit || 'contain',
+                                objectFit: 'cover', // Since we calculated tight bounds, use cover to fill
                                 filter: getFilterStyle(crop.filter),
                                 transform: `rotate(${crop.rotation || 0}deg)`,
                                 pointerEvents: 'none'

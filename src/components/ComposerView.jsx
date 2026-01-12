@@ -90,13 +90,28 @@ function ComposerView({ crops, originalImage }) {
         const crop = crops.find(c => c.id === cropId)
         if (!crop) return
 
-        // Calculate initial size based on crop aspect ratio (max 30% of canvas)
-        const aspectRatio = crop.width / crop.height
-        let width = 25
-        let height = width / aspectRatio
-        if (height > 40) {
-            height = 40
-            width = height * aspectRatio
+        // Calculate initial size to match the crop's actual aspect ratio
+        // This ensures the selection box matches the crop size
+        const cropAspectRatio = crop.width / crop.height
+        const canvasAspectRatio = composition.pageWidth / composition.pageHeight
+
+        // Calculate width/height in percentage terms, keeping aspect ratio
+        let width, height
+
+        // Start with a reasonable size (25% of canvas width)
+        const baseWidth = 25
+        const baseHeight = baseWidth / cropAspectRatio * canvasAspectRatio
+
+        // Clamp to reasonable bounds
+        if (baseHeight > 50) {
+            height = 50
+            width = height * cropAspectRatio / canvasAspectRatio
+        } else if (baseWidth > 50) {
+            width = 50
+            height = width / cropAspectRatio * canvasAspectRatio
+        } else {
+            width = baseWidth
+            height = baseHeight
         }
 
         const newItem = {
@@ -110,7 +125,7 @@ function ComposerView({ crops, originalImage }) {
         }
         setPlacedItems(prev => [...prev, newItem])
         setSelectedItemId(newItem.id)
-    }, [crops])
+    }, [crops, composition.pageWidth, composition.pageHeight])
 
     const handleUpdateItem = useCallback((itemId, updates) => {
         setPlacedItems(prev => prev.map(item =>
