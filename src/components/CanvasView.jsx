@@ -1,10 +1,11 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 
-function CanvasView({ image, onAddCrop }) {
+function CanvasView({ image, onAddCrop, onImageUpload }) {
     const containerRef = useRef(null)
     const canvasRef = useRef(null)
     const [isDragging, setIsDragging] = useState(false)
     const [isRotating, setIsRotating] = useState(false)
+    const [isDraggingOver, setIsDraggingOver] = useState(false)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
     const [selection, setSelection] = useState(null)
     const [selectionRotation, setSelectionRotation] = useState(0)
@@ -135,6 +136,54 @@ function CanvasView({ image, onAddCrop }) {
         setIsRotating(false)
     }, [])
 
+    const handleDragOver = useCallback((e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!isDraggingOver) {
+            console.log('Drag over started')
+            setIsDraggingOver(true)
+        }
+    }, [isDraggingOver])
+
+    const handleDragLeave = useCallback((e) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        // Only set to false if we actually leave the container
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (rect) {
+            const isOutside =
+                e.clientX <= rect.left ||
+                e.clientX >= rect.right ||
+                e.clientY <= rect.top ||
+                e.clientY >= rect.bottom;
+
+            if (isOutside) {
+                console.log('Drag leave confirmed outside container')
+                setIsDraggingOver(false)
+            }
+        }
+    }, [])
+
+    const handleDrop = useCallback((e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        console.log('Drop event fired', e.dataTransfer.files)
+        setIsDraggingOver(false)
+
+        const file = e.dataTransfer.files?.[0]
+        if (file && file.type.startsWith('image/')) {
+            console.log('Processing image file:', file.name)
+            const reader = new FileReader()
+            reader.onload = (event) => {
+                onImageUpload(event.target.result)
+            }
+            reader.readAsDataURL(file)
+        } else {
+            console.warn('Dropped item is not an image file')
+        }
+    }, [onImageUpload])
+
     const getSelectionRect = () => {
         if (!selection) return null
         const x = Math.min(selection.startX, selection.endX)
@@ -209,22 +258,35 @@ function CanvasView({ image, onAddCrop }) {
 
     if (!image) {
         return (
-            <div className="glass-card flex-1 flex flex-col items-center justify-center gap-6">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-[var(--accent-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div
+                ref={containerRef}
+                className={`glass-card flex-1 flex flex-col items-center justify-center gap-6 transition-all duration-300 ${isDraggingOver ? 'bg-purple-500/10 border-2 border-dashed border-purple-500/50' : ''
+                    }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center transition-transform duration-300 ${isDraggingOver ? 'scale-110' : ''}`}>
+                    <svg className={`w-12 h-12 transition-colors duration-300 ${isDraggingOver ? 'text-purple-400' : 'text-[var(--accent-secondary)]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                 </div>
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold gradient-text mb-2">No Artwork Selected</h2>
-                    <p className="text-[var(--text-secondary)]">Upload an artwork to start exploring details</p>
+                    <h2 className="text-2xl font-bold gradient-text mb-2">
+                        {isDraggingOver ? 'Drop artwork to upload' : 'No Artwork Selected'}
+                    </h2>
+                    <p className="text-[var(--text-secondary)]">
+                        {isDraggingOver ? 'Release to start exploring' : 'Upload or drag and drop an artwork to start exploring details'}
+                    </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Click the "Upload Artwork" button in the header
-                </div>
+                {!isDraggingOver && (
+                    <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Click the "Upload Artwork" button in the header
+                    </div>
+                )}
             </div>
         )
     }
@@ -232,11 +294,14 @@ function CanvasView({ image, onAddCrop }) {
     return (
         <div
             ref={containerRef}
-            className="glass-card flex-1 relative cursor-crosshair overflow-hidden"
+            className={`glass-card flex-1 relative cursor-crosshair overflow-hidden transition-all duration-300 ${isDraggingOver ? 'bg-purple-500/10 outline-2 outline-dashed outline-purple-500/50 outline-offset-[-2px]' : ''}`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
         >
             {/* Image */}
             <img
@@ -253,8 +318,25 @@ function CanvasView({ image, onAddCrop }) {
                 draggable={false}
             />
 
+            {/* Drop Overlay for existing image */}
+            {isDraggingOver && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-purple-900/40 backdrop-blur-sm pointer-events-none">
+                    <div className="bg-[var(--bg-primary)] p-8 rounded-2xl shadow-2xl border border-purple-500/30 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold text-white mb-1">Drop to Upload</h3>
+                            <p className="text-purple-200 text-sm">Replace current artwork</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Selection overlay */}
-            {selectionRect && selectionRect.width > 0 && selectionRect.height > 0 && (
+            {selectionRect && selectionRect.width > 0 && selectionRect.height > 0 && !isDraggingOver && (
                 <>
                     {/* Full dark overlay */}
                     <div
@@ -329,8 +411,8 @@ function CanvasView({ image, onAddCrop }) {
             )}
 
             {/* Bottom controls */}
-            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end gap-4">
-                <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl text-sm text-[var(--text-secondary)]">
+            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end gap-4 pointer-events-none">
+                <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl text-sm text-[var(--text-secondary)] pointer-events-auto">
                     {selectionRect && selectionRect.width > 10 && selectionRect.height > 10 ? (
                         <>
                             <span className="text-[var(--accent-secondary)]">Drag outside selection</span> to rotate
@@ -343,7 +425,7 @@ function CanvasView({ image, onAddCrop }) {
                 </div>
 
                 {selectionRect && selectionRect.width > 10 && selectionRect.height > 10 && (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 pointer-events-auto">
                         {/* Rotation display */}
                         <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl flex items-center gap-2">
                             <svg className="w-4 h-4 text-[var(--accent-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

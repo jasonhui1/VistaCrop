@@ -101,6 +101,7 @@ function App() {
           <CanvasView
             image={uploadedImage}
             onAddCrop={handleAddCrop}
+            onImageUpload={handleImageUpload}
             onSwitchToGallery={() => setView('gallery')}
           />
         ) : (
