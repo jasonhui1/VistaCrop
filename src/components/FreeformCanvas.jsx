@@ -58,6 +58,7 @@ function FreeformCanvas({
     }, [onDropCrop])
 
     // Handle mouse down on item (for moving/resizing)
+    // type can be: 'move', 'resize-tl', 'resize-tr', 'resize-bl', 'resize-br'
     const handleItemMouseDown = useCallback((e, item, type = 'move') => {
         e.stopPropagation()
         e.preventDefault()
@@ -84,15 +85,100 @@ function FreeformCanvas({
                 x: Math.max(0, Math.min(100 - dragState.startItem.width, dragState.startItem.x + deltaX)),
                 y: Math.max(0, Math.min(100 - dragState.startItem.height, dragState.startItem.y + deltaY))
             })
-        } else if (dragState.type === 'resize') {
-            const newWidth = Math.max(5, dragState.startItem.width + deltaX)
-            const newHeight = Math.max(5, dragState.startItem.height + deltaY)
-            onUpdateItem(dragState.itemId, {
-                width: Math.min(100 - dragState.startItem.x, newWidth),
-                height: Math.min(100 - dragState.startItem.y, newHeight)
-            })
+        } else if (dragState.type.startsWith('resize-')) {
+            const corner = dragState.type.split('-')[1]
+            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            if (!crop) return
+
+            // Get the crop's aspect ratio to maintain during resize
+            const cropAspect = crop.width / crop.height
+            const canvasAspect = rect.width / rect.height
+            // Convert crop aspect to percentage-space aspect
+            const aspectRatio = cropAspect / canvasAspect
+
+            let updates = {}
+
+            // Use the dominant axis (larger delta) to drive the resize, maintain aspect ratio
+            const absDeltaX = Math.abs(deltaX)
+            const absDeltaY = Math.abs(deltaY)
+
+            if (corner === 'br') {
+                // Bottom-right: expand from bottom-right
+                if (absDeltaX > absDeltaY) {
+                    const newWidth = Math.max(5, Math.min(100 - dragState.startItem.x, dragState.startItem.width + deltaX))
+                    updates.width = newWidth
+                    updates.height = newWidth / aspectRatio
+                } else {
+                    const newHeight = Math.max(5, Math.min(100 - dragState.startItem.y, dragState.startItem.height + deltaY))
+                    updates.height = newHeight
+                    updates.width = newHeight * aspectRatio
+                }
+            } else if (corner === 'bl') {
+                // Bottom-left: anchor top-right corner
+                if (absDeltaX > absDeltaY) {
+                    const newWidth = Math.max(5, dragState.startItem.width - deltaX)
+                    const widthDiff = newWidth - dragState.startItem.width
+                    updates.width = newWidth
+                    updates.height = newWidth / aspectRatio
+                    updates.x = dragState.startItem.x - widthDiff
+                } else {
+                    const newHeight = Math.max(5, Math.min(100 - dragState.startItem.y, dragState.startItem.height + deltaY))
+                    const newWidth = newHeight * aspectRatio
+                    const widthDiff = newWidth - dragState.startItem.width
+                    updates.height = newHeight
+                    updates.width = newWidth
+                    updates.x = dragState.startItem.x - widthDiff
+                }
+            } else if (corner === 'tr') {
+                // Top-right: anchor bottom-left corner
+                if (absDeltaX > absDeltaY) {
+                    const newWidth = Math.max(5, Math.min(100 - dragState.startItem.x, dragState.startItem.width + deltaX))
+                    const newHeight = newWidth / aspectRatio
+                    const heightDiff = newHeight - dragState.startItem.height
+                    updates.width = newWidth
+                    updates.height = newHeight
+                    updates.y = dragState.startItem.y - heightDiff
+                } else {
+                    const newHeight = Math.max(5, dragState.startItem.height - deltaY)
+                    const heightDiff = newHeight - dragState.startItem.height
+                    updates.height = newHeight
+                    updates.width = newHeight * aspectRatio
+                    updates.y = dragState.startItem.y - heightDiff
+                }
+            } else if (corner === 'tl') {
+                // Top-left: anchor bottom-right corner
+                if (absDeltaX > absDeltaY) {
+                    const newWidth = Math.max(5, dragState.startItem.width - deltaX)
+                    const newHeight = newWidth / aspectRatio
+                    const widthDiff = newWidth - dragState.startItem.width
+                    const heightDiff = newHeight - dragState.startItem.height
+                    updates.width = newWidth
+                    updates.height = newHeight
+                    updates.x = dragState.startItem.x - widthDiff
+                    updates.y = dragState.startItem.y - heightDiff
+                } else {
+                    const newHeight = Math.max(5, dragState.startItem.height - deltaY)
+                    const newWidth = newHeight * aspectRatio
+                    const widthDiff = newWidth - dragState.startItem.width
+                    const heightDiff = newHeight - dragState.startItem.height
+                    updates.height = newHeight
+                    updates.width = newWidth
+                    updates.x = dragState.startItem.x - widthDiff
+                    updates.y = dragState.startItem.y - heightDiff
+                }
+            }
+
+            // Clamp position to stay within canvas
+            if (updates.x !== undefined) {
+                updates.x = Math.max(0, updates.x)
+            }
+            if (updates.y !== undefined) {
+                updates.y = Math.max(0, updates.y)
+            }
+
+            onUpdateItem(dragState.itemId, updates)
         }
-    }, [dragState, onUpdateItem])
+    }, [dragState, onUpdateItem, crops])
 
     // Handle mouse up
     const handleMouseUp = useCallback(() => {
@@ -133,34 +219,8 @@ function FreeformCanvas({
 
                 const isSelected = selectedItemId === item.id
 
-                // For 'contain' mode, calculate the actual image bounds within the container
-                // This ensures the selection box matches the visible image, not the container
-                const cropAspect = crop.width / crop.height
-                const containerAspect = item.width / item.height
-
-                let imageWidth = item.width
-                let imageHeight = item.height
-                let offsetX = 0
-                let offsetY = 0
-
-                if (item.objectFit === 'contain' || !item.objectFit) {
-                    if (cropAspect > containerAspect) {
-                        // Image is wider - height will be letterboxed
-                        imageHeight = item.width / cropAspect
-                        offsetY = (item.height - imageHeight) / 2
-                    } else {
-                        // Image is taller - width will be pillarboxed
-                        imageWidth = item.height * cropAspect
-                        offsetX = (item.width - imageWidth) / 2
-                    }
-                }
-
-                // Use tight bounds for contain mode, full container for other modes
-                const useTightBounds = item.objectFit === 'contain' || !item.objectFit
-                const displayX = useTightBounds ? item.x + offsetX : item.x
-                const displayY = useTightBounds ? item.y + offsetY : item.y
-                const displayWidth = useTightBounds ? imageWidth : item.width
-                const displayHeight = useTightBounds ? imageHeight : item.height
+                // Since we preserve aspect ratio during resize, use item coordinates directly
+                // This prevents movement during resize operations
 
                 return (
                     <div
@@ -168,10 +228,10 @@ function FreeformCanvas({
                         className={`freeform-item ${isSelected ? 'selected' : ''}`}
                         style={{
                             position: 'absolute',
-                            left: `${displayX}%`,
-                            top: `${displayY}%`,
-                            width: `${displayWidth}%`,
-                            height: `${displayHeight}%`,
+                            left: `${item.x}%`,
+                            top: `${item.y}%`,
+                            width: `${item.width}%`,
+                            height: `${item.height}%`,
                             border: isSelected ? '2px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.2)',
                             boxSizing: 'border-box',
                             cursor: 'grab',
@@ -195,11 +255,60 @@ function FreeformCanvas({
                             draggable={false}
                         />
 
-                        {/* Resize handle */}
+                        {/* Resize handles - all four corners */}
                         {isSelected && (
                             <>
+                                {/* Top-left */}
                                 <div
-                                    className="resize-handle"
+                                    className="resize-handle resize-tl"
+                                    style={{
+                                        position: 'absolute',
+                                        left: -6,
+                                        top: -6,
+                                        width: 12,
+                                        height: 12,
+                                        backgroundColor: 'var(--accent-primary)',
+                                        borderRadius: '50%',
+                                        cursor: 'nwse-resize',
+                                        border: '2px solid white'
+                                    }}
+                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tl')}
+                                />
+                                {/* Top-right */}
+                                <div
+                                    className="resize-handle resize-tr"
+                                    style={{
+                                        position: 'absolute',
+                                        right: -6,
+                                        top: -6,
+                                        width: 12,
+                                        height: 12,
+                                        backgroundColor: 'var(--accent-primary)',
+                                        borderRadius: '50%',
+                                        cursor: 'nesw-resize',
+                                        border: '2px solid white'
+                                    }}
+                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tr')}
+                                />
+                                {/* Bottom-left */}
+                                <div
+                                    className="resize-handle resize-bl"
+                                    style={{
+                                        position: 'absolute',
+                                        left: -6,
+                                        bottom: -6,
+                                        width: 12,
+                                        height: 12,
+                                        backgroundColor: 'var(--accent-primary)',
+                                        borderRadius: '50%',
+                                        cursor: 'nesw-resize',
+                                        border: '2px solid white'
+                                    }}
+                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-bl')}
+                                />
+                                {/* Bottom-right */}
+                                <div
+                                    className="resize-handle resize-br"
                                     style={{
                                         position: 'absolute',
                                         right: -6,
@@ -211,7 +320,7 @@ function FreeformCanvas({
                                         cursor: 'nwse-resize',
                                         border: '2px solid white'
                                     }}
-                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize')}
+                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-br')}
                                 />
                                 {/* Delete button */}
                                 <button
