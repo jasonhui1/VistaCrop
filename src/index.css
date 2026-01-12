@@ -26,6 +26,7 @@ html,
 body {
   height: 100%;
   overflow: hidden;
+  color-scheme: dark;
 }
 
 body {
@@ -101,6 +102,7 @@ body {
 
 /* Input styling - exclude range inputs */
 input:not([type="range"]),
+select,
 textarea {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
@@ -114,6 +116,7 @@ textarea {
 }
 
 input:not([type="range"]):focus,
+select:focus,
 textarea:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
