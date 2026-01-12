@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
 
 /**
@@ -18,6 +18,18 @@ function FreeformCanvas({
     const canvasRef = useRef(null)
     const [dragState, setDragState] = useState(null) // { type: 'move' | 'resize', itemId, startX, startY, startItem }
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
+
+    // Handle keyboard Delete key to delete selected item
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !e.target.matches('input, textarea')) {
+                e.preventDefault()
+                onDeleteItem(selectedItemId)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [selectedItemId, onDeleteItem])
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
@@ -324,33 +336,7 @@ function FreeformCanvas({
                                     }}
                                     onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-br')}
                                 />
-                                {/* Delete button */}
-                                <button
-                                    className="delete-item-btn"
-                                    style={{
-                                        position: 'absolute',
-                                        top: -10,
-                                        right: -10,
-                                        width: 20,
-                                        height: 20,
-                                        backgroundColor: '#ef4444',
-                                        borderRadius: '50%',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: 12,
-                                        color: 'white',
-                                        fontWeight: 'bold'
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        onDeleteItem(item.id)
-                                    }}
-                                >
-                                    ×
-                                </button>
+
                             </>
                         )}
                     </div>
