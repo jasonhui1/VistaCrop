@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 
 function CropCard({ crop, originalImage, onUpdate, onDelete }) {
     const [tagInput, setTagInput] = useState('')
@@ -6,6 +6,29 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
     const containerRef = useRef(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
+
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+
+    useEffect(() => {
+        if (!containerRef.current) return
+
+        const updateSize = () => {
+            if (containerRef.current) {
+                setContainerSize({
+                    width: containerRef.current.clientWidth,
+                    height: containerRef.current.clientHeight
+                })
+            }
+        }
+
+        // Initial size
+        updateSize()
+
+        const resizeObserver = new ResizeObserver(updateSize)
+        resizeObserver.observe(containerRef.current)
+
+        return () => resizeObserver.disconnect()
+    }, [])
 
     const handleTagKeyDown = (e) => {
         if (e.key === 'Enter' && tagInput.trim()) {
@@ -108,27 +131,29 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
             {/* Image container with rotation */}
             <div
                 ref={containerRef}
-                className={`relative w-full aspect-square overflow-hidden bg-[var(--bg-tertiary)] ${isRotating ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`relative w-full overflow-hidden bg-[var(--bg-tertiary)] ${isRotating ? 'cursor-grabbing' : 'cursor-grab'}`}
+                style={{
+                    // Use aspect-ratio to maintain height based on crop dimensions
+                    aspectRatio: `${crop.width} / ${crop.height}`
+                }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
             >
-                {/* When not rotating or no original image, show the crop normally */}
-                {(imageRotation === 0 || !originalImage) && (
-                    <img
-                        src={crop.imageData}
-                        alt="Crop"
-                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                        draggable={false}
-                    />
-                )}
+                {/* Always show the crop image (may be hidden by overlay when rotating) */}
+                <img
+                    src={crop.imageData}
+                    alt="Crop"
+                    className={`w-full h-full object-cover pointer-events-none ${imageRotation !== 0 && originalImage ? 'invisible' : ''}`}
+                    draggable={false}
+                />
 
                 {/* When rotating with original image available, show original behind selection */}
                 {imageRotation !== 0 && originalImage && (() => {
                     // Calculate the display dimensions
-                    const containerWidth = containerRef.current?.clientWidth || 200
-                    const containerHeight = containerRef.current?.clientHeight || 200
+                    const containerWidth = containerSize.width || 200
+                    const containerHeight = containerSize.height || 200
                     const boxWidth = containerWidth - 24  // inset-[12px] = 12px on each side
                     const boxHeight = containerHeight - 24
 
