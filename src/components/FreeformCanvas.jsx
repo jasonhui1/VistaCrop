@@ -53,7 +53,9 @@ function FreeformCanvas({
             const rect = canvasRef.current.getBoundingClientRect()
             const x = ((e.clientX - rect.left) / rect.width) * 100
             const y = ((e.clientY - rect.top) / rect.height) * 100
-            onDropCrop(parseInt(cropId, 10), x, y)
+            // Pass the actual canvas aspect ratio for proper sizing
+            const canvasAspect = rect.width / rect.height
+            onDropCrop(parseInt(cropId, 10), x, y, canvasAspect)
         }
     }, [onDropCrop])
 

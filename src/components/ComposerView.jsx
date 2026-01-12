@@ -86,29 +86,29 @@ function ComposerView({ crops, originalImage }) {
     }, [])
 
     // Freeform mode handlers
-    const handleDropCropToFreeform = useCallback((cropId, x, y) => {
+    const handleDropCropToFreeform = useCallback((cropId, x, y, canvasAspectRatio) => {
         const crop = crops.find(c => c.id === cropId)
         if (!crop) return
 
         // Calculate initial size to match the crop's actual aspect ratio
-        // This ensures the selection box matches the crop size
+        // Use actual canvas aspect ratio for accurate percentage-based sizing
         const cropAspectRatio = crop.width / crop.height
-        const canvasAspectRatio = composition.pageWidth / composition.pageHeight
+        const actualCanvasAspect = canvasAspectRatio || (composition.pageWidth / composition.pageHeight)
 
         // Calculate width/height in percentage terms, keeping aspect ratio
         let width, height
 
         // Start with a reasonable size (25% of canvas width)
         const baseWidth = 25
-        const baseHeight = baseWidth / cropAspectRatio * canvasAspectRatio
+        const baseHeight = baseWidth / cropAspectRatio * actualCanvasAspect
 
         // Clamp to reasonable bounds
         if (baseHeight > 50) {
             height = 50
-            width = height * cropAspectRatio / canvasAspectRatio
+            width = height * cropAspectRatio / actualCanvasAspect
         } else if (baseWidth > 50) {
             width = 50
-            height = width / cropAspectRatio * canvasAspectRatio
+            height = width / cropAspectRatio * actualCanvasAspect
         } else {
             width = baseWidth
             height = baseHeight
