@@ -4,6 +4,8 @@ function CanvasView({ image, onAddCrop }) {
     const containerRef = useRef(null)
     const canvasRef = useRef(null)
     const [isDragging, setIsDragging] = useState(false)
+    const [isRotating, setIsRotating] = useState(false)
+    const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
     const [selection, setSelection] = useState(null)
     const [selectionRotation, setSelectionRotation] = useState(0)
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 })
@@ -53,6 +55,33 @@ function CanvasView({ image, onAddCrop }) {
     const handleMouseDown = useCallback((e) => {
         if (!image) return
         const pos = getMousePosition(e)
+
+        // Check if we have an existing selection
+        const rect = getSelectionRect()
+
+        if (rect && rect.width > 10 && rect.height > 10) {
+            // Check if click is OUTSIDE the selection - start rotation mode
+            const isOutsideSelection =
+                pos.x < rect.x || pos.x > rect.x + rect.width ||
+                pos.y < rect.y || pos.y > rect.y + rect.height
+
+            if (isOutsideSelection) {
+                // Calculate initial angle from selection center to mouse
+                const angleToMouse = Math.atan2(
+                    pos.y - rect.centerY,
+                    pos.x - rect.centerX
+                ) * (180 / Math.PI)
+
+                initialRotationRef.current = {
+                    angle: selectionRotation,
+                    startAngle: angleToMouse
+                }
+                setIsRotating(true)
+                return
+            }
+        }
+
+        // Otherwise, start a new selection if within image bounds
         if (pos.x < 0 || pos.y < 0 || pos.x > displaySize.width || pos.y > displaySize.height) return
 
         setIsDragging(true)
@@ -63,11 +92,34 @@ function CanvasView({ image, onAddCrop }) {
             endY: pos.y
         })
         setSelectionRotation(0)
-    }, [image, getMousePosition, displaySize])
+    }, [image, getMousePosition, displaySize, selectionRotation, selection])
 
     const handleMouseMove = useCallback((e) => {
-        if (!isDragging || !selection) return
         const pos = getMousePosition(e)
+
+        if (isRotating) {
+            const rect = getSelectionRect()
+            if (!rect) return
+
+            // Calculate current angle from selection center to mouse
+            const currentAngle = Math.atan2(
+                pos.y - rect.centerY,
+                pos.x - rect.centerX
+            ) * (180 / Math.PI)
+
+            // Calculate rotation delta
+            const angleDelta = currentAngle - initialRotationRef.current.startAngle
+            let newRotation = initialRotationRef.current.angle + angleDelta
+
+            // Normalize to -180 to 180
+            while (newRotation > 180) newRotation -= 360
+            while (newRotation < -180) newRotation += 360
+
+            setSelectionRotation(newRotation)
+            return
+        }
+
+        if (!isDragging || !selection) return
         const clampedX = Math.max(0, Math.min(pos.x, displaySize.width))
         const clampedY = Math.max(0, Math.min(pos.y, displaySize.height))
 
@@ -76,10 +128,11 @@ function CanvasView({ image, onAddCrop }) {
             endX: clampedX,
             endY: clampedY
         }))
-    }, [isDragging, selection, getMousePosition, displaySize])
+    }, [isDragging, isRotating, selection, getMousePosition, displaySize])
 
     const handleMouseUp = useCallback(() => {
         setIsDragging(false)
+        setIsRotating(false)
     }, [])
 
     const getSelectionRect = () => {
@@ -91,10 +144,6 @@ function CanvasView({ image, onAddCrop }) {
         const centerX = x + width / 2
         const centerY = y + height / 2
         return { x, y, width, height, centerX, centerY }
-    }
-
-    const handleRotationChange = (e) => {
-        setSelectionRotation(parseFloat(e.target.value))
     }
 
     const handleCreateCrop = useCallback(() => {
@@ -282,31 +331,25 @@ function CanvasView({ image, onAddCrop }) {
             {/* Bottom controls */}
             <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end gap-4">
                 <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl text-sm text-[var(--text-secondary)]">
-                    <span className="text-[var(--accent-secondary)]">Click and drag</span> to select an area
+                    {selectionRect && selectionRect.width > 10 && selectionRect.height > 10 ? (
+                        <>
+                            <span className="text-[var(--accent-secondary)]">Drag outside selection</span> to rotate
+                        </>
+                    ) : (
+                        <>
+                            <span className="text-[var(--accent-secondary)]">Click and drag</span> to select an area
+                        </>
+                    )}
                 </div>
 
                 {selectionRect && selectionRect.width > 10 && selectionRect.height > 10 && (
                     <div className="flex items-center gap-4">
-                        {/* Rotation control */}
-                        <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl flex items-center gap-4">
-                            <div className="flex items-center gap-2 text-sm">
-                                <svg className="w-4 h-4 text-[var(--accent-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                <span className="text-[var(--text-secondary)]">Rotate:</span>
-                                <span className="text-[var(--accent-secondary)] font-semibold w-12">{Math.round(selectionRotation)}°</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="-180"
-                                max="180"
-                                step="1"
-                                value={selectionRotation}
-                                onChange={handleRotationChange}
-                                className="w-32"
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                            />
+                        {/* Rotation display */}
+                        <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl flex items-center gap-2">
+                            <svg className="w-4 h-4 text-[var(--accent-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span className="text-[var(--accent-secondary)] font-semibold">{Math.round(selectionRotation)}°</span>
                         </div>
 
                         <button
