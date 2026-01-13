@@ -12,6 +12,7 @@ import {
     PAGE_PRESETS
 } from '../utils/panelLayouts'
 import { FILTERS } from '../utils/filters'
+import { FRAME_SHAPES, getShapeList, drawShapePath } from '../utils/frameShapes'
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
@@ -222,6 +223,11 @@ function ComposerView({ crops, originalImage }) {
 
                 ctx.save()
 
+                // Apply polygon clipping for the frame shape
+                const shapeId = item.frameShape || 'rectangle'
+                drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints)
+                ctx.clip()
+
                 // Draw image with proper aspect ratio (contain)
                 const imgAspect = img.width / img.height
                 const boxAspect = width / height
@@ -239,16 +245,26 @@ function ComposerView({ crops, originalImage }) {
                     drawY = y
                 }
 
-                if (crop.rotation) {
+                if (crop.rotation || item.rotation) {
+                    const rotation = item.rotation ?? crop.rotation ?? 0
                     const centerX = drawX + drawWidth / 2
                     const centerY = drawY + drawHeight / 2
                     ctx.translate(centerX, centerY)
-                    ctx.rotate((crop.rotation * Math.PI) / 180)
+                    ctx.rotate((rotation * Math.PI) / 180)
                     ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
                 } else {
                     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
                 }
 
+                ctx.restore()
+
+                // Draw polygon border on top
+                ctx.save()
+                drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints)
+                ctx.strokeStyle = '#000'
+                ctx.lineWidth = 3
+                ctx.lineJoin = 'miter'
+                ctx.stroke()
                 ctx.restore()
             }
         }
@@ -465,6 +481,7 @@ function ComposerView({ crops, originalImage }) {
                         <FreeformCanvas
                             composition={composition}
                             crops={crops}
+                            originalImage={originalImage}
                             placedItems={placedItems}
                             selectedItemId={selectedItemId}
                             onSelectItem={setSelectedItemId}
@@ -527,6 +544,73 @@ function ComposerView({ crops, originalImage }) {
                                 Selected
                             </h3>
                             <div className="space-y-2">
+                                {/* Frame Shape Selector */}
+                                <div>
+                                    <label className="text-xs text-[var(--text-muted)] block mb-1">Frame Shape</label>
+                                    <div className="grid grid-cols-4 gap-1">
+                                        {getShapeList().slice(0, 12).map((shape) => (
+                                            <button
+                                                key={shape.id}
+                                                onClick={() => handleUpdateItem(selectedItem.id, { frameShape: shape.id })}
+                                                className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.frameShape || 'rectangle') === shape.id
+                                                    ? 'bg-[var(--accent-primary)] text-white'
+                                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
+                                                    }`}
+                                                title={shape.name}
+                                            >
+                                                {shape.icon}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* More shapes toggle */}
+                                    <details className="mt-1">
+                                        <summary className="text-xs text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-secondary)]">
+                                            More shapes...
+                                        </summary>
+                                        <div className="grid grid-cols-4 gap-1 mt-1">
+                                            {getShapeList().slice(12).map((shape) => (
+                                                <button
+                                                    key={shape.id}
+                                                    onClick={() => handleUpdateItem(selectedItem.id, { frameShape: shape.id })}
+                                                    className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.frameShape || 'rectangle') === shape.id
+                                                        ? 'bg-[var(--accent-primary)] text-white'
+                                                        : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
+                                                        }`}
+                                                    title={shape.name}
+                                                >
+                                                    {shape.icon}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </details>
+                                    {/* Customize corners button */}
+                                    <button
+                                        onClick={() => {
+                                            // Initialize customPoints from current shape if not already set
+                                            if (!selectedItem.customPoints) {
+                                                const shape = FRAME_SHAPES[selectedItem.frameShape || 'rectangle'] || FRAME_SHAPES.rectangle
+                                                handleUpdateItem(selectedItem.id, {
+                                                    customPoints: shape.points.map(p => [...p])
+                                                })
+                                            }
+                                        }}
+                                        className={`w-full text-xs py-1.5 mt-1 rounded transition-colors ${selectedItem.customPoints
+                                            ? 'bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] border border-[var(--accent-primary)]'
+                                            : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
+                                            }`}
+                                    >
+                                        {selectedItem.customPoints ? '✓ Corners Editable' : '✏️ Customize Corners'}
+                                    </button>
+                                    {selectedItem.customPoints && (
+                                        <button
+                                            onClick={() => handleUpdateItem(selectedItem.id, { customPoints: null })}
+                                            className="w-full text-xs py-1 mt-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                                        >
+                                            Reset to Preset
+                                        </button>
+                                    )}
+                                </div>
+
                                 <div className="flex items-center gap-2">
                                     <label className="text-xs text-[var(--text-muted)]">Fit:</label>
                                     <select

@@ -213,7 +213,7 @@ export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_POR
         pageWidth: page.width,
         pageHeight: page.height,
         margin: 40,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#1a1a1a',
         // Array of { panelIndex, cropId, zoom, offsetX, offsetY }
         assignments: layout.panels.map((_, index) => ({
             panelIndex: index,
