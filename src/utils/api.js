@@ -14,26 +14,10 @@ const API_BASE_URL = '/api'; // Adjust to your server's base URL
  * @param {Array} crops - Array of crop objects
  */
 export async function saveCrops(imageId, crops) {
-    const payload = crops.map(crop => ({
-        id: crop.id,
-        x: crop.x,
-        y: crop.y,
-        width: crop.width,
-        height: crop.height,
-        originalImageWidth: crop.originalImageWidth,
-        originalImageHeight: crop.originalImageHeight,
-        rotation: crop.rotation,
-        sourceRotation: crop.sourceRotation,
-        filter: crop.filter,
-        tags: crop.tags,
-        notes: crop.notes,
-        imageData: crop.imageData
-    }));
-
     const response = await fetch(`${API_BASE_URL}/images/${imageId}/crops`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ crops: payload, updatedAt: Date.now() })
+        body: JSON.stringify({ crops, updatedAt: Date.now() })
     });
 
     if (!response.ok) {
@@ -123,40 +107,10 @@ export async function createCanvas(options = {}) {
  * @param {Array} placedItems - Array of placed items in freeform mode
  */
 export async function saveCanvas(canvasId, composition, placedItems) {
-    const compositionPayload = {
-        layoutId: composition.layoutId,
-        pagePreset: composition.pagePreset,
-        pageWidth: composition.pageWidth,
-        pageHeight: composition.pageHeight,
-        margin: composition.margin,
-        backgroundColor: composition.backgroundColor,
-        assignments: composition.assignments
-    };
-
-    const placedItemsPayload = placedItems.map(item => ({
-        id: item.id,
-        cropId: item.cropId,
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        height: item.height,
-        objectFit: item.objectFit,
-        rotation: item.rotation,
-        frameShape: item.frameShape,
-        customPoints: item.customPoints,
-        borderStyle: item.borderStyle,
-        borderColor: item.borderColor,
-        borderWidth: item.borderWidth
-    }));
-
     const response = await fetch(`${API_BASE_URL}/canvas/${canvasId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            composition: compositionPayload,
-            placedItems: placedItemsPayload,
-            updatedAt: Date.now()
-        })
+        body: JSON.stringify({ composition, placedItems, updatedAt: Date.now() })
     });
 
     if (!response.ok) {
