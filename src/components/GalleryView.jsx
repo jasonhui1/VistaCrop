@@ -1,6 +1,6 @@
 import CropCard from './CropCard'
 
-function GalleryView({ crops, originalImage, onUpdateCrop, onDeleteCrop }) {
+function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
     if (crops.length === 0) {
         return (
             <div className="glass-card flex-1 flex flex-col items-center justify-center gap-6">
@@ -30,7 +30,6 @@ function GalleryView({ crops, originalImage, onUpdateCrop, onDeleteCrop }) {
                     <CropCard
                         key={crop.id}
                         crop={crop}
-                        originalImage={crop.originalImage || originalImage}
                         onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
                         onDelete={() => onDeleteCrop(crop.id)}
                     />

@@ -18,7 +18,7 @@ import { FRAME_SHAPES, getShapeList, drawShapePath } from '../utils/frameShapes'
  * ComposerView - Main composition view for creating manga-style page layouts
  * Supports both panel-based layouts and freeform placement
  */
-function ComposerView({ crops, originalImage }) {
+function ComposerView({ crops }) {
     // Mode: 'panels' or 'freeform'
     const [mode, setMode] = useState('freeform')
 
@@ -509,7 +509,6 @@ function ComposerView({ crops, originalImage }) {
                         <FreeformCanvas
                             composition={composition}
                             crops={crops}
-                            originalImage={originalImage}
                             placedItems={placedItems}
                             selectedItemId={selectedItemId}
                             onSelectItem={setSelectedItemId}

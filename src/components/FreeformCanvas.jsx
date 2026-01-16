@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
+import { getImage } from '../utils/api'
 
 // Constants for rotation
 const ROTATION_EDGE_THRESHOLD = 20 // pixels from edge that triggers rotation mode
@@ -8,10 +9,15 @@ const ROTATION_EDGE_THRESHOLD = 20 // pixels from edge that triggers rotation mo
 /**
  * RotatableImage - Renders an image with rotation support, matching gallery mode behavior
  * Uses pixel-based calculations for proper transform-origin positioning
+ * Includes lazy loading for original image when rotation is applied
  */
-const RotatableImage = memo(function RotatableImage({ crop, originalImage, currentRotation, isRotating, getFilterStyle }) {
+const RotatableImage = memo(function RotatableImage({ crop, currentRotation, isRotating, getFilterStyle }) {
     const containerRef = useRef(null)
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+
+    // Lazy loading state for original image
+    const [originalImage, setOriginalImage] = useState(null)
+    const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
 
     // Track container size with ResizeObserver (matching gallery mode)
     useEffect(() => {
@@ -33,6 +39,26 @@ const RotatableImage = memo(function RotatableImage({ crop, originalImage, curre
 
         return () => resizeObserver.disconnect()
     }, [])
+
+    // Lazy load original image when rotation is applied
+    useEffect(() => {
+        if (currentRotation !== 0 && !originalImage && !isLoadingOriginal && crop.imageId) {
+            const loadImage = async () => {
+                setIsLoadingOriginal(true)
+                try {
+                    const imageData = await getImage(crop.imageId)
+                    if (imageData && imageData.data) {
+                        setOriginalImage(imageData.data)
+                    }
+                } catch (error) {
+                    console.error('Failed to lazy-load original image for rotation:', error)
+                } finally {
+                    setIsLoadingOriginal(false)
+                }
+            }
+            loadImage()
+        }
+    }, [currentRotation, originalImage, isLoadingOriginal, crop.imageId])
 
     // Calculate rotation display data exactly like gallery mode (pixel-based)
     const rotationDisplayData = useMemo(() => {
@@ -72,6 +98,28 @@ const RotatableImage = memo(function RotatableImage({ crop, originalImage, curre
                 zIndex: 1
             }}
         >
+            {/* Loading indicator */}
+            {isLoadingOriginal && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    zIndex: 10
+                }}>
+                    <div style={{
+                        width: 24,
+                        height: 24,
+                        border: '2px solid #a855f7',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                    }} />
+                </div>
+            )}
+
             {/* When rotating with original image available, show original behind selection */}
             {rotationDisplayData ? (
                 <>
@@ -299,7 +347,6 @@ const ShapedBorder = memo(function ShapedBorder({
 function FreeformCanvas({
     composition,
     crops,
-    originalImage,
     placedItems,
     selectedItemId,
     onSelectItem,
@@ -713,7 +760,6 @@ function FreeformCanvas({
                         >
                             <RotatableImage
                                 crop={crop}
-                                originalImage={crop.originalImage || originalImage}
                                 currentRotation={currentRotation}
                                 isRotating={isRotating}
                                 getFilterStyle={getFilterStyle}

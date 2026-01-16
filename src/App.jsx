@@ -233,14 +233,12 @@ function App() {
         ) : view === 'gallery' ? (
           <GalleryView
             crops={crops}
-            originalImage={uploadedImage}
             onUpdateCrop={handleUpdateCrop}
             onDeleteCrop={handleDeleteCrop}
           />
         ) : (
           <ComposerView
             crops={crops}
-            originalImage={uploadedImage}
           />
         )}
       </main>

@@ -1,11 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getImage } from '../utils/api'
 
 // Constants for rotation and display calculations
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
 const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavailable
 const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
 
-function CropCard({ crop, originalImage, onUpdate, onDelete }) {
+function CropCard({ crop, onUpdate, onDelete }) {
     const [tagInput, setTagInput] = useState('')
     const [isRotating, setIsRotating] = useState(false)
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
@@ -13,6 +14,33 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
 
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+
+    // Lazy loading state for original image
+    const [originalImage, setOriginalImage] = useState(null)
+    const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
+
+    x = 5
+
+    // Auto-load original image if crop has saved rotation (so user sees rotated view on load)
+    useEffect(() => {
+        if (crop.rotation && crop.rotation !== 0 && !originalImage && !isLoadingOriginal && crop.imageId) {
+            // Will trigger lazy loading
+            const loadImage = async () => {
+                setIsLoadingOriginal(true)
+                try {
+                    const imageData = await getImage(crop.imageId)
+                    if (imageData && imageData.data) {
+                        setOriginalImage(imageData.data)
+                    }
+                } catch (error) {
+                    console.error('Failed to auto-load original image:', error)
+                } finally {
+                    setIsLoadingOriginal(false)
+                }
+            }
+            loadImage()
+        }
+    }, [crop.rotation, crop.imageId, originalImage, isLoadingOriginal])
 
     useEffect(() => {
         if (!containerRef.current) return
@@ -62,6 +90,27 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
         }
     }, [])
 
+    // Lazy load original image when needed for rotation
+    const loadOriginalImage = useCallback(async () => {
+        // Skip if already have the image or currently loading
+        if (originalImage || isLoadingOriginal) return
+
+        const imageId = crop.imageId
+        if (!imageId) return
+
+        setIsLoadingOriginal(true)
+        try {
+            const imageData = await getImage(imageId)
+            if (imageData && imageData.data) {
+                setOriginalImage(imageData.data)
+            }
+        } catch (error) {
+            console.error('Failed to lazy-load original image:', error)
+        } finally {
+            setIsLoadingOriginal(false)
+        }
+    }, [originalImage, isLoadingOriginal, crop.imageId])
+
     const handleMouseDown = (e) => {
         if (!containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
@@ -77,6 +126,9 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
             pos.y < ROTATION_EDGE_THRESHOLD || pos.y > rect.height - ROTATION_EDGE_THRESHOLD
 
         if (isOutsideInner) {
+            // Lazy load original image when rotation starts
+            loadOriginalImage()
+
             // Start rotation mode
             const angleToMouse = Math.atan2(
                 pos.y - centerY,
@@ -130,7 +182,6 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
         onUpdate({ rotation: 0 })
     }
 
-    // Memoize expensive rotation calculations - only recalculate when dependencies change
     const rotationDisplayData = useMemo(() => {
         if (imageRotation === 0 || !originalImage) return null
 
@@ -225,6 +276,13 @@ function CropCard({ crop, originalImage, onUpdate, onDelete }) {
                             <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
                         </div>
                     </>
+                )}
+
+                {/* Loading indicator for original image */}
+                {isLoadingOriginal && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none z-10">
+                        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
                 )}
 
                 {/* Rotation angle badge */}
