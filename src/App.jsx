@@ -1,24 +1,101 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import ImageUploader from './components/ImageUploader'
 import CanvasView from './components/CanvasView'
 import GalleryView from './components/GalleryView'
 import ComposerView from './components/ComposerView'
+import { saveCrops, loadAllCrops, updateCrop, deleteCrop, uploadImage, getImage } from './utils/api'
 
 function App() {
   const [view, setView] = useState('canvas') // 'canvas', 'gallery', or 'composer'
   const [uploadedImage, setUploadedImage] = useState(null)
+  const [imageId, setImageId] = useState(null)
   const [crops, setCrops] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleImageUpload = (imageDataUrl) => {
+  // Use ref to avoid stale closure issues
+  const imageIdRef = useRef(null)
+
+  // Load all crops on app mount
+  useEffect(() => {
+    async function loadSavedCrops() {
+      try {
+        const allCrops = await loadAllCrops()
+        if (allCrops.length > 0) {
+          setCrops(allCrops)
+          // Get the imageId from the first crop
+          const firstCropImageId = allCrops[0].imageId
+          if (firstCropImageId) {
+            imageIdRef.current = firstCropImageId
+            setImageId(firstCropImageId)
+            // Fetch the original image from the server
+            try {
+              const imageData = await getImage(firstCropImageId)
+              if (imageData && imageData.data) {
+                setUploadedImage(imageData.data)
+              }
+            } catch (imgError) {
+              console.error('Failed to load image:', imgError)
+            }
+          }
+          console.log(`Loaded ${allCrops.length} crops from database`)
+        }
+      } catch (error) {
+        console.error('Failed to load crops:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadSavedCrops()
+  }, [])
+
+  const handleImageUpload = async (imageDataUrl) => {
+    // Generate a unique imageId for this upload session
+    const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    imageIdRef.current = newImageId
+    setImageId(newImageId)
     setUploadedImage(imageDataUrl)
+    setCrops([]) // Clear crops for new image
     setView('canvas')
+
+    // Upload the image to the server immediately
+    try {
+      await uploadImage(newImageId, imageDataUrl)
+      console.log(`Uploaded image: ${newImageId}`)
+    } catch (error) {
+      console.error('Failed to upload image:', error)
+    }
   }
 
-  const handleAddCrop = (cropData) => {
+  // Helper to save crops to the server - groups by imageId to avoid duplicates
+  const saveToServer = useCallback(async (cropsToSave) => {
+    // Group crops by their imageId
+    const cropsByImageId = {}
+    for (const crop of cropsToSave) {
+      const cropImageId = crop.imageId || imageIdRef.current
+      if (!cropImageId) continue
+      if (!cropsByImageId[cropImageId]) {
+        cropsByImageId[cropImageId] = []
+      }
+      cropsByImageId[cropImageId].push(crop)
+    }
+
+    // Save each group to its respective imageId
+    try {
+      for (const [imgId, imgCrops] of Object.entries(cropsByImageId)) {
+        await saveCrops(imgId, imgCrops)
+        console.log(`Saved ${imgCrops.length} crops to image: ${imgId}`)
+      }
+    } catch (error) {
+      console.error('Failed to save crops:', error)
+    }
+  }, [])
+
+  const handleAddCrop = async (cropData) => {
     const newCrop = {
       id: Date.now(),
+      imageId: imageIdRef.current, // Tag with current image
       imageData: cropData.imageData,
-      originalImage: uploadedImage, // Store reference to original image
+      // Note: originalImage is not stored in the crop - it's fetched separately via imageId
       x: cropData.x,
       y: cropData.y,
       width: cropData.width,
@@ -31,17 +108,49 @@ function App() {
       sourceRotation: cropData.sourceRotation || 0,
       filter: cropData.filter || 'none'
     }
-    setCrops(prev => [...prev, newCrop])
+    const updatedCrops = [...crops, newCrop]
+    setCrops(updatedCrops)
+
+    // Save to server immediately
+    await saveToServer(updatedCrops)
   }
 
-  const handleUpdateCrop = (id, updates) => {
-    setCrops(prev => prev.map(crop =>
-      crop.id === id ? { ...crop, ...updates } : crop
-    ))
+  const handleUpdateCrop = async (id, updates) => {
+    const crop = crops.find(c => c.id === id)
+    if (!crop) return
+
+    const updatedCrops = crops.map(c =>
+      c.id === id ? { ...c, ...updates } : c
+    )
+    setCrops(updatedCrops)
+
+    // Use granular update API
+    try {
+      const cropImageId = crop.imageId || imageIdRef.current
+      if (cropImageId) {
+        await updateCrop(cropImageId, id, updates)
+        console.log(`Updated crop ${id} for image: ${cropImageId}`)
+      }
+    } catch (error) {
+      console.error('Failed to update crop:', error)
+    }
   }
 
-  const handleDeleteCrop = (id) => {
-    setCrops(prev => prev.filter(crop => crop.id !== id))
+  const handleDeleteCrop = async (id) => {
+    const crop = crops.find(c => c.id === id)
+    const updatedCrops = crops.filter(c => c.id !== id)
+    setCrops(updatedCrops)
+
+    // Use granular delete API
+    try {
+      const cropImageId = crop?.imageId || imageIdRef.current
+      if (cropImageId) {
+        await deleteCrop(cropImageId, id)
+        console.log(`Deleted crop ${id} from image: ${cropImageId}`)
+      }
+    } catch (error) {
+      console.error('Failed to delete crop:', error)
+    }
   }
 
   return (

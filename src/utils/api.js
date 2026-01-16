@@ -27,6 +27,21 @@ export async function saveCrops(imageId, crops) {
 }
 
 /**
+ * Load all crops from all images
+ * @returns {Promise<Array>} Array of all crop objects
+ */
+export async function loadAllCrops() {
+    const response = await fetch(`${API_BASE_URL}/crops`);
+
+    if (!response.ok) {
+        throw await createApiError(response, 'Failed to load all crops');
+    }
+
+    const data = await response.json();
+    return data.crops || [];
+}
+
+/**
  * Load all crops for an image
  * @param {string} imageId - The ID of the image
  * @returns {Promise<Array>} Array of crop objects
@@ -74,6 +89,29 @@ export async function deleteCrop(imageId, cropId) {
 
     if (!response.ok) {
         throw await createApiError(response, 'Failed to delete crop');
+    }
+    return response.json();
+}
+
+// ============================================================================
+// IMAGES API
+// ============================================================================
+
+/**
+ * Upload an image to the server
+ * @param {string} imageId - The ID for the image
+ * @param {string} base64Data - Base64 data URL of the image
+ * @param {{ width?: number, height?: number }} metadata - Optional image metadata
+ */
+export async function uploadImage(imageId, base64Data, metadata = {}) {
+    const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: base64Data, ...metadata })
+    });
+
+    if (!response.ok) {
+        throw await createApiError(response, 'Failed to upload image');
     }
     return response.json();
 }
@@ -158,6 +196,58 @@ export async function deleteCanvas(canvasId) {
 
     if (!response.ok) {
         throw await createApiError(response, 'Failed to delete canvas');
+    }
+    return response.json();
+}
+
+// ============================================================================
+// IMAGES API
+// ============================================================================
+
+/**
+ * List all stored images (metadata only)
+ * @returns {Promise<{images: Array}>} Array of image metadata
+ */
+export async function listImages() {
+    const response = await fetch(`${API_BASE_URL}/images`);
+
+    if (!response.ok) {
+        throw await createApiError(response, 'Failed to list images');
+    }
+    return response.json();
+}
+
+/**
+ * Get a stored image by ID
+ * @param {string} imageId - The ID of the image
+ * @returns {Promise<Object|null>} The image data or null if not found
+ */
+export async function getImage(imageId) {
+    const response = await fetch(`${API_BASE_URL}/images/${imageId}`);
+
+    if (!response.ok) {
+        if (response.status === 404) return null;
+        throw await createApiError(response, 'Failed to get image');
+    }
+    return response.json();
+}
+
+/**
+ * Delete a stored image
+ * @param {string} imageId - The ID of the image to delete
+ * @param {boolean} deleteCrops - Whether to also delete associated crops
+ */
+export async function deleteImage(imageId, deleteCrops = false) {
+    const url = deleteCrops
+        ? `${API_BASE_URL}/images/${imageId}?deleteCrops=true`
+        : `${API_BASE_URL}/images/${imageId}`;
+
+    const response = await fetch(url, {
+        method: 'DELETE'
+    });
+
+    if (!response.ok) {
+        throw await createApiError(response, 'Failed to delete image');
     }
     return response.json();
 }
