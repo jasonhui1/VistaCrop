@@ -215,13 +215,12 @@ function FreeformCanvas({
         const cropId = e.dataTransfer.getData('application/crop-id')
         if (cropId && canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect()
-            const x = ((e.clientX - rect.left) / rect.width) * 100
-            const y = ((e.clientY - rect.top) / rect.height) * 100
-            // Pass the actual canvas aspect ratio for proper sizing
-            const canvasAspect = rect.width / rect.height
-            onDropCrop(parseInt(cropId, 10), x, y, canvasAspect)
+            // Convert screen position to pixel coordinates relative to composition page
+            const x = ((e.clientX - rect.left) / rect.width) * composition.pageWidth
+            const y = ((e.clientY - rect.top) / rect.height) * composition.pageHeight
+            onDropCrop(parseInt(cropId, 10), x, y)
         }
-    }, [onDropCrop])
+    }, [onDropCrop, composition.pageWidth, composition.pageHeight])
 
     // Handle mouse down on item (for moving/resizing/rotating)
     // type can be: 'move', 'resize-tl', 'resize-tr', 'resize-bl', 'resize-br', 'rotate'
@@ -289,8 +288,9 @@ function FreeformCanvas({
         if (!dragState || !canvasRef.current) return
 
         const rect = canvasRef.current.getBoundingClientRect()
-        const deltaX = ((e.clientX - dragState.startX) / rect.width) * 100
-        const deltaY = ((e.clientY - dragState.startY) / rect.height) * 100
+        // Convert screen delta to pixel coordinates relative to composition page
+        const deltaX = ((e.clientX - dragState.startX) / rect.width) * composition.pageWidth
+        const deltaY = ((e.clientY - dragState.startY) / rect.height) * composition.pageHeight
 
         if (dragState.type === 'rotate') {
             // Calculate current angle from center to mouse
@@ -310,19 +310,16 @@ function FreeformCanvas({
             setLocalRotation(newRotation)
         } else if (dragState.type === 'move') {
             onUpdateItem(dragState.itemId, {
-                x: Math.max(0, Math.min(100 - dragState.startItem.width, dragState.startItem.x + deltaX)),
-                y: Math.max(0, Math.min(100 - dragState.startItem.height, dragState.startItem.y + deltaY))
+                x: Math.max(0, Math.min(composition.pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
+                y: Math.max(0, Math.min(composition.pageHeight - dragState.startItem.height, dragState.startItem.y + deltaY))
             })
         } else if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
             const crop = crops.find(c => c.id === dragState.startItem.cropId)
             if (!crop) return
 
-            // Get the crop's aspect ratio to maintain during resize
-            const cropAspect = crop.width / crop.height
-            const canvasAspect = rect.width / rect.height
-            // Convert crop aspect to percentage-space aspect
-            const aspectRatio = cropAspect / canvasAspect
+            // In page pixel space, maintain the crop's aspect ratio directly
+            const aspectRatio = crop.width / crop.height
 
             let updates = {}
 
@@ -333,24 +330,24 @@ function FreeformCanvas({
             if (corner === 'br') {
                 // Bottom-right: expand from bottom-right
                 if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(5, Math.min(100 - dragState.startItem.x, dragState.startItem.width + deltaX))
+                    const newWidth = Math.max(50, Math.min(composition.pageWidth - dragState.startItem.x, dragState.startItem.width + deltaX))
                     updates.width = newWidth
                     updates.height = newWidth / aspectRatio
                 } else {
-                    const newHeight = Math.max(5, Math.min(100 - dragState.startItem.y, dragState.startItem.height + deltaY))
+                    const newHeight = Math.max(50, Math.min(composition.pageHeight - dragState.startItem.y, dragState.startItem.height + deltaY))
                     updates.height = newHeight
                     updates.width = newHeight * aspectRatio
                 }
             } else if (corner === 'bl') {
                 // Bottom-left: anchor top-right corner
                 if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(5, dragState.startItem.width - deltaX)
+                    const newWidth = Math.max(50, dragState.startItem.width - deltaX)
                     const widthDiff = newWidth - dragState.startItem.width
                     updates.width = newWidth
                     updates.height = newWidth / aspectRatio
                     updates.x = dragState.startItem.x - widthDiff
                 } else {
-                    const newHeight = Math.max(5, Math.min(100 - dragState.startItem.y, dragState.startItem.height + deltaY))
+                    const newHeight = Math.max(50, Math.min(composition.pageHeight - dragState.startItem.y, dragState.startItem.height + deltaY))
                     const newWidth = newHeight * aspectRatio
                     const widthDiff = newWidth - dragState.startItem.width
                     updates.height = newHeight
@@ -360,14 +357,14 @@ function FreeformCanvas({
             } else if (corner === 'tr') {
                 // Top-right: anchor bottom-left corner
                 if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(5, Math.min(100 - dragState.startItem.x, dragState.startItem.width + deltaX))
+                    const newWidth = Math.max(50, Math.min(composition.pageWidth - dragState.startItem.x, dragState.startItem.width + deltaX))
                     const newHeight = newWidth / aspectRatio
                     const heightDiff = newHeight - dragState.startItem.height
                     updates.width = newWidth
                     updates.height = newHeight
                     updates.y = dragState.startItem.y - heightDiff
                 } else {
-                    const newHeight = Math.max(5, dragState.startItem.height - deltaY)
+                    const newHeight = Math.max(50, dragState.startItem.height - deltaY)
                     const heightDiff = newHeight - dragState.startItem.height
                     updates.height = newHeight
                     updates.width = newHeight * aspectRatio
@@ -376,7 +373,7 @@ function FreeformCanvas({
             } else if (corner === 'tl') {
                 // Top-left: anchor bottom-right corner
                 if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(5, dragState.startItem.width - deltaX)
+                    const newWidth = Math.max(50, dragState.startItem.width - deltaX)
                     const newHeight = newWidth / aspectRatio
                     const widthDiff = newWidth - dragState.startItem.width
                     const heightDiff = newHeight - dragState.startItem.height
@@ -385,7 +382,7 @@ function FreeformCanvas({
                     updates.x = dragState.startItem.x - widthDiff
                     updates.y = dragState.startItem.y - heightDiff
                 } else {
-                    const newHeight = Math.max(5, dragState.startItem.height - deltaY)
+                    const newHeight = Math.max(50, dragState.startItem.height - deltaY)
                     const newWidth = newHeight * aspectRatio
                     const widthDiff = newWidth - dragState.startItem.width
                     const heightDiff = newHeight - dragState.startItem.height
@@ -434,7 +431,7 @@ function FreeformCanvas({
                 startY: e.clientY
             }))
         }
-    }, [dragState, onUpdateItem, crops, placedItems])
+    }, [dragState, onUpdateItem, crops, placedItems, composition.pageWidth, composition.pageHeight])
 
     // Handle mouse up - save rotation if we were rotating
     const handleMouseUp = useCallback(() => {
@@ -456,10 +453,12 @@ function FreeformCanvas({
     }, [dragState, rotatingItemId, localRotation, placedItems, crops, onUpdateItem])
 
     // Calculate container style
+    // Use height: 100% with aspect-ratio to ensure consistent sizing regardless of container width
     const containerStyle = {
         aspectRatio: composition.pageWidth / composition.pageHeight,
+        height: '100%',
+        width: 'auto',
         maxWidth: '100%',
-        maxHeight: '100%',
         backgroundColor: composition.backgroundColor,
         position: 'relative',
         borderRadius: '8px',
@@ -496,16 +495,22 @@ function FreeformCanvas({
                 // Since we preserve aspect ratio during resize, use item coordinates directly
                 // This prevents movement during resize operations
 
+                // Convert pixel coordinates to percentages for rendering
+                const leftPct = (item.x / composition.pageWidth) * 100
+                const topPct = (item.y / composition.pageHeight) * 100
+                const widthPct = (item.width / composition.pageWidth) * 100
+                const heightPct = (item.height / composition.pageHeight) * 100
+
                 return (
                     <div
                         key={item.id}
                         className={`freeform-item ${isSelected ? 'selected' : ''}`}
                         style={{
                             position: 'absolute',
-                            left: `${item.x}%`,
-                            top: `${item.y}%`,
-                            width: `${item.width}%`,
-                            height: `${item.height}%`,
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            width: `${widthPct}%`,
+                            height: `${heightPct}%`,
                             boxSizing: 'border-box',
                             cursor: isRotating ? 'grabbing' : 'grab',
                             zIndex: isSelected ? 10 : 1,

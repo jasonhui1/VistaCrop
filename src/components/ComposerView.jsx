@@ -88,32 +88,28 @@ function ComposerView({ crops }) {
     }, [])
 
     // Freeform mode handlers
-    const handleDropCropToFreeform = useCallback((cropId, x, y, canvasAspectRatio) => {
+    const handleDropCropToFreeform = useCallback((cropId, x, y) => {
         const crop = crops.find(c => c.id === cropId)
         if (!crop) return
 
-        // Calculate initial size to match the crop's actual aspect ratio
-        // Use actual canvas aspect ratio for accurate percentage-based sizing
+        // Calculate initial size in pixels relative to composition page dimensions
+        // In page pixel space, width/height ratio equals crop aspect ratio directly
         const cropAspectRatio = crop.width / crop.height
-        const actualCanvasAspect = canvasAspectRatio || (composition.pageWidth / composition.pageHeight)
 
-        // Calculate width/height in percentage terms, keeping aspect ratio
-        let width, height
+        // Start with 25% of page width as base
+        let width = composition.pageWidth * 0.25
+        let height = width / cropAspectRatio
 
-        // Start with a reasonable size (25% of canvas width)
-        const baseWidth = 25
-        const baseHeight = baseWidth / cropAspectRatio * actualCanvasAspect
-
-        // Clamp to reasonable bounds
-        if (baseHeight > 50) {
-            height = 50
-            width = height * cropAspectRatio / actualCanvasAspect
-        } else if (baseWidth > 50) {
-            width = 50
-            height = width / cropAspectRatio * actualCanvasAspect
-        } else {
-            width = baseWidth
-            height = baseHeight
+        // Clamp to reasonable bounds (max 50% of page dimension)
+        const maxWidth = composition.pageWidth * 0.5
+        const maxHeight = composition.pageHeight * 0.5
+        if (height > maxHeight) {
+            height = maxHeight
+            width = height * cropAspectRatio
+        }
+        if (width > maxWidth) {
+            width = maxWidth
+            height = width / cropAspectRatio
         }
 
         const newItem = {
@@ -212,10 +208,12 @@ function ComposerView({ crops }) {
 
                 const rotation = item.rotation ?? crop.rotation ?? 0
 
-                const x = (item.x / 100) * canvas.width
-                const y = (item.y / 100) * canvas.height
-                const width = (item.width / 100) * canvas.width
-                const height = (item.height / 100) * canvas.height
+                // Items are stored in pixel coordinates that match composition dimensions
+                // Since canvas.width === composition.pageWidth, use directly
+                const x = item.x
+                const y = item.y
+                const width = item.width
+                const height = item.height
 
                 ctx.save()
 
@@ -778,7 +776,7 @@ function ComposerView({ crops }) {
                                     </select>
                                 </div>
                                 <div className="text-xs text-[var(--text-muted)]">
-                                    {Math.round(selectedItem.width)}% × {Math.round(selectedItem.height)}%
+                                    {Math.round(selectedItem.width)}px × {Math.round(selectedItem.height)}px
                                 </div>
                                 <button
                                     onClick={() => handleDeleteItem(selectedItem.id)}
