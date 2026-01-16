@@ -1,9 +1,9 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getImage } from '../utils/api'
+import { memo, useCallback, useRef, useState } from 'react'
+import RotatableImage from './RotatableImage'
+import { FILTERS } from '../utils/filters'
 
-// Constants for rotation and display calculations
+// Constants for rotation
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
-const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavailable
 const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
 
 function CropCard({ crop, onUpdate, onDelete }) {
@@ -13,54 +13,10 @@ function CropCard({ crop, onUpdate, onDelete }) {
     const containerRef = useRef(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
 
-    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
-
-    // Lazy loading state for original image
-    const [originalImage, setOriginalImage] = useState(null)
-    const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
-
-    x = 5
-
-    // Auto-load original image if crop has saved rotation (so user sees rotated view on load)
-    useEffect(() => {
-        if (crop.rotation && crop.rotation !== 0 && !originalImage && !isLoadingOriginal && crop.imageId) {
-            // Will trigger lazy loading
-            const loadImage = async () => {
-                setIsLoadingOriginal(true)
-                try {
-                    const imageData = await getImage(crop.imageId)
-                    if (imageData && imageData.data) {
-                        setOriginalImage(imageData.data)
-                    }
-                } catch (error) {
-                    console.error('Failed to auto-load original image:', error)
-                } finally {
-                    setIsLoadingOriginal(false)
-                }
-            }
-            loadImage()
-        }
-    }, [crop.rotation, crop.imageId, originalImage, isLoadingOriginal])
-
-    useEffect(() => {
-        if (!containerRef.current) return
-
-        const updateSize = () => {
-            if (containerRef.current) {
-                setContainerSize({
-                    width: containerRef.current.clientWidth,
-                    height: containerRef.current.clientHeight
-                })
-            }
-        }
-
-        // Initial size
-        updateSize()
-
-        const resizeObserver = new ResizeObserver(updateSize)
-        resizeObserver.observe(containerRef.current)
-
-        return () => resizeObserver.disconnect()
+    // Get CSS filter string from filter name
+    const getFilterStyle = useCallback((filterName) => {
+        const filter = FILTERS.find(f => f.id === filterName)
+        return filter ? filter.css : 'none'
     }, [])
 
     const handleTagKeyDown = (e) => {
@@ -90,27 +46,6 @@ function CropCard({ crop, onUpdate, onDelete }) {
         }
     }, [])
 
-    // Lazy load original image when needed for rotation
-    const loadOriginalImage = useCallback(async () => {
-        // Skip if already have the image or currently loading
-        if (originalImage || isLoadingOriginal) return
-
-        const imageId = crop.imageId
-        if (!imageId) return
-
-        setIsLoadingOriginal(true)
-        try {
-            const imageData = await getImage(imageId)
-            if (imageData && imageData.data) {
-                setOriginalImage(imageData.data)
-            }
-        } catch (error) {
-            console.error('Failed to lazy-load original image:', error)
-        } finally {
-            setIsLoadingOriginal(false)
-        }
-    }, [originalImage, isLoadingOriginal, crop.imageId])
-
     const handleMouseDown = (e) => {
         if (!containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
@@ -126,8 +61,6 @@ function CropCard({ crop, onUpdate, onDelete }) {
             pos.y < ROTATION_EDGE_THRESHOLD || pos.y > rect.height - ROTATION_EDGE_THRESHOLD
 
         if (isOutsideInner) {
-            // Lazy load original image when rotation starts
-            loadOriginalImage()
 
             // Start rotation mode
             const angleToMouse = Math.atan2(
@@ -182,30 +115,6 @@ function CropCard({ crop, onUpdate, onDelete }) {
         onUpdate({ rotation: 0 })
     }
 
-    const rotationDisplayData = useMemo(() => {
-        if (imageRotation === 0 || !originalImage) return null
-
-        const containerWidth = containerSize.width || 200
-        const containerHeight = containerSize.height || 200
-        const boxWidth = containerWidth - (SELECTION_BOX_INSET * 2)
-        const boxHeight = containerHeight - (SELECTION_BOX_INSET * 2)
-
-        const scaleX = crop.width > 0 ? boxWidth / crop.width : 1
-        const scaleY = crop.height > 0 ? boxHeight / crop.height : 1
-
-        const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
-        const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
-
-        return {
-            displayedOrigWidth: origW * scaleX,
-            displayedOrigHeight: origH * scaleY,
-            offsetX: -crop.x * scaleX,
-            offsetY: -crop.y * scaleY,
-            cropCenterX: (crop.x + crop.width / 2) * scaleX,
-            cropCenterY: (crop.y + crop.height / 2) * scaleY
-        }
-    }, [imageRotation, originalImage, containerSize, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
-
     return (
         <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-color)] transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
             {/* Image container with rotation */}
@@ -221,69 +130,14 @@ function CropCard({ crop, onUpdate, onDelete }) {
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
             >
-                {/* Always show the crop image (may be hidden by overlay when rotating) */}
-                <img
-                    src={crop.imageData}
-                    alt="Crop"
-                    className={`w-full h-full object-cover pointer-events-none ${imageRotation !== 0 && originalImage ? 'invisible' : ''}`}
-                    draggable={false}
+                {/* Rotatable image with lazy loading */}
+                <RotatableImage
+                    crop={crop}
+                    currentRotation={imageRotation}
+                    isRotating={isRotating}
+                    filterCss={getFilterStyle(crop.filter)}
+                    containerInset={SELECTION_BOX_INSET}
                 />
-
-                {/* When rotating with original image available, show original behind selection */}
-                {rotationDisplayData && (
-                    <>
-                        {/* Dark overlay on full area */}
-                        <div className="absolute inset-0 bg-black/60 pointer-events-none" />
-
-                        {/* Fixed selection box that clips the rotated original image */}
-                        <div
-                            className="absolute inset-[12px] overflow-hidden pointer-events-none"
-                            style={{
-                                outline: '2px solid #a855f7',
-                                boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
-                            }}
-                        >
-                            {/* Original image that rotates - counter-rotated to show different parts */}
-                            <div
-                                className="absolute"
-                                style={{
-                                    left: rotationDisplayData.offsetX,
-                                    top: rotationDisplayData.offsetY,
-                                    width: rotationDisplayData.displayedOrigWidth,
-                                    height: rotationDisplayData.displayedOrigHeight,
-                                    transform: `rotate(${-imageRotation}deg)`,
-                                    transformOrigin: `${rotationDisplayData.cropCenterX}px ${rotationDisplayData.cropCenterY}px`,
-                                    transition: isRotating ? 'none' : 'transform 0.15s ease-out'
-                                }}
-                            >
-                                <img
-                                    src={originalImage}
-                                    alt=""
-                                    className="pointer-events-none"
-                                    style={{
-                                        width: '100%',
-                                        height: '100%',
-                                        filter: crop.filter || 'none'
-                                    }}
-                                    draggable={false}
-                                />
-                            </div>
-
-                            {/* Corner handles */}
-                            <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                            <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                            <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                            <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
-                        </div>
-                    </>
-                )}
-
-                {/* Loading indicator for original image */}
-                {isLoadingOriginal && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none z-10">
-                        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                )}
 
                 {/* Rotation angle badge */}
                 {imageRotation !== 0 && (
