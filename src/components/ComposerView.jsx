@@ -13,6 +13,7 @@ import {
 } from '../utils/panelLayouts'
 import { FILTERS } from '../utils/filters'
 import { FRAME_SHAPES, getShapeList, drawShapePath } from '../utils/frameShapes'
+import { getImage } from '../utils/api'
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
@@ -181,6 +182,7 @@ function ComposerView({ crops }) {
                 })
 
                 ctx.save()
+                ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
                 ctx.beginPath()
                 ctx.rect(panel.x, panel.y, panel.width, panel.height)
                 ctx.clip()
@@ -208,13 +210,7 @@ function ComposerView({ crops }) {
                 const crop = crops.find(c => c.id === item.cropId)
                 if (!crop) continue
 
-                const img = new Image()
-                img.crossOrigin = 'anonymous'
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve
-                    img.onerror = reject
-                    img.src = crop.imageData
-                })
+                const rotation = item.rotation ?? crop.rotation ?? 0
 
                 const x = (item.x / 100) * canvas.width
                 const y = (item.y / 100) * canvas.height
@@ -228,32 +224,105 @@ function ComposerView({ crops }) {
                 drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints)
                 ctx.clip()
 
-                // Draw image with proper aspect ratio (contain)
-                const imgAspect = img.width / img.height
-                const boxAspect = width / height
-                let drawWidth, drawHeight, drawX, drawY
+                if (rotation !== 0 && crop.imageId) {
+                    // When rotated, we need to use the ORIGINAL image and rotate it
+                    // around the crop center, matching RotatableImage behavior
+                    try {
+                        const originalImageData = await getImage(crop.imageId)
+                        if (originalImageData && originalImageData.data) {
+                            const origImg = new Image()
+                            origImg.crossOrigin = 'anonymous'
+                            await new Promise((resolve, reject) => {
+                                origImg.onload = resolve
+                                origImg.onerror = reject
+                                origImg.src = originalImageData.data
+                            })
 
-                if (imgAspect > boxAspect) {
-                    drawWidth = width
-                    drawHeight = width / imgAspect
-                    drawX = x
-                    drawY = y + (height - drawHeight) / 2
-                } else {
-                    drawHeight = height
-                    drawWidth = height * imgAspect
-                    drawX = x + (width - drawWidth) / 2
-                    drawY = y
-                }
+                            // Calculate scale factors to map crop to display box
+                            const scaleX = crop.width > 0 ? width / crop.width : 1
+                            const scaleY = crop.height > 0 ? height / crop.height : 1
 
-                if (crop.rotation || item.rotation) {
-                    const rotation = item.rotation ?? crop.rotation ?? 0
-                    const centerX = drawX + drawWidth / 2
-                    const centerY = drawY + drawHeight / 2
-                    ctx.translate(centerX, centerY)
-                    ctx.rotate((rotation * Math.PI) / 180)
-                    ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+                            // Calculate how the original image should be positioned
+                            const origW = crop.originalImageWidth || origImg.width
+                            const origH = crop.originalImageHeight || origImg.height
+                            const cropX = crop.x || 0
+                            const cropY = crop.y || 0
+                            const cropW = crop.width || 100
+                            const cropH = crop.height || 100
+
+                            const displayedOrigWidth = origW * scaleX
+                            const displayedOrigHeight = origH * scaleY
+                            const offsetX = -cropX * scaleX
+                            const offsetY = -cropY * scaleY
+                            const cropCenterX = (cropX + cropW / 2) * scaleX
+                            const cropCenterY = (cropY + cropH / 2) * scaleY
+
+                            // Draw original image with rotation around crop center
+                            ctx.save()
+                            ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+
+                            // Move to the visual center of the item on canvas (the rotation pivot)
+                            const itemCenterX = x + width / 2
+                            const itemCenterY = y + height / 2
+                            ctx.translate(itemCenterX, itemCenterY)
+
+                            // Rotate around the center (negative to match screen behavior)
+                            ctx.rotate((-rotation * Math.PI) / 180)
+
+                            // Draw image such that its "crop center" aligns with the current origin (item center)
+                            // We do this by offsetting by the distance from image-top-left to crop-center
+                            ctx.drawImage(
+                                origImg,
+                                -cropCenterX,
+                                -cropCenterY,
+                                displayedOrigWidth,
+                                displayedOrigHeight
+                            )
+                            ctx.restore()
+                        }
+                    } catch (error) {
+                        console.error('Failed to load original image for export:', error)
+                        // Fall back to cropped image
+                        const img = new Image()
+                        img.crossOrigin = 'anonymous'
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve
+                            img.onerror = reject
+                            img.src = crop.imageData
+                        })
+                        ctx.drawImage(img, x, y, width, height)
+                    }
                 } else {
+                    // No rotation - use the cropped preview image directly
+                    const img = new Image()
+                    img.crossOrigin = 'anonymous'
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve
+                        img.onerror = reject
+                        img.src = crop.imageData
+                    })
+
+                    // Draw image with proper aspect ratio (contain)
+                    const imgAspect = img.width / img.height
+                    const boxAspect = width / height
+                    let drawWidth, drawHeight, drawX, drawY
+
+                    if (imgAspect > boxAspect) {
+                        drawWidth = width
+                        drawHeight = width / imgAspect
+                        drawX = x
+                        drawY = y + (height - drawHeight) / 2
+                    } else {
+                        drawHeight = height
+                        drawWidth = height * imgAspect
+                        drawX = x + (width - drawWidth) / 2
+                        drawY = y
+                    }
+
+                    ctx.save()
+                    ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
                     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+                    ctx.restore()
                 }
 
                 ctx.restore()
