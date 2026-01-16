@@ -258,14 +258,42 @@ function ComposerView({ crops, originalImage }) {
 
                 ctx.restore()
 
-                // Draw polygon border on top
-                ctx.save()
-                drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints)
-                ctx.strokeStyle = '#000'
-                ctx.lineWidth = 3
-                ctx.lineJoin = 'miter'
-                ctx.stroke()
-                ctx.restore()
+                // Draw polygon border on top based on style
+                const borderStyle = item.borderStyle || 'manga'
+                const borderColor = item.borderColor || '#000'
+                const borderWidth = item.borderWidth ?? 3
+
+                if (borderStyle !== 'none') {
+                    ctx.save()
+                    drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints)
+                    ctx.strokeStyle = borderColor
+                    ctx.lineWidth = borderWidth
+                    ctx.lineJoin = 'miter'
+
+                    if (borderStyle === 'dashed') {
+                        ctx.setLineDash([borderWidth * 3, borderWidth * 2])
+                    }
+
+                    ctx.stroke()
+                    ctx.restore()
+
+                    // Draw inner border for manga double style
+                    if (borderStyle === 'manga') {
+                        const insetAmount = Math.max(borderWidth, 4) / Math.min(width, height) * 100
+                        ctx.save()
+                        // Draw inset path
+                        const insetX = x + (width * insetAmount / 100)
+                        const insetY = y + (height * insetAmount / 100)
+                        const insetWidth = width * (1 - 2 * insetAmount / 100)
+                        const insetHeight = height * (1 - 2 * insetAmount / 100)
+                        drawShapePath(ctx, shapeId, insetX, insetY, insetWidth, insetHeight, item.customPoints)
+                        ctx.strokeStyle = borderColor
+                        ctx.lineWidth = Math.max(1, borderWidth * 0.6)
+                        ctx.lineJoin = 'miter'
+                        ctx.stroke()
+                        ctx.restore()
+                    }
+                }
             }
         }
 
@@ -609,6 +637,64 @@ function ComposerView({ crops, originalImage }) {
                                             Reset to Preset
                                         </button>
                                     )}
+                                </div>
+
+                                {/* Border & Style Controls */}
+                                <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
+                                    <label className="text-xs text-[var(--text-muted)] block mb-1">Border Style</label>
+                                    <div className="grid grid-cols-4 gap-1 mb-2">
+                                        {[
+                                            { id: 'solid', label: '━', title: 'Solid' },
+                                            { id: 'manga', label: '▰', title: 'Manga Double' },
+                                            { id: 'dashed', label: '┅', title: 'Dashed' },
+                                            { id: 'none', label: '○', title: 'None' }
+                                        ].map((style) => (
+                                            <button
+                                                key={style.id}
+                                                onClick={() => handleUpdateItem(selectedItem.id, { borderStyle: style.id })}
+                                                className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.borderStyle || 'manga') === style.id
+                                                    ? 'bg-[var(--accent-primary)] text-white'
+                                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
+                                                    }`}
+                                                title={style.title}
+                                            >
+                                                {style.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <label className="text-xs text-[var(--text-muted)] w-12">Color</label>
+                                        <input
+                                            type="color"
+                                            value={selectedItem.borderColor || '#000000'}
+                                            onChange={(e) => handleUpdateItem(selectedItem.id, { borderColor: e.target.value })}
+                                            className="w-8 h-6 rounded cursor-pointer border-0 bg-transparent"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={selectedItem.borderColor || '#000000'}
+                                            onChange={(e) => handleUpdateItem(selectedItem.id, { borderColor: e.target.value })}
+                                            className="flex-1 text-xs py-1"
+                                            placeholder="#000000"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-xs text-[var(--text-muted)] w-12">Width</label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="10"
+                                            step="0.5"
+                                            value={selectedItem.borderWidth ?? 3}
+                                            onChange={(e) => handleUpdateItem(selectedItem.id, { borderWidth: parseFloat(e.target.value) })}
+                                            className="flex-1"
+                                        />
+                                        <span className="text-xs text-[var(--text-secondary)] w-6">
+                                            {selectedItem.borderWidth ?? 3}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">

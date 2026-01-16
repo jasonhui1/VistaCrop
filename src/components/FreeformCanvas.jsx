@@ -155,7 +155,16 @@ const RotatableImage = memo(function RotatableImage({ crop, originalImage, curre
  * ShapedBorder - Renders SVG polygon borders that match the clip-path shape
  * provides manga-style layered border effect for irregular shapes
  */
-const ShapedBorder = memo(function ShapedBorder({ shapeId, customPoints, isSelected, isEditingCorners, onCornerMouseDown }) {
+const ShapedBorder = memo(function ShapedBorder({
+    shapeId,
+    customPoints,
+    isSelected,
+    isEditingCorners,
+    onCornerMouseDown,
+    borderColor = '#000',
+    borderWidth = 3,
+    borderStyle = 'manga'
+}) {
     const containerRef = useRef(null)
     const [size, setSize] = useState({ width: 100, height: 100 })
 
@@ -184,7 +193,7 @@ const ShapedBorder = memo(function ShapedBorder({ shapeId, customPoints, isSelec
         .join(' ')
 
     // Inset points for inner border (approximate by scaling towards center)
-    const insetAmount = 4
+    const insetAmount = Math.max(borderWidth, 4)
     const centerX = size.width / 2
     const centerY = size.height / 2
     const innerPoints = points
@@ -198,6 +207,31 @@ const ShapedBorder = memo(function ShapedBorder({ shapeId, customPoints, isSelec
             return `${x + dx * factor},${y + dy * factor}`
         })
         .join(' ')
+
+    // Don't render borders if style is 'none'
+    if (borderStyle === 'none' && !isEditingCorners) {
+        return (
+            <div
+                ref={containerRef}
+                style={{
+                    position: 'absolute',
+                    inset: -4,
+                    pointerEvents: isEditingCorners ? 'auto' : 'none',
+                    zIndex: 2
+                }}
+            />
+        )
+    }
+
+    // Get stroke dash array based on style
+    const getStrokeDashArray = () => {
+        switch (borderStyle) {
+            case 'dashed':
+                return `${borderWidth * 3},${borderWidth * 2}`
+            default:
+                return 'none'
+        }
+    }
 
     return (
         <div
@@ -220,18 +254,21 @@ const ShapedBorder = memo(function ShapedBorder({ shapeId, customPoints, isSelec
                 <polygon
                     points={outerPoints}
                     fill="none"
-                    stroke="#000"
-                    strokeWidth="3"
+                    stroke={borderColor}
+                    strokeWidth={borderWidth}
                     strokeLinejoin="miter"
+                    strokeDasharray={getStrokeDashArray()}
                 />
-                {/* Inner border with white inset glow */}
-                <polygon
-                    points={innerPoints}
-                    fill="none"
-                    stroke="#000"
-                    strokeWidth="2"
-                    strokeLinejoin="miter"
-                />
+                {/* Inner border for manga double style */}
+                {borderStyle === 'manga' && (
+                    <polygon
+                        points={innerPoints}
+                        fill="none"
+                        stroke={borderColor}
+                        strokeWidth={Math.max(1, borderWidth * 0.6)}
+                        strokeLinejoin="miter"
+                    />
+                )}
                 {/* Corner handles when editing */}
                 {isEditingCorners && points.map((point, index) => {
                     const x = (point[0] / 100) * size.width
@@ -645,6 +682,9 @@ function FreeformCanvas({
                             isSelected={isSelected}
                             isEditingCorners={isSelected && !!item.customPoints}
                             onCornerMouseDown={(e, cornerIndex) => handleCornerMouseDown(e, item, cornerIndex)}
+                            borderColor={item.borderColor || '#000'}
+                            borderWidth={item.borderWidth ?? 3}
+                            borderStyle={item.borderStyle || 'manga'}
                         />
 
                         {/* Selection indicator - follows shape */}
