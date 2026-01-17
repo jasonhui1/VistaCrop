@@ -57,54 +57,61 @@ function RightSidebar({
                         </button>
                     </div>
 
-                    <div className="p-3 flex-1 overflow-y-auto">
+                    {/* Tab Content - Both rendered but hidden with CSS to preserve scroll */}
+                    <div className="flex-1 overflow-hidden flex flex-col">
                         {/* Selected Item Controls */}
-                        {activeTab === 'selected' && mode === 'freeform' && (
-                            <SelectedItemControls
-                                selectedItem={selectedItem}
-                                onUpdateItem={onUpdateItem}
-                                onDeleteItem={onDeleteItem}
-                            />
-                        )}
+                        <div
+                            className="p-3 flex-1 overflow-y-auto"
+                            style={{ display: activeTab === 'selected' ? 'block' : 'none' }}
+                        >
+                            {mode === 'freeform' && (
+                                <SelectedItemControls
+                                    selectedItem={selectedItem}
+                                    onUpdateItem={onUpdateItem}
+                                    onDeleteItem={onDeleteItem}
+                                />
+                            )}
+                        </div>
 
                         {/* Crops List */}
-                        {activeTab === 'crops' && (
-                            <>
-                                {crops.length === 0 ? (
-                                    <p className="text-xs text-[var(--text-muted)]">
-                                        No crops yet. Create some in the Canvas view.
-                                    </p>
-                                ) : (
-                                    <div className="flex flex-col gap-2">
-                                        {crops.map((crop) => (
-                                            <div
-                                                key={crop.id}
-                                                draggable
-                                                onDragStart={(e) => onCropDragStart(e, crop)}
-                                                className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
-                                            >
-                                                <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
-                                                    <img
-                                                        src={crop.imageData}
-                                                        alt=""
-                                                        className="w-full h-full object-cover"
-                                                        style={{
-                                                            transform: `rotate(${crop.rotation || 0}deg)`
-                                                        }}
-                                                        draggable={false}
-                                                    />
-                                                </div>
-                                                <div className="p-2 bg-[var(--bg-secondary)]">
-                                                    <span className="text-xs text-[var(--text-muted)]">
-                                                        {crop.width} × {crop.height}
-                                                    </span>
-                                                </div>
+                        <div
+                            className="p-3 flex-1 overflow-y-auto"
+                            style={{ display: activeTab === 'crops' ? 'block' : 'none' }}
+                        >
+                            {crops.length === 0 ? (
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    No crops yet. Create some in the Canvas view.
+                                </p>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    {crops.map((crop) => (
+                                        <div
+                                            key={crop.id}
+                                            draggable
+                                            onDragStart={(e) => onCropDragStart(e, crop)}
+                                            className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
+                                        >
+                                            <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
+                                                <img
+                                                    src={crop.imageData}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    style={{
+                                                        transform: `rotate(${crop.rotation || 0}deg)`
+                                                    }}
+                                                    draggable={false}
+                                                />
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
+                                            <div className="p-2 bg-[var(--bg-secondary)]">
+                                                <span className="text-xs text-[var(--text-muted)]">
+                                                    {crop.width} × {crop.height}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
