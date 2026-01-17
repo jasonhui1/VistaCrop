@@ -158,6 +158,8 @@ function FreeformCanvas({
     selectedItemId,
     onSelectItem,
     onUpdateItem,
+    onUpdateItemSilent,
+    onDragEnd,
     onDropCrop,
     onDeleteItem,
     onUpdatePageSize
@@ -312,7 +314,9 @@ function FreeformCanvas({
 
             setLocalRotation(newRotation)
         } else if (dragState.type === 'move') {
-            onUpdateItem(dragState.itemId, {
+            // Use silent update during drag (no history recording)
+            const updateFn = onUpdateItemSilent || onUpdateItem
+            updateFn(dragState.itemId, {
                 x: Math.max(0, Math.min(composition.pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
                 y: Math.max(0, Math.min(composition.pageHeight - dragState.startItem.height, dragState.startItem.y + deltaY))
             })
@@ -404,7 +408,9 @@ function FreeformCanvas({
                 updates.y = Math.max(0, updates.y)
             }
 
-            onUpdateItem(dragState.itemId, updates)
+            // Use silent update during resize
+            const updateFn = onUpdateItemSilent || onUpdateItem
+            updateFn(dragState.itemId, updates)
         } else if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
             // Corner dragging - update custom points
             const item = placedItems.find(i => i.id === dragState.itemId)
@@ -436,7 +442,9 @@ function FreeformCanvas({
                 return [...point]
             })
 
-            onUpdateItem(dragState.itemId, { customPoints: newPoints })
+            // Use silent update during corner drag
+            const updateFn = onUpdateItemSilent || onUpdateItem
+            updateFn(dragState.itemId, { customPoints: newPoints })
 
             // Update drag state for next move
             setDragState(prev => ({
@@ -447,24 +455,24 @@ function FreeformCanvas({
         }
     }, [dragState, onUpdateItem, crops, placedItems, composition.pageWidth, composition.pageHeight])
 
-    // Handle mouse up - save rotation if we were rotating
+    // Handle mouse up - save rotation if we were rotating, record history for drag operations
     const handleMouseUp = useCallback(() => {
         if (dragState?.type === 'rotate' && rotatingItemId) {
-            // Save rotation to the crop
+            // Save rotation to the item (this is a final state change)
             const item = placedItems.find(i => i.id === rotatingItemId)
             if (item) {
                 const crop = crops.find(c => c.id === item.cropId)
                 if (crop) {
-                    // We need to update the crop's rotation - this is done via onUpdateItem
-                    // But crops are separate, so we need a way to update crop rotation
-                    // For now, store rotation in the item itself
                     onUpdateItem(rotatingItemId, { rotation: localRotation })
                 }
             }
+        } else if (dragState && (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner')) {
+            // Record history at the end of drag operation
+            onDragEnd?.()
         }
         setDragState(null)
         setRotatingItemId(null)
-    }, [dragState, rotatingItemId, localRotation, placedItems, crops, onUpdateItem])
+    }, [dragState, rotatingItemId, localRotation, placedItems, crops, onUpdateItem, onDragEnd])
 
     // Calculate container style
     // Use height: 100% with aspect-ratio to ensure consistent sizing regardless of container width
