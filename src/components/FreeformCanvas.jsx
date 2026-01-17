@@ -3,13 +3,140 @@ import { FILTERS } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
 
-// Constants for rotation
+// ============================================================================
+// Constants
+// ============================================================================
 const ROTATION_EDGE_THRESHOLD = 20 // pixels from edge that triggers rotation mode
+const MIN_ITEM_SIZE = 50
+const MIN_CANVAS_SIZE = 200
 
-/**
- * ShapedBorder - Renders SVG polygon borders that match the clip-path shape
- * provides manga-style layered border effect for irregular shapes
- */
+// ============================================================================
+// Resize Handle Component
+// ============================================================================
+const ResizeHandle = memo(function ResizeHandle({ corner, onMouseDown }) {
+    const positions = {
+        tl: { left: -8, top: -8, cursor: 'nwse-resize' },
+        tr: { right: -8, top: -8, cursor: 'nesw-resize' },
+        bl: { left: -8, bottom: -8, cursor: 'nesw-resize' },
+        br: { right: -8, bottom: -8, cursor: 'nwse-resize' }
+    }
+
+    const pos = positions[corner]
+
+    return (
+        <div
+            className={`resize-handle resize-${corner}`}
+            style={{
+                position: 'absolute',
+                ...pos,
+                width: 14,
+                height: 14,
+                backgroundColor: '#000',
+                border: '2px solid var(--accent-primary)',
+                zIndex: 4
+            }}
+            onMouseDown={onMouseDown}
+        />
+    )
+})
+
+// ============================================================================
+// Resize Handles Group Component
+// ============================================================================
+const ResizeHandles = memo(function ResizeHandles({ item, onMouseDown }) {
+    const corners = ['tl', 'tr', 'bl', 'br']
+
+    return (
+        <>
+            {corners.map(corner => (
+                <ResizeHandle
+                    key={corner}
+                    corner={corner}
+                    onMouseDown={(e) => onMouseDown(e, item, `resize-${corner}`)}
+                />
+            ))}
+        </>
+    )
+})
+
+// ============================================================================
+// Rotation Ring Component
+// ============================================================================
+const RotationRing = memo(function RotationRing({ onMouseDown }) {
+    return (
+        <div
+            className="rotation-ring"
+            style={{
+                position: 'absolute',
+                inset: -ROTATION_EDGE_THRESHOLD,
+                border: '2px dashed rgba(168, 85, 247, 0.5)',
+                borderRadius: '50%',
+                cursor: 'grab',
+                zIndex: 0
+            }}
+            onMouseDown={onMouseDown}
+        />
+    )
+})
+
+// ============================================================================
+// Selection Indicator Component
+// ============================================================================
+const SelectionIndicator = memo(function SelectionIndicator({ frameShape, customPoints }) {
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                inset: -6,
+                clipPath: getClipPath(frameShape || 'rectangle', customPoints),
+                border: '2px solid var(--accent-primary)',
+                boxShadow: '0 0 12px var(--accent-primary)',
+                pointerEvents: 'none',
+                zIndex: 3
+            }}
+        />
+    )
+})
+
+// ============================================================================
+// Empty State Component
+// ============================================================================
+const EmptyStateHint = memo(function EmptyStateHint() {
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)',
+                opacity: 0.5,
+                pointerEvents: 'none'
+            }}
+        >
+            <svg
+                style={{ width: 48, height: 48, marginBottom: 8 }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 4v16m8-8H4"
+                />
+            </svg>
+            <span>Drag crops here</span>
+        </div>
+    )
+})
+
+// ============================================================================
+// ShapedBorder Component - SVG polygon borders for manga-style effect
+// ============================================================================
 const ShapedBorder = memo(function ShapedBorder({
     shapeId,
     customPoints,
@@ -47,57 +174,45 @@ const ShapedBorder = memo(function ShapedBorder({
         .map(([xPct, yPct]) => `${(xPct / 100) * size.width},${(yPct / 100) * size.height}`)
         .join(' ')
 
-    // Inset points for inner border (approximate by scaling towards center)
-    const insetAmount = Math.max(borderWidth, 4)
-    const centerX = size.width / 2
-    const centerY = size.height / 2
-    const innerPoints = points
-        .map(([xPct, yPct]) => {
-            const x = (xPct / 100) * size.width
-            const y = (yPct / 100) * size.height
-            const dx = centerX - x
-            const dy = centerY - y
-            const dist = Math.sqrt(dx * dx + dy * dy)
-            const factor = dist > 0 ? insetAmount / dist : 0
-            return `${x + dx * factor},${y + dy * factor}`
-        })
-        .join(' ')
+    // Calculate inner points for double border effect
+    const innerPoints = useMemo(() => {
+        const insetAmount = Math.max(borderWidth, 4)
+        const centerX = size.width / 2
+        const centerY = size.height / 2
+
+        return points
+            .map(([xPct, yPct]) => {
+                const x = (xPct / 100) * size.width
+                const y = (yPct / 100) * size.height
+                const dx = centerX - x
+                const dy = centerY - y
+                const dist = Math.sqrt(dx * dx + dy * dy)
+                const factor = dist > 0 ? insetAmount / dist : 0
+                return `${x + dx * factor},${y + dy * factor}`
+            })
+            .join(' ')
+    }, [points, size.width, size.height, borderWidth])
+
+    // Container style
+    const containerStyle = {
+        position: 'absolute',
+        inset: -4,
+        pointerEvents: isEditingCorners ? 'auto' : 'none',
+        zIndex: 2
+    }
 
     // Don't render borders if style is 'none'
     if (borderStyle === 'none' && !isEditingCorners) {
-        return (
-            <div
-                ref={containerRef}
-                style={{
-                    position: 'absolute',
-                    inset: -4,
-                    pointerEvents: isEditingCorners ? 'auto' : 'none',
-                    zIndex: 2
-                }}
-            />
-        )
+        return <div ref={containerRef} style={containerStyle} />
     }
 
     // Get stroke dash array based on style
-    const getStrokeDashArray = () => {
-        switch (borderStyle) {
-            case 'dashed':
-                return `${borderWidth * 3},${borderWidth * 2}`
-            default:
-                return 'none'
-        }
-    }
+    const strokeDashArray = borderStyle === 'dashed'
+        ? `${borderWidth * 3},${borderWidth * 2}`
+        : 'none'
 
     return (
-        <div
-            ref={containerRef}
-            style={{
-                position: 'absolute',
-                inset: -4,
-                pointerEvents: isEditingCorners ? 'auto' : 'none',
-                zIndex: 2
-            }}
-        >
+        <div ref={containerRef} style={containerStyle}>
             <svg
                 width="100%"
                 height="100%"
@@ -112,7 +227,7 @@ const ShapedBorder = memo(function ShapedBorder({
                     stroke={borderColor}
                     strokeWidth={borderWidth}
                     strokeLinejoin="miter"
-                    strokeDasharray={getStrokeDashArray()}
+                    strokeDasharray={strokeDashArray}
                 />
                 {/* Inner border for manga double style */}
                 {borderStyle === 'manga' && (
@@ -147,10 +262,228 @@ const ShapedBorder = memo(function ShapedBorder({
     )
 })
 
+// ============================================================================
+// Resize Logic Helpers
+// ============================================================================
+
 /**
- * FreeformCanvas - Allows free placement and resizing of crops on a canvas
- * No fixed panel constraints - crops can be placed anywhere and sized freely
+ * Calculate resize updates for a specific corner
+ * Maintains aspect ratio and anchors to the opposite corner
  */
+function calculateResizeUpdates(corner, deltaX, deltaY, startItem, aspectRatio, pageWidth, pageHeight) {
+    const absDeltaX = Math.abs(deltaX)
+    const absDeltaY = Math.abs(deltaY)
+    const useDeltaX = absDeltaX > absDeltaY
+
+    let updates = {}
+
+    switch (corner) {
+        case 'br': {
+            // Bottom-right: anchor top-left
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, Math.min(pageWidth - startItem.x, startItem.width + deltaX))
+                updates.width = newWidth
+                updates.height = newWidth / aspectRatio
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, Math.min(pageHeight - startItem.y, startItem.height + deltaY))
+                updates.height = newHeight
+                updates.width = newHeight * aspectRatio
+            }
+            break
+        }
+        case 'bl': {
+            // Bottom-left: anchor top-right
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, startItem.width - deltaX)
+                const widthDiff = newWidth - startItem.width
+                updates.width = newWidth
+                updates.height = newWidth / aspectRatio
+                updates.x = startItem.x - widthDiff
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, Math.min(pageHeight - startItem.y, startItem.height + deltaY))
+                const newWidth = newHeight * aspectRatio
+                const widthDiff = newWidth - startItem.width
+                updates.height = newHeight
+                updates.width = newWidth
+                updates.x = startItem.x - widthDiff
+            }
+            break
+        }
+        case 'tr': {
+            // Top-right: anchor bottom-left
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, Math.min(pageWidth - startItem.x, startItem.width + deltaX))
+                const newHeight = newWidth / aspectRatio
+                const heightDiff = newHeight - startItem.height
+                updates.width = newWidth
+                updates.height = newHeight
+                updates.y = startItem.y - heightDiff
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, startItem.height - deltaY)
+                const heightDiff = newHeight - startItem.height
+                updates.height = newHeight
+                updates.width = newHeight * aspectRatio
+                updates.y = startItem.y - heightDiff
+            }
+            break
+        }
+        case 'tl': {
+            // Top-left: anchor bottom-right
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, startItem.width - deltaX)
+                const newHeight = newWidth / aspectRatio
+                const widthDiff = newWidth - startItem.width
+                const heightDiff = newHeight - startItem.height
+                updates.width = newWidth
+                updates.height = newHeight
+                updates.x = startItem.x - widthDiff
+                updates.y = startItem.y - heightDiff
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, startItem.height - deltaY)
+                const newWidth = newHeight * aspectRatio
+                const widthDiff = newWidth - startItem.width
+                const heightDiff = newHeight - startItem.height
+                updates.height = newHeight
+                updates.width = newWidth
+                updates.x = startItem.x - widthDiff
+                updates.y = startItem.y - heightDiff
+            }
+            break
+        }
+    }
+
+    // Clamp position to stay within canvas
+    if (updates.x !== undefined) updates.x = Math.max(0, updates.x)
+    if (updates.y !== undefined) updates.y = Math.max(0, updates.y)
+
+    return updates
+}
+
+// ============================================================================
+// Canvas Edge Resize Handle Component
+// ============================================================================
+const CanvasResizeHandle = memo(function CanvasResizeHandle({ edge, onMouseDown }) {
+    const size = 8
+    const len = 50
+
+    const baseStyle = {
+        position: 'absolute',
+        backgroundColor: 'var(--accent-primary)',
+        opacity: 0.7,
+        zIndex: 20,
+        borderRadius: '3px'
+    }
+
+    const edgeStyles = {
+        top: { top: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' },
+        bottom: { bottom: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' },
+        left: { left: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' },
+        right: { right: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' }
+    }
+
+    return (
+        <div
+            style={{ ...baseStyle, ...edgeStyles[edge] }}
+            onMouseDown={(e) => onMouseDown(e, edge)}
+            title={edge === 'top' || edge === 'bottom' ? 'Resize height' : 'Resize width'}
+        />
+    )
+})
+
+// ============================================================================
+// Placed Item Component
+// ============================================================================
+const PlacedItem = memo(function PlacedItem({
+    item,
+    crop,
+    isSelected,
+    isRotating,
+    currentRotation,
+    composition,
+    filterCss,
+    onMouseDown,
+    onCornerMouseDown
+}) {
+    // Convert pixel coordinates to percentages for rendering
+    const leftPct = (item.x / composition.pageWidth) * 100
+    const topPct = (item.y / composition.pageHeight) * 100
+    const widthPct = (item.width / composition.pageWidth) * 100
+    const heightPct = (item.height / composition.pageHeight) * 100
+
+    const itemStyle = {
+        position: 'absolute',
+        left: `${leftPct}%`,
+        top: `${topPct}%`,
+        width: `${widthPct}%`,
+        height: `${heightPct}%`,
+        boxSizing: 'border-box',
+        cursor: isRotating ? 'grabbing' : 'grab',
+        zIndex: isSelected ? 10 : 1,
+    }
+
+    const imageContainerStyle = {
+        position: 'absolute',
+        inset: 0,
+        clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
+        overflow: 'hidden'
+    }
+
+    const isEditingCorners = isSelected && !!item.editingCorners
+
+    return (
+        <div
+            className={`freeform-item ${isSelected ? 'selected' : ''}`}
+            style={itemStyle}
+            onMouseDown={(e) => onMouseDown(e, item, 'move')}
+            onClick={(e) => e.stopPropagation()}
+        >
+            {/* Rotation ring - visible when selected */}
+            {isSelected && (
+                <RotationRing onMouseDown={(e) => onMouseDown(e, item, 'rotate')} />
+            )}
+
+            {/* Manga-style polygon border */}
+            <ShapedBorder
+                shapeId={item.frameShape || 'rectangle'}
+                customPoints={item.customPoints}
+                isSelected={isSelected}
+                isEditingCorners={isEditingCorners}
+                onCornerMouseDown={(e, cornerIndex) => onCornerMouseDown(e, item, cornerIndex)}
+                borderColor={item.borderColor || '#000'}
+                borderWidth={item.borderWidth ?? 3}
+                borderStyle={item.borderStyle || 'manga'}
+            />
+
+            {/* Selection indicator */}
+            {isSelected && (
+                <SelectionIndicator
+                    frameShape={item.frameShape}
+                    customPoints={item.customPoints}
+                />
+            )}
+
+            {/* Image container with clipping */}
+            <div style={imageContainerStyle}>
+                <RotatableImage
+                    crop={crop}
+                    currentRotation={currentRotation}
+                    isRotating={isRotating}
+                    filterCss={filterCss}
+                    hideRotationOverlay={isEditingCorners}
+                />
+            </div>
+
+            {/* Resize handles (hide when editing custom corners) */}
+            {isSelected && !item.editingCorners && (
+                <ResizeHandles item={item} onMouseDown={onMouseDown} />
+            )}
+        </div>
+    )
+})
+
+// ============================================================================
+// Main FreeformCanvas Component
+// ============================================================================
 function FreeformCanvas({
     composition,
     crops,
@@ -165,18 +498,16 @@ function FreeformCanvas({
     onUpdatePageSize
 }) {
     const canvasRef = useRef(null)
-    const [dragState, setDragState] = useState(null) // { type: 'move' | 'resize' | 'rotate' | 'corner', itemId, startX, startY, startItem, cornerIndex }
+    const [dragState, setDragState] = useState(null)
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
-    // Track local rotation during drag for immediate visual feedback
     const [rotatingItemId, setRotatingItemId] = useState(null)
     const [localRotation, setLocalRotation] = useState(0)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0, centerX: 0, centerY: 0 })
-    // Track which item is in corner editing mode
-    const [editingCornersItemId, setEditingCornersItemId] = useState(null)
-    // Track canvas resize dragging
     const [canvasResizeState, setCanvasResizeState] = useState(null)
 
-    // Handle keyboard Delete key to delete selected item
+    // ========================================================================
+    // Keyboard Event Handler
+    // ========================================================================
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !e.target.matches('input, textarea')) {
@@ -188,18 +519,21 @@ function FreeformCanvas({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [selectedItemId, onDeleteItem])
 
-    // Get CSS filter string from filter name
+    // ========================================================================
+    // Utility Functions
+    // ========================================================================
     const getFilterStyle = useCallback((filterName) => {
         const filter = FILTERS.find(f => f.id === filterName)
         return filter ? filter.css : 'none'
     }, [])
 
-    // Find crop by ID
     const getCropById = useCallback((cropId) => {
         return crops.find(c => c.id === cropId)
     }, [crops])
 
-    // Handle drag over canvas (for dropping new crops)
+    // ========================================================================
+    // Drag & Drop Handlers (for dropping new crops)
+    // ========================================================================
     const handleDragOver = useCallback((e) => {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'copy'
@@ -212,7 +546,6 @@ function FreeformCanvas({
         }
     }, [])
 
-    // Handle drop new crop onto canvas
     const handleDrop = useCallback((e) => {
         e.preventDefault()
         setDragOverCanvas(false)
@@ -220,46 +553,36 @@ function FreeformCanvas({
         const cropId = e.dataTransfer.getData('application/crop-id')
         if (cropId && canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect()
-            // Convert screen position to pixel coordinates relative to composition page
             const x = ((e.clientX - rect.left) / rect.width) * composition.pageWidth
             const y = ((e.clientY - rect.top) / rect.height) * composition.pageHeight
             onDropCrop(parseInt(cropId, 10), x, y)
         }
     }, [onDropCrop, composition.pageWidth, composition.pageHeight])
 
-    // Handle mouse down on item (for moving/resizing/rotating)
-    // type can be: 'move', 'resize-tl', 'resize-tr', 'resize-bl', 'resize-br', 'rotate'
+    // ========================================================================
+    // Item Interaction Handlers
+    // ========================================================================
     const handleItemMouseDown = useCallback((e, item, type = 'move') => {
         e.stopPropagation()
         e.preventDefault()
         onSelectItem(item.id)
 
         if (type === 'rotate') {
-            // Get the item's bounding element
             const itemElement = e.target.closest('.freeform-item')
             if (!itemElement) return
             const itemRect = itemElement.getBoundingClientRect()
             const centerX = itemRect.left + itemRect.width / 2
             const centerY = itemRect.top + itemRect.height / 2
 
-            // Get the crop for current rotation
             const crop = crops.find(c => c.id === item.cropId)
-            // Read rotation from item first (where it's saved), then crop as fallback
             const currentRotation = item.rotation ?? crop?.rotation ?? 0
 
-            // Calculate starting angle from center to mouse
             const startAngle = Math.atan2(
                 e.clientY - centerY,
                 e.clientX - centerX
             ) * (180 / Math.PI)
 
-            initialRotationRef.current = {
-                angle: currentRotation,
-                startAngle,
-                centerX,
-                centerY
-            }
-
+            initialRotationRef.current = { angle: currentRotation, startAngle, centerX, centerY }
             setRotatingItemId(item.id)
             setLocalRotation(currentRotation)
         }
@@ -273,7 +596,6 @@ function FreeformCanvas({
         })
     }, [onSelectItem, crops])
 
-    // Handle corner mouse down (for dragging polygon corners)
     const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
         e.stopPropagation()
         e.preventDefault()
@@ -288,24 +610,21 @@ function FreeformCanvas({
         })
     }, [])
 
-    // Handle mouse move (for dragging/rotating)
+    // ========================================================================
+    // Mouse Move Handler - Handles all drag operations
+    // ========================================================================
     const handleMouseMove = useCallback((e) => {
         if (!dragState || !canvasRef.current) return
 
         const rect = canvasRef.current.getBoundingClientRect()
-        // Convert screen delta to pixel coordinates relative to composition page
         const deltaX = ((e.clientX - dragState.startX) / rect.width) * composition.pageWidth
         const deltaY = ((e.clientY - dragState.startY) / rect.height) * composition.pageHeight
+        const updateFn = onUpdateItemSilent || onUpdateItem
 
+        // Handle rotation
         if (dragState.type === 'rotate') {
-            // Calculate current angle from center to mouse
             const { centerX, centerY, startAngle, angle } = initialRotationRef.current
-            const currentAngle = Math.atan2(
-                e.clientY - centerY,
-                e.clientX - centerX
-            ) * (180 / Math.PI)
-
-            // Calculate rotation delta
+            const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = angle + (currentAngle - startAngle)
 
             // Normalize to -180 to 180
@@ -313,152 +632,66 @@ function FreeformCanvas({
             while (newRotation < -180) newRotation += 360
 
             setLocalRotation(newRotation)
-        } else if (dragState.type === 'move') {
-            // Use silent update during drag (no history recording)
-            const updateFn = onUpdateItemSilent || onUpdateItem
+            return
+        }
+
+        // Handle move
+        if (dragState.type === 'move') {
             updateFn(dragState.itemId, {
                 x: Math.max(0, Math.min(composition.pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
                 y: Math.max(0, Math.min(composition.pageHeight - dragState.startItem.height, dragState.startItem.y + deltaY))
             })
-        } else if (dragState.type.startsWith('resize-')) {
+            return
+        }
+
+        // Handle resize
+        if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
             const crop = crops.find(c => c.id === dragState.startItem.cropId)
             if (!crop) return
 
-            // In page pixel space, maintain the crop's aspect ratio directly
             const aspectRatio = crop.width / crop.height
-
-            let updates = {}
-
-            // Use the dominant axis (larger delta) to drive the resize, maintain aspect ratio
-            const absDeltaX = Math.abs(deltaX)
-            const absDeltaY = Math.abs(deltaY)
-
-            if (corner === 'br') {
-                // Bottom-right: expand from bottom-right
-                if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(50, Math.min(composition.pageWidth - dragState.startItem.x, dragState.startItem.width + deltaX))
-                    updates.width = newWidth
-                    updates.height = newWidth / aspectRatio
-                } else {
-                    const newHeight = Math.max(50, Math.min(composition.pageHeight - dragState.startItem.y, dragState.startItem.height + deltaY))
-                    updates.height = newHeight
-                    updates.width = newHeight * aspectRatio
-                }
-            } else if (corner === 'bl') {
-                // Bottom-left: anchor top-right corner
-                if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(50, dragState.startItem.width - deltaX)
-                    const widthDiff = newWidth - dragState.startItem.width
-                    updates.width = newWidth
-                    updates.height = newWidth / aspectRatio
-                    updates.x = dragState.startItem.x - widthDiff
-                } else {
-                    const newHeight = Math.max(50, Math.min(composition.pageHeight - dragState.startItem.y, dragState.startItem.height + deltaY))
-                    const newWidth = newHeight * aspectRatio
-                    const widthDiff = newWidth - dragState.startItem.width
-                    updates.height = newHeight
-                    updates.width = newWidth
-                    updates.x = dragState.startItem.x - widthDiff
-                }
-            } else if (corner === 'tr') {
-                // Top-right: anchor bottom-left corner
-                if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(50, Math.min(composition.pageWidth - dragState.startItem.x, dragState.startItem.width + deltaX))
-                    const newHeight = newWidth / aspectRatio
-                    const heightDiff = newHeight - dragState.startItem.height
-                    updates.width = newWidth
-                    updates.height = newHeight
-                    updates.y = dragState.startItem.y - heightDiff
-                } else {
-                    const newHeight = Math.max(50, dragState.startItem.height - deltaY)
-                    const heightDiff = newHeight - dragState.startItem.height
-                    updates.height = newHeight
-                    updates.width = newHeight * aspectRatio
-                    updates.y = dragState.startItem.y - heightDiff
-                }
-            } else if (corner === 'tl') {
-                // Top-left: anchor bottom-right corner
-                if (absDeltaX > absDeltaY) {
-                    const newWidth = Math.max(50, dragState.startItem.width - deltaX)
-                    const newHeight = newWidth / aspectRatio
-                    const widthDiff = newWidth - dragState.startItem.width
-                    const heightDiff = newHeight - dragState.startItem.height
-                    updates.width = newWidth
-                    updates.height = newHeight
-                    updates.x = dragState.startItem.x - widthDiff
-                    updates.y = dragState.startItem.y - heightDiff
-                } else {
-                    const newHeight = Math.max(50, dragState.startItem.height - deltaY)
-                    const newWidth = newHeight * aspectRatio
-                    const widthDiff = newWidth - dragState.startItem.width
-                    const heightDiff = newHeight - dragState.startItem.height
-                    updates.height = newHeight
-                    updates.width = newWidth
-                    updates.x = dragState.startItem.x - widthDiff
-                    updates.y = dragState.startItem.y - heightDiff
-                }
-            }
-
-            // Clamp position to stay within canvas
-            if (updates.x !== undefined) {
-                updates.x = Math.max(0, updates.x)
-            }
-            if (updates.y !== undefined) {
-                updates.y = Math.max(0, updates.y)
-            }
-
-            // Use silent update during resize
-            const updateFn = onUpdateItemSilent || onUpdateItem
+            const updates = calculateResizeUpdates(
+                corner, deltaX, deltaY, dragState.startItem,
+                aspectRatio, composition.pageWidth, composition.pageHeight
+            )
             updateFn(dragState.itemId, updates)
-        } else if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
-            // Corner dragging - update custom points
+            return
+        }
+
+        // Handle corner dragging (custom polygon points)
+        if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
             const item = placedItems.find(i => i.id === dragState.itemId)
             if (!item) return
 
-            // Get the current points (custom or from shape preset)
             const currentPoints = item.customPoints ||
                 (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
 
-            // Convert screen delta to percentage relative to item dimensions
-            // Since customPoints are percentages (0-100) relative to the item,
-            // and we're tracking screen delta in pixels, we need to convert based on item's rendered size
-            const rect = canvasRef.current.getBoundingClientRect()
             const itemWidthPx = (item.width / composition.pageWidth) * rect.width
             const itemHeightPx = (item.height / composition.pageHeight) * rect.height
-            const deltaScreenX = e.clientX - dragState.startX
-            const deltaScreenY = e.clientY - dragState.startY
-            const deltaPctX = (deltaScreenX / itemWidthPx) * 100
-            const deltaPctY = (deltaScreenY / itemHeightPx) * 100
+            const deltaPctX = ((e.clientX - dragState.startX) / itemWidthPx) * 100
+            const deltaPctY = ((e.clientY - dragState.startY) / itemHeightPx) * 100
 
-            // Create new points array with updated corner
             const newPoints = currentPoints.map((point, idx) => {
                 if (idx === dragState.cornerIndex) {
-                    // Update this corner position
-                    const newX = Math.max(0, Math.min(100, point[0] + deltaPctX))
-                    const newY = Math.max(0, Math.min(100, point[1] + deltaPctY))
-                    return [newX, newY]
+                    return [
+                        Math.max(0, Math.min(100, point[0] + deltaPctX)),
+                        Math.max(0, Math.min(100, point[1] + deltaPctY))
+                    ]
                 }
                 return [...point]
             })
 
-            // Use silent update during corner drag
-            const updateFn = onUpdateItemSilent || onUpdateItem
             updateFn(dragState.itemId, { customPoints: newPoints })
-
-            // Update drag state for next move
-            setDragState(prev => ({
-                ...prev,
-                startX: e.clientX,
-                startY: e.clientY
-            }))
+            setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, onUpdateItem, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
 
-    // Handle mouse up - save rotation if we were rotating, record history for drag operations
+    // ========================================================================
+    // Mouse Up Handler
+    // ========================================================================
     const handleMouseUp = useCallback(() => {
         if (dragState?.type === 'rotate' && rotatingItemId) {
-            // Save rotation to the item (this is a final state change)
             const item = placedItems.find(i => i.id === rotatingItemId)
             if (item) {
                 const crop = crops.find(c => c.id === item.cropId)
@@ -467,39 +700,15 @@ function FreeformCanvas({
                 }
             }
         } else if (dragState && (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner')) {
-            // Record history at the end of drag operation
             onDragEnd?.()
         }
         setDragState(null)
         setRotatingItemId(null)
     }, [dragState, rotatingItemId, localRotation, placedItems, crops, onUpdateItem, onDragEnd])
 
-    // Calculate container style
-    // Use height: 100% with aspect-ratio to ensure consistent sizing regardless of container width
-    const containerStyle = {
-        aspectRatio: composition.pageWidth / composition.pageHeight,
-        height: '100%',
-        width: 'auto',
-        maxWidth: '100%',
-        backgroundColor: composition.backgroundColor,
-        position: 'relative',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        border: dragOverCanvas ? '2px dashed var(--accent-primary)' : '2px solid transparent',
-        cursor: dragState ? (dragState.type === 'move' ? 'grabbing' : 'nwse-resize') : 'default'
-    }
-
-    // Outer wrapper style for canvas and handles
-    const wrapperStyle = {
-        position: 'relative',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-    }
-
-    // Handle canvas edge resize
+    // ========================================================================
+    // Canvas Resize Handlers
+    // ========================================================================
     const handleCanvasResizeStart = useCallback((e, edge) => {
         e.preventDefault()
         e.stopPropagation()
@@ -514,23 +723,20 @@ function FreeformCanvas({
 
     const handleCanvasResizeMove = useCallback((e) => {
         if (!canvasResizeState || !canvasRef.current) return
+
         const rect = canvasRef.current.getBoundingClientRect()
         const { edge, startX, startY, startWidth, startHeight } = canvasResizeState
         const screenToPageX = startWidth / rect.width
         const screenToPageY = startHeight / rect.height
         const deltaScreenX = e.clientX - startX
         const deltaScreenY = e.clientY - startY
+
         let updates = {}
-        const minSize = 200
-        if (edge === 'right') {
-            updates.pageWidth = Math.max(minSize, startWidth + deltaScreenX * screenToPageX)
-        } else if (edge === 'left') {
-            updates.pageWidth = Math.max(minSize, startWidth - deltaScreenX * screenToPageX)
-        } else if (edge === 'bottom') {
-            updates.pageHeight = Math.max(minSize, startHeight + deltaScreenY * screenToPageY)
-        } else if (edge === 'top') {
-            updates.pageHeight = Math.max(minSize, startHeight - deltaScreenY * screenToPageY)
-        }
+        if (edge === 'right') updates.pageWidth = Math.max(MIN_CANVAS_SIZE, startWidth + deltaScreenX * screenToPageX)
+        else if (edge === 'left') updates.pageWidth = Math.max(MIN_CANVAS_SIZE, startWidth - deltaScreenX * screenToPageX)
+        else if (edge === 'bottom') updates.pageHeight = Math.max(MIN_CANVAS_SIZE, startHeight + deltaScreenY * screenToPageY)
+        else if (edge === 'top') updates.pageHeight = Math.max(MIN_CANVAS_SIZE, startHeight - deltaScreenY * screenToPageY)
+
         if (Object.keys(updates).length > 0 && onUpdatePageSize) {
             onUpdatePageSize(updates)
         }
@@ -553,39 +759,51 @@ function FreeformCanvas({
         }
     }, [canvasResizeState, handleCanvasResizeMove, handleCanvasResizeEnd])
 
-    // Edge handle style helper
-    const getEdgeHandleStyle = (edge) => {
-        const base = {
-            position: 'absolute',
-            backgroundColor: 'var(--accent-primary)',
-            opacity: 0.7,
-            zIndex: 20,
-            borderRadius: '3px'
-        }
-        const size = 8
-        const len = 50
-        switch (edge) {
-            case 'top': return { ...base, top: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' }
-            case 'bottom': return { ...base, bottom: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' }
-            case 'left': return { ...base, left: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' }
-            case 'right': return { ...base, right: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' }
-            default: return base
-        }
+    // ========================================================================
+    // Styles
+    // ========================================================================
+    const containerStyle = useMemo(() => ({
+        aspectRatio: composition.pageWidth / composition.pageHeight,
+        height: '100%',
+        width: 'auto',
+        maxWidth: '100%',
+        backgroundColor: composition.backgroundColor,
+        position: 'relative',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        border: dragOverCanvas ? '2px dashed var(--accent-primary)' : '2px solid transparent',
+        cursor: dragState ? (dragState.type === 'move' ? 'grabbing' : 'nwse-resize') : 'default'
+    }), [composition.pageWidth, composition.pageHeight, composition.backgroundColor, dragOverCanvas, dragState])
+
+    const wrapperStyle = {
+        position: 'relative',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
     }
 
+    // ========================================================================
+    // Render
+    // ========================================================================
     return (
         <div style={wrapperStyle}>
-            {/* Inner container for relative positioning of handles */}
             <div style={{ position: 'relative', height: '100%', maxWidth: '100%' }}>
                 {/* Canvas resize handles */}
                 {onUpdatePageSize && (
                     <>
-                        <div style={getEdgeHandleStyle('top')} onMouseDown={(e) => handleCanvasResizeStart(e, 'top')} title="Resize height" />
-                        <div style={getEdgeHandleStyle('bottom')} onMouseDown={(e) => handleCanvasResizeStart(e, 'bottom')} title="Resize height" />
-                        <div style={getEdgeHandleStyle('left')} onMouseDown={(e) => handleCanvasResizeStart(e, 'left')} title="Resize width" />
-                        <div style={getEdgeHandleStyle('right')} onMouseDown={(e) => handleCanvasResizeStart(e, 'right')} title="Resize width" />
+                        {['top', 'bottom', 'left', 'right'].map(edge => (
+                            <CanvasResizeHandle
+                                key={edge}
+                                edge={edge}
+                                onMouseDown={handleCanvasResizeStart}
+                            />
+                        ))}
                     </>
                 )}
+
+                {/* Main canvas */}
                 <div
                     ref={canvasRef}
                     className="freeform-canvas"
@@ -605,203 +823,26 @@ function FreeformCanvas({
 
                         const isSelected = selectedItemId === item.id
                         const isRotating = rotatingItemId === item.id
-
-                        // Use local rotation during drag, otherwise use item/crop rotation
                         const currentRotation = isRotating ? localRotation : (item.rotation ?? crop.rotation ?? 0)
 
-                        // Since we preserve aspect ratio during resize, use item coordinates directly
-                        // This prevents movement during resize operations
-
-                        // Convert pixel coordinates to percentages for rendering
-                        const leftPct = (item.x / composition.pageWidth) * 100
-                        const topPct = (item.y / composition.pageHeight) * 100
-                        const widthPct = (item.width / composition.pageWidth) * 100
-                        const heightPct = (item.height / composition.pageHeight) * 100
-
                         return (
-                            <div
+                            <PlacedItem
                                 key={item.id}
-                                className={`freeform-item ${isSelected ? 'selected' : ''}`}
-                                style={{
-                                    position: 'absolute',
-                                    left: `${leftPct}%`,
-                                    top: `${topPct}%`,
-                                    width: `${widthPct}%`,
-                                    height: `${heightPct}%`,
-                                    boxSizing: 'border-box',
-                                    cursor: isRotating ? 'grabbing' : 'grab',
-                                    zIndex: isSelected ? 10 : 1,
-                                }}
-                                onMouseDown={(e) => handleItemMouseDown(e, item, 'move')}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                {/* Rotation ring - visible when selected, drag to rotate */}
-                                {isSelected && (
-                                    <div
-                                        className="rotation-ring"
-                                        style={{
-                                            position: 'absolute',
-                                            inset: -ROTATION_EDGE_THRESHOLD,
-                                            border: '2px dashed rgba(168, 85, 247, 0.5)',
-                                            borderRadius: '50%',
-                                            cursor: 'grab',
-                                            zIndex: 0
-                                        }}
-                                        onMouseDown={(e) => handleItemMouseDown(e, item, 'rotate')}
-                                    />
-                                )}
-
-                                {/* Manga-style polygon border using SVG */}
-                                <ShapedBorder
-                                    shapeId={item.frameShape || 'rectangle'}
-                                    customPoints={item.customPoints}
-                                    isSelected={isSelected}
-                                    isEditingCorners={isSelected && !!item.editingCorners}
-                                    onCornerMouseDown={(e, cornerIndex) => handleCornerMouseDown(e, item, cornerIndex)}
-                                    borderColor={item.borderColor || '#000'}
-                                    borderWidth={item.borderWidth ?? 3}
-                                    borderStyle={item.borderStyle || 'manga'}
-                                />
-
-                                {/* Selection indicator - follows shape */}
-                                {isSelected && (
-                                    <div
-                                        style={{
-                                            position: 'absolute',
-                                            inset: -6,
-                                            clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
-                                            border: '2px solid var(--accent-primary)',
-                                            boxShadow: '0 0 12px var(--accent-primary)',
-                                            pointerEvents: 'none',
-                                            zIndex: 3
-                                        }}
-                                    />
-                                )}
-
-                                {/* Image container with clipping - matches gallery mode behavior */}
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
-                                        overflow: 'hidden'
-                                    }}
-                                >
-                                    <RotatableImage
-                                        crop={crop}
-                                        currentRotation={currentRotation}
-                                        isRotating={isRotating}
-                                        filterCss={getFilterStyle(crop.filter)}
-                                        hideRotationOverlay={isSelected && !!item.editingCorners}
-                                    />
-                                </div>
-
-
-                                {/* Resize handles - all four corners (hide when editing custom corners) */}
-                                {isSelected && !item.editingCorners && (
-                                    <>
-                                        {/* Top-left */}
-                                        <div
-                                            className="resize-handle resize-tl"
-                                            style={{
-                                                position: 'absolute',
-                                                left: -8,
-                                                top: -8,
-                                                width: 14,
-                                                height: 14,
-                                                backgroundColor: '#000',
-                                                cursor: 'nwse-resize',
-                                                border: '2px solid var(--accent-primary)',
-                                                zIndex: 4
-                                            }}
-                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tl')}
-                                        />
-                                        {/* Top-right */}
-                                        <div
-                                            className="resize-handle resize-tr"
-                                            style={{
-                                                position: 'absolute',
-                                                right: -8,
-                                                top: -8,
-                                                width: 14,
-                                                height: 14,
-                                                backgroundColor: '#000',
-                                                cursor: 'nesw-resize',
-                                                border: '2px solid var(--accent-primary)',
-                                                zIndex: 4
-                                            }}
-                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tr')}
-                                        />
-                                        {/* Bottom-left */}
-                                        <div
-                                            className="resize-handle resize-bl"
-                                            style={{
-                                                position: 'absolute',
-                                                left: -8,
-                                                bottom: -8,
-                                                width: 14,
-                                                height: 14,
-                                                backgroundColor: '#000',
-                                                cursor: 'nesw-resize',
-                                                border: '2px solid var(--accent-primary)',
-                                                zIndex: 4
-                                            }}
-                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-bl')}
-                                        />
-                                        {/* Bottom-right */}
-                                        <div
-                                            className="resize-handle resize-br"
-                                            style={{
-                                                position: 'absolute',
-                                                right: -8,
-                                                bottom: -8,
-                                                width: 14,
-                                                height: 14,
-                                                backgroundColor: '#000',
-                                                cursor: 'nwse-resize',
-                                                border: '2px solid var(--accent-primary)',
-                                                zIndex: 4
-                                            }}
-                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-br')}
-                                        />
-
-                                    </>
-                                )}
-                            </div>
+                                item={item}
+                                crop={crop}
+                                isSelected={isSelected}
+                                isRotating={isRotating}
+                                currentRotation={currentRotation}
+                                composition={composition}
+                                filterCss={getFilterStyle(crop.filter)}
+                                onMouseDown={handleItemMouseDown}
+                                onCornerMouseDown={handleCornerMouseDown}
+                            />
                         )
                     })}
 
                     {/* Empty state hint */}
-                    {placedItems.length === 0 && (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--text-muted)',
-                                opacity: 0.5,
-                                pointerEvents: 'none'
-                            }}
-                        >
-                            <svg
-                                style={{ width: 48, height: 48, marginBottom: 8 }}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={1.5}
-                                    d="M12 4v16m8-8H4"
-                                />
-                            </svg>
-                            <span>Drag crops here</span>
-                        </div>
-                    )}
+                    {placedItems.length === 0 && <EmptyStateHint />}
                 </div>
             </div>
         </div>
