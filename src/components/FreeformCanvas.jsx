@@ -648,7 +648,7 @@ function FreeformCanvas({
                                     shapeId={item.frameShape || 'rectangle'}
                                     customPoints={item.customPoints}
                                     isSelected={isSelected}
-                                    isEditingCorners={isSelected && !!item.customPoints}
+                                    isEditingCorners={isSelected && !!item.editingCorners}
                                     onCornerMouseDown={(e, cornerIndex) => handleCornerMouseDown(e, item, cornerIndex)}
                                     borderColor={item.borderColor || '#000'}
                                     borderWidth={item.borderWidth ?? 3}
@@ -684,13 +684,13 @@ function FreeformCanvas({
                                         currentRotation={currentRotation}
                                         isRotating={isRotating}
                                         filterCss={getFilterStyle(crop.filter)}
-                                        hideRotationOverlay={isSelected && !!item.customPoints}
+                                        hideRotationOverlay={isSelected && !!item.editingCorners}
                                     />
                                 </div>
 
 
                                 {/* Resize handles - all four corners (hide when editing custom corners) */}
-                                {isSelected && !item.customPoints && (
+                                {isSelected && !item.editingCorners && (
                                     <>
                                         {/* Top-left */}
                                         <div

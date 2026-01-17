@@ -77,9 +77,9 @@ const RotatableImage = memo(function RotatableImage({
     }, [currentRotation, originalImage, isLoadingOriginal, crop.imageId])
 
     // Calculate rotation display data (pixel-based)
-    // Skip when editing corners to prevent overlap with corner handles
+    // When hideRotationOverlay is true, we still need the data to render the rotated image correctly
+    // We just hide the overlay UI elements (dark background, selection box, corner handles)
     const rotationDisplayData = useMemo(() => {
-        if (hideRotationOverlay) return null
         if (currentRotation === 0 || !originalImage) return null
 
         const containerWidth = containerSize.width || 100
@@ -108,7 +108,7 @@ const RotatableImage = memo(function RotatableImage({
             cropCenterX: (cropX + cropW / 2) * scaleX,
             cropCenterY: (cropY + cropH / 2) * scaleY
         }
-    }, [hideRotationOverlay, currentRotation, originalImage, containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
+    }, [currentRotation, originalImage, containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
 
     // Corner handle style (reusable)
     const cornerHandleStyle = {
@@ -155,16 +155,18 @@ const RotatableImage = memo(function RotatableImage({
             {/* When rotating with original image available, show original behind selection */}
             {rotationDisplayData ? (
                 <>
-                    {/* Dark overlay */}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundColor: 'rgba(0,0,0,0.6)',
-                            pointerEvents: 'none',
-                            zIndex: 1
-                        }}
-                    />
+                    {/* Dark overlay - hide when editing corners */}
+                    {!hideRotationOverlay && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundColor: 'rgba(0,0,0,0.6)',
+                                pointerEvents: 'none',
+                                zIndex: 1
+                            }}
+                        />
+                    )}
 
                     {/* Selection box that clips the rotated original image */}
                     <div
@@ -172,8 +174,11 @@ const RotatableImage = memo(function RotatableImage({
                             position: 'absolute',
                             inset: containerInset,
                             overflow: 'hidden',
-                            outline: '2px solid #a855f7',
-                            boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)',
+                            // Only show selection styling when not hiding overlay
+                            ...(hideRotationOverlay ? {} : {
+                                outline: '2px solid #a855f7',
+                                boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
+                            }),
                             zIndex: 2
                         }}
                     >
@@ -203,8 +208,8 @@ const RotatableImage = memo(function RotatableImage({
                             />
                         </div>
 
-                        {/* Corner handles inside selection */}
-                        {showCornerHandles && (
+                        {/* Corner handles inside selection - hide when editing custom corners */}
+                        {showCornerHandles && !hideRotationOverlay && (
                             <>
                                 <div style={{ ...cornerHandleStyle, top: -2, left: -2 }} />
                                 <div style={{ ...cornerHandleStyle, top: -2, right: -2 }} />
