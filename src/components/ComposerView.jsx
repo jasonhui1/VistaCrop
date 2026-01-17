@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
 import {
@@ -13,7 +13,7 @@ import {
 } from '../utils/panelLayouts'
 import { FILTERS } from '../utils/filters'
 import { FRAME_SHAPES, getShapeList, drawShapePath } from '../utils/frameShapes'
-import { getImage } from '../utils/api'
+import { getImage, createCanvas, saveCanvas, listCanvases, loadCanvas } from '../utils/api'
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
@@ -36,6 +36,40 @@ function ComposerView({ crops }) {
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
     // Canvas size editing mode
     const [editingCanvasSize, setEditingCanvasSize] = useState(false)
+    // Right sidebar tab: 'selected' or 'crops'
+    const [rightSidebarTab, setRightSidebarTab] = useState('crops')
+
+    // Canvas persistence state
+    const [canvasId, setCanvasId] = useState(null)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [savedCanvases, setSavedCanvases] = useState([])
+    const [showLoadMenu, setShowLoadMenu] = useState(false)
+
+    // Close load menu when clicking outside
+    useEffect(() => {
+        if (!showLoadMenu) return
+        const handleClickOutside = () => setShowLoadMenu(false)
+        // Delay to avoid immediate close on button click
+        const timer = setTimeout(() => {
+            document.addEventListener('click', handleClickOutside)
+        }, 0)
+        return () => {
+            clearTimeout(timer)
+            document.removeEventListener('click', handleClickOutside)
+        }
+    }, [showLoadMenu])
+
+    // Auto-switch tab based on selection state
+    useEffect(() => {
+        if (mode === 'freeform') {
+            if (selectedItemId) {
+                setRightSidebarTab('selected')
+            } else {
+                setRightSidebarTab('crops')
+            }
+        }
+    }, [selectedItemId, mode])
 
     const exportCanvasRef = useRef(null)
 
@@ -385,6 +419,82 @@ function ComposerView({ crops }) {
         link.click()
     }, [composition, panels, crops, mode, placedItems])
 
+    // Handle save to server
+    const handleSave = useCallback(async () => {
+        setIsSaving(true)
+        try {
+            let currentCanvasId = canvasId
+
+            if (!currentCanvasId) {
+                // Create a new canvas first
+                const result = await createCanvas({
+                    name: `Canvas ${new Date().toLocaleString()}`,
+                    mode
+                })
+                currentCanvasId = result.canvasId
+                setCanvasId(currentCanvasId)
+            }
+
+            // Save the canvas data
+            await saveCanvas(currentCanvasId, composition, placedItems)
+            console.log('Canvas saved successfully:', currentCanvasId)
+        } catch (error) {
+            console.error('Failed to save canvas:', error)
+            // Could show a toast/notification here
+        } finally {
+            setIsSaving(false)
+        }
+    }, [canvasId, composition, placedItems, mode])
+
+    // Fetch list of saved canvases
+    const fetchSavedCanvases = useCallback(async () => {
+        try {
+            const canvases = await listCanvases()
+            setSavedCanvases(canvases || [])
+        } catch (error) {
+            console.error('Failed to fetch canvases:', error)
+            setSavedCanvases([])
+        }
+    }, [])
+
+    // Handle loading a canvas
+    const handleLoadCanvas = useCallback(async (selectedCanvasId) => {
+        setIsLoading(true)
+        setShowLoadMenu(false)
+        try {
+            const canvasData = await loadCanvas(selectedCanvasId)
+            if (canvasData) {
+                // Set the canvas ID
+                setCanvasId(selectedCanvasId)
+
+                // Load composition settings
+                if (canvasData.composition) {
+                    setComposition(canvasData.composition)
+                }
+
+                // Load placed items
+                if (canvasData.placedItems) {
+                    setPlacedItems(canvasData.placedItems)
+                }
+
+                // Set mode based on saved data
+                if (canvasData.mode) {
+                    setMode(canvasData.mode)
+                }
+
+                // Clear selections
+                setSelectedItemId(null)
+                setSelectedPanelIndex(null)
+
+                console.log('Canvas loaded successfully:', selectedCanvasId)
+            }
+        } catch (error) {
+            console.error('Failed to load canvas:', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
+
     // Get selected panel assignment (panel mode)
     const selectedAssignment = selectedPanelIndex !== null
         ? composition.assignments[selectedPanelIndex]
@@ -572,6 +682,74 @@ function ComposerView({ crops }) {
                                 {editingCanvasSize ? '✓ Editing Size' : 'Edit Size'}
                             </button>
                         )}
+                        {/* Load Button with Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => {
+                                    fetchSavedCanvases()
+                                    setShowLoadMenu(!showLoadMenu)
+                                }}
+                                disabled={isLoading}
+                                className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                title="Load saved canvas"
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {isLoading ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    )}
+                                </svg>
+                                {isLoading ? 'Loading...' : 'Load'}
+                            </button>
+                            {showLoadMenu && (
+                                <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                                    {savedCanvases.length === 0 ? (
+                                        <div className="p-3 text-xs text-[var(--text-muted)] text-center">
+                                            No saved canvases found
+                                        </div>
+                                    ) : (
+                                        savedCanvases.map((canvas) => (
+                                            <button
+                                                key={canvas.id}
+                                                onClick={() => handleLoadCanvas(canvas.id)}
+                                                className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-color)] last:border-b-0 ${canvas.id === canvasId ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]' : 'text-[var(--text-secondary)]'
+                                                    }`}
+                                            >
+                                                <div className="font-medium truncate">
+                                                    {canvas.name || `Canvas ${canvas.id}`}
+                                                </div>
+                                                <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                                    {canvas.updatedAt ? new Date(canvas.updatedAt).toLocaleString() : 'Unknown date'}
+                                                </div>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${canvasId
+                                ? 'bg-green-600 hover:bg-green-500 text-white'
+                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)]'
+                                } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={canvasId ? `Saved as ${canvasId}` : 'Save to server'}
+                        >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {isSaving ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                )}
+                            </svg>
+                            {isSaving ? 'Saving...' : (canvasId ? 'Update' : 'Save')}
+                        </button>
                         <button
                             onClick={handleExport}
                             className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
@@ -655,13 +833,33 @@ function ComposerView({ crops }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                     </svg>
                 </button>
-                {rightSidebarOpen && <div className="p-3 overflow-y-auto flex-1 flex flex-col">
-                    {/* Selected Item Controls */}
-                    {mode === 'freeform' && selectedItem && (
-                        <div className="mb-3 pb-3 border-b border-[var(--border-color)]">
-                            <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                                Selected
-                            </h3>
+                {rightSidebarOpen && <div className="overflow-y-auto flex-1 flex flex-col">
+                    {/* Tab buttons */}
+                    <div className="flex border-b border-[var(--border-color)]">
+                        <button
+                            onClick={() => setRightSidebarTab('crops')}
+                            className={`flex-1 py-2 text-xs font-medium transition-colors ${rightSidebarTab === 'crops'
+                                ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
+                        >
+                            Crops
+                        </button>
+                        <button
+                            onClick={() => setRightSidebarTab('selected')}
+                            className={`flex-1 py-2 text-xs font-medium transition-colors relative ${rightSidebarTab === 'selected'
+                                ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
+                        >
+                            Selected
+                            {mode === 'freeform' && selectedItem && rightSidebarTab !== 'selected' && (
+                                <span className="absolute top-1 right-2 w-2 h-2 bg-[var(--accent-primary)] rounded-full"></span>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="p-3 flex-1 overflow-y-auto">
+                        {/* Selected Item Controls */}
+                        {rightSidebarTab === 'selected' && mode === 'freeform' && selectedItem && (
                             <div className="space-y-2">
                                 {/* Frame Shape Selector */}
                                 <div>
@@ -733,8 +931,8 @@ function ComposerView({ crops }) {
                                                 <button
                                                     onClick={() => handleUpdateItem(selectedItem.id, { editingCorners: !selectedItem.editingCorners })}
                                                     className={`flex-1 text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1 ${selectedItem.editingCorners
-                                                            ? 'bg-[var(--accent-primary)] text-white'
-                                                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-white'
+                                                        ? 'bg-[var(--accent-primary)] text-white'
+                                                        : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-white'
                                                         }`}
                                                 >
                                                     {selectedItem.editingCorners ? (
@@ -847,45 +1045,55 @@ function ComposerView({ crops }) {
                                     Delete Item
                                 </button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                        {rightSidebarTab === 'selected' && mode === 'freeform' && !selectedItem && (
+                            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                                <svg className="w-10 h-10 text-[var(--text-muted)] mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                                </svg>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    Click an item on the canvas to select it
+                                </p>
+                            </div>
+                        )}
 
-                    <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-                        Crops
-                    </h3>
-                    {crops.length === 0 ? (
-                        <p className="text-xs text-[var(--text-muted)]">
-                            No crops yet. Create some in the Canvas view.
-                        </p>
-                    ) : (
-                        <div className="flex flex-col gap-2">
-                            {crops.map((crop) => (
-                                <div
-                                    key={crop.id}
-                                    draggable
-                                    onDragStart={(e) => handleCropDragStart(e, crop)}
-                                    className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
-                                >
-                                    <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
-                                        <img
-                                            src={crop.imageData}
-                                            alt=""
-                                            className="w-full h-full object-cover"
-                                            style={{
-                                                transform: `rotate(${crop.rotation || 0}deg)`
-                                            }}
-                                            draggable={false}
-                                        />
+                        {rightSidebarTab === 'crops' && (
+                            <>
+                                {crops.length === 0 ? (
+                                    <p className="text-xs text-[var(--text-muted)]">
+                                        No crops yet. Create some in the Canvas view.
+                                    </p>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        {crops.map((crop) => (
+                                            <div
+                                                key={crop.id}
+                                                draggable
+                                                onDragStart={(e) => handleCropDragStart(e, crop)}
+                                                className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
+                                            >
+                                                <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
+                                                    <img
+                                                        src={crop.imageData}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                        style={{
+                                                            transform: `rotate(${crop.rotation || 0}deg)`
+                                                        }}
+                                                        draggable={false}
+                                                    />
+                                                </div>
+                                                <div className="p-2 bg-[var(--bg-secondary)]">
+                                                    <span className="text-xs text-[var(--text-muted)]">
+                                                        {crop.width} × {crop.height}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="p-2 bg-[var(--bg-secondary)]">
-                                        <span className="text-xs text-[var(--text-muted)]">
-                                            {crop.width} × {crop.height}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                )}
+                            </>)}
+                    </div>
                 </div>}
             </div>
         </div>
