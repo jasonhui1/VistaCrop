@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
+import PhoneMockup from './PhoneMockup'
 
 // ============================================================================
 // Constants
@@ -424,11 +425,22 @@ const PlacedItem = memo(function PlacedItem({
     const imageContainerStyle = {
         position: 'absolute',
         inset: 0,
-        clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
+        clipPath: item.phoneMockup ? 'none' : getClipPath(item.frameShape || 'rectangle', item.customPoints),
         overflow: 'hidden'
     }
 
     const isEditingCorners = isSelected && !!item.editingCorners
+
+    // Image content (reused in both normal and phone mockup modes)
+    const imageContent = (
+        <RotatableImage
+            crop={crop}
+            currentRotation={currentRotation}
+            isRotating={isRotating}
+            filterCss={filterCss}
+            hideRotationOverlay={isEditingCorners}
+        />
+    )
 
     return (
         <div
@@ -442,36 +454,43 @@ const PlacedItem = memo(function PlacedItem({
                 <RotationRing onMouseDown={(e) => onMouseDown(e, item, 'rotate')} />
             )}
 
-            {/* Manga-style polygon border */}
-            <ShapedBorder
-                shapeId={item.frameShape || 'rectangle'}
-                customPoints={item.customPoints}
-                isSelected={isSelected}
-                isEditingCorners={isEditingCorners}
-                onCornerMouseDown={(e, cornerIndex) => onCornerMouseDown(e, item, cornerIndex)}
-                borderColor={item.borderColor || '#000'}
-                borderWidth={item.borderWidth ?? 3}
-                borderStyle={item.borderStyle || 'manga'}
-            />
+            {/* Phone Mockup Frame */}
+            {item.phoneMockup ? (
+                <PhoneMockup
+                    color={item.phoneColor || '#1a1a1a'}
+                    style={item.phoneStyle || 'modern'}
+                    landscape={crop && crop.width > crop.height}
+                >
+                    {imageContent}
+                </PhoneMockup>
+            ) : (
+                <>
+                    {/* Manga-style polygon border */}
+                    <ShapedBorder
+                        shapeId={item.frameShape || 'rectangle'}
+                        customPoints={item.customPoints}
+                        isSelected={isSelected}
+                        isEditingCorners={isEditingCorners}
+                        onCornerMouseDown={(e, cornerIndex) => onCornerMouseDown(e, item, cornerIndex)}
+                        borderColor={item.borderColor || '#000'}
+                        borderWidth={item.borderWidth ?? 3}
+                        borderStyle={item.borderStyle || 'manga'}
+                    />
 
-            {/* Selection indicator */}
-            {isSelected && (
-                <SelectionIndicator
-                    frameShape={item.frameShape}
-                    customPoints={item.customPoints}
-                />
+                    {/* Selection indicator */}
+                    {isSelected && (
+                        <SelectionIndicator
+                            frameShape={item.frameShape}
+                            customPoints={item.customPoints}
+                        />
+                    )}
+
+                    {/* Image container with clipping */}
+                    <div style={imageContainerStyle}>
+                        {imageContent}
+                    </div>
+                </>
             )}
-
-            {/* Image container with clipping */}
-            <div style={imageContainerStyle}>
-                <RotatableImage
-                    crop={crop}
-                    currentRotation={currentRotation}
-                    isRotating={isRotating}
-                    filterCss={filterCss}
-                    hideRotationOverlay={isEditingCorners}
-                />
-            </div>
 
             {/* Resize handles (hide when editing custom corners) */}
             {isSelected && !item.editingCorners && (

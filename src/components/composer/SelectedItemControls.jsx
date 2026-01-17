@@ -21,6 +21,73 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
 
     return (
         <div className="space-y-2">
+            {/* Phone Mockup Toggle */}
+            <div>
+                <label className="text-xs text-[var(--text-muted)] block mb-1">Phone Mockup</label>
+                <div className="flex items-center gap-2 mb-2">
+                    <button
+                        onClick={() => onUpdateItem(selectedItem.id, { phoneMockup: !selectedItem.phoneMockup })}
+                        className={`flex-1 py-1.5 text-xs rounded transition-all flex items-center justify-center gap-1.5 ${selectedItem.phoneMockup
+                            ? 'bg-[var(--accent-primary)] text-white'
+                            : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
+                            }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="5" y="2" width="14" height="20" rx="2" strokeWidth={1.5} />
+                            <line x1="9" y1="19" x2="15" y2="19" strokeWidth={1.5} strokeLinecap="round" />
+                        </svg>
+                        {selectedItem.phoneMockup ? 'Phone Frame On' : 'Add Phone Frame'}
+                    </button>
+                </div>
+                {selectedItem.phoneMockup && (
+                    <div className="space-y-2 p-2 rounded-lg bg-[var(--bg-tertiary)]">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-[var(--text-muted)] w-12">Color</label>
+                            <input
+                                type="color"
+                                value={selectedItem.phoneColor || '#1a1a1a'}
+                                onChange={(e) => onUpdateItem(selectedItem.id, { phoneColor: e.target.value })}
+                                className="w-8 h-6 rounded cursor-pointer border-0 bg-transparent"
+                            />
+                            <div className="flex gap-1">
+                                {['#1a1a1a', '#ffffff', '#1e3a5f', '#3d1a1a', '#c0c0c0'].map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => onUpdateItem(selectedItem.id, { phoneColor: c })}
+                                        className="w-5 h-5 rounded-full border border-[var(--border-color)]"
+                                        style={{ backgroundColor: c }}
+                                        title={c}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-[var(--text-muted)] w-12">Style</label>
+                            <div className="flex flex-1 gap-1">
+                                <button
+                                    onClick={() => onUpdateItem(selectedItem.id, { phoneStyle: 'modern' })}
+                                    className={`flex-1 py-1 text-xs rounded transition-colors ${(selectedItem.phoneStyle || 'modern') === 'modern'
+                                        ? 'bg-[var(--accent-primary)] text-white'
+                                        : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-white'
+                                        }`}
+                                >
+                                    Modern
+                                </button>
+                                <button
+                                    onClick={() => onUpdateItem(selectedItem.id, { phoneStyle: 'classic' })}
+                                    className={`flex-1 py-1 text-xs rounded transition-colors ${selectedItem.phoneStyle === 'classic'
+                                        ? 'bg-[var(--accent-primary)] text-white'
+                                        : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-white'
+                                        }`}
+                                >
+                                    Classic
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* Frame Shape Selector */}
             <div>
                 <label className="text-xs text-[var(--text-muted)] block mb-1">Frame Shape</label>
