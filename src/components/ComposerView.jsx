@@ -34,6 +34,8 @@ function ComposerView({ crops }) {
     // Sidebar visibility state
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+    // Canvas size editing mode
+    const [editingCanvasSize, setEditingCanvasSize] = useState(false)
 
     const exportCanvasRef = useRef(null)
 
@@ -137,6 +139,18 @@ function ComposerView({ crops }) {
             setSelectedItemId(null)
         }
     }, [selectedItemId])
+
+    // Handle page size update from canvas resize handles
+    const handleUpdatePageSize = useCallback((updates) => {
+        setComposition(prev => ({
+            ...prev,
+            ...updates,
+            pagePreset: 'custom',
+            updatedAt: Date.now()
+        }))
+    }, [])
+
+
 
     // Handle drag start for crop
     const handleCropDragStart = useCallback((e, crop) => {
@@ -548,6 +562,16 @@ function ComposerView({ crops }) {
                                 Clear
                             </button>
                         )}
+                        {mode === 'freeform' && (
+                            <button
+                                onClick={() => setEditingCanvasSize(!editingCanvasSize)}
+                                className={`text-xs px-2 py-1 rounded transition-colors ${editingCanvasSize
+                                    ? 'bg-[var(--accent-primary)] text-white'
+                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'}`}
+                            >
+                                {editingCanvasSize ? '✓ Editing Size' : 'Edit Size'}
+                            </button>
+                        )}
                         <button
                             onClick={handleExport}
                             className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
@@ -582,6 +606,7 @@ function ComposerView({ crops }) {
                             onUpdateItem={handleUpdateItem}
                             onDropCrop={handleDropCropToFreeform}
                             onDeleteItem={handleDeleteItem}
+                            onUpdatePageSize={editingCanvasSize ? handleUpdatePageSize : undefined}
                         />
                     )}
                 </div>

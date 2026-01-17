@@ -159,7 +159,8 @@ function FreeformCanvas({
     onSelectItem,
     onUpdateItem,
     onDropCrop,
-    onDeleteItem
+    onDeleteItem,
+    onUpdatePageSize
 }) {
     const canvasRef = useRef(null)
     const [dragState, setDragState] = useState(null) // { type: 'move' | 'resize' | 'rotate' | 'corner', itemId, startX, startY, startItem, cornerIndex }
@@ -170,6 +171,8 @@ function FreeformCanvas({
     const initialRotationRef = useRef({ angle: 0, startAngle: 0, centerX: 0, centerY: 0 })
     // Track which item is in corner editing mode
     const [editingCornersItemId, setEditingCornersItemId] = useState(null)
+    // Track canvas resize dragging
+    const [canvasResizeState, setCanvasResizeState] = useState(null)
 
     // Handle keyboard Delete key to delete selected item
     useEffect(() => {
@@ -411,12 +414,23 @@ function FreeformCanvas({
             const currentPoints = item.customPoints ||
                 (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
 
+            // Convert screen delta to percentage relative to item dimensions
+            // Since customPoints are percentages (0-100) relative to the item,
+            // and we're tracking screen delta in pixels, we need to convert based on item's rendered size
+            const rect = canvasRef.current.getBoundingClientRect()
+            const itemWidthPx = (item.width / composition.pageWidth) * rect.width
+            const itemHeightPx = (item.height / composition.pageHeight) * rect.height
+            const deltaScreenX = e.clientX - dragState.startX
+            const deltaScreenY = e.clientY - dragState.startY
+            const deltaPctX = (deltaScreenX / itemWidthPx) * 100
+            const deltaPctY = (deltaScreenY / itemHeightPx) * 100
+
             // Create new points array with updated corner
             const newPoints = currentPoints.map((point, idx) => {
                 if (idx === dragState.cornerIndex) {
                     // Update this corner position
-                    const newX = Math.max(0, Math.min(100, point[0] + deltaX))
-                    const newY = Math.max(0, Math.min(100, point[1] + deltaY))
+                    const newX = Math.max(0, Math.min(100, point[0] + deltaPctX))
+                    const newY = Math.max(0, Math.min(100, point[1] + deltaPctY))
                     return [newX, newY]
                 }
                 return [...point]
@@ -468,222 +482,320 @@ function FreeformCanvas({
         cursor: dragState ? (dragState.type === 'move' ? 'grabbing' : 'nwse-resize') : 'default'
     }
 
+    // Outer wrapper style for canvas and handles
+    const wrapperStyle = {
+        position: 'relative',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+    }
+
+    // Handle canvas edge resize
+    const handleCanvasResizeStart = useCallback((e, edge) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setCanvasResizeState({
+            edge,
+            startX: e.clientX,
+            startY: e.clientY,
+            startWidth: composition.pageWidth,
+            startHeight: composition.pageHeight
+        })
+    }, [composition.pageWidth, composition.pageHeight])
+
+    const handleCanvasResizeMove = useCallback((e) => {
+        if (!canvasResizeState || !canvasRef.current) return
+        const rect = canvasRef.current.getBoundingClientRect()
+        const { edge, startX, startY, startWidth, startHeight } = canvasResizeState
+        const screenToPageX = startWidth / rect.width
+        const screenToPageY = startHeight / rect.height
+        const deltaScreenX = e.clientX - startX
+        const deltaScreenY = e.clientY - startY
+        let updates = {}
+        const minSize = 200
+        if (edge === 'right') {
+            updates.pageWidth = Math.max(minSize, startWidth + deltaScreenX * screenToPageX)
+        } else if (edge === 'left') {
+            updates.pageWidth = Math.max(minSize, startWidth - deltaScreenX * screenToPageX)
+        } else if (edge === 'bottom') {
+            updates.pageHeight = Math.max(minSize, startHeight + deltaScreenY * screenToPageY)
+        } else if (edge === 'top') {
+            updates.pageHeight = Math.max(minSize, startHeight - deltaScreenY * screenToPageY)
+        }
+        if (Object.keys(updates).length > 0 && onUpdatePageSize) {
+            onUpdatePageSize(updates)
+        }
+    }, [canvasResizeState, onUpdatePageSize])
+
+    const handleCanvasResizeEnd = useCallback(() => {
+        setCanvasResizeState(null)
+    }, [])
+
+    // Global mouse events for canvas resize
+    useEffect(() => {
+        if (!canvasResizeState) return
+        const onMove = (e) => handleCanvasResizeMove(e)
+        const onUp = () => handleCanvasResizeEnd()
+        window.addEventListener('mousemove', onMove)
+        window.addEventListener('mouseup', onUp)
+        return () => {
+            window.removeEventListener('mousemove', onMove)
+            window.removeEventListener('mouseup', onUp)
+        }
+    }, [canvasResizeState, handleCanvasResizeMove, handleCanvasResizeEnd])
+
+    // Edge handle style helper
+    const getEdgeHandleStyle = (edge) => {
+        const base = {
+            position: 'absolute',
+            backgroundColor: 'var(--accent-primary)',
+            opacity: 0.7,
+            zIndex: 20,
+            borderRadius: '3px'
+        }
+        const size = 8
+        const len = 50
+        switch (edge) {
+            case 'top': return { ...base, top: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' }
+            case 'bottom': return { ...base, bottom: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' }
+            case 'left': return { ...base, left: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' }
+            case 'right': return { ...base, right: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' }
+            default: return base
+        }
+    }
+
     return (
-        <div
-            ref={canvasRef}
-            className="freeform-canvas"
-            style={containerStyle}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={() => onSelectItem(null)}
-        >
-            {/* Render placed items */}
-            {placedItems.map((item) => {
-                const crop = getCropById(item.cropId)
-                if (!crop) return null
+        <div style={wrapperStyle}>
+            {/* Inner container for relative positioning of handles */}
+            <div style={{ position: 'relative', height: '100%', maxWidth: '100%' }}>
+                {/* Canvas resize handles */}
+                {onUpdatePageSize && (
+                    <>
+                        <div style={getEdgeHandleStyle('top')} onMouseDown={(e) => handleCanvasResizeStart(e, 'top')} title="Resize height" />
+                        <div style={getEdgeHandleStyle('bottom')} onMouseDown={(e) => handleCanvasResizeStart(e, 'bottom')} title="Resize height" />
+                        <div style={getEdgeHandleStyle('left')} onMouseDown={(e) => handleCanvasResizeStart(e, 'left')} title="Resize width" />
+                        <div style={getEdgeHandleStyle('right')} onMouseDown={(e) => handleCanvasResizeStart(e, 'right')} title="Resize width" />
+                    </>
+                )}
+                <div
+                    ref={canvasRef}
+                    className="freeform-canvas"
+                    style={containerStyle}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onClick={() => onSelectItem(null)}
+                >
+                    {/* Render placed items */}
+                    {placedItems.map((item) => {
+                        const crop = getCropById(item.cropId)
+                        if (!crop) return null
 
-                const isSelected = selectedItemId === item.id
-                const isRotating = rotatingItemId === item.id
+                        const isSelected = selectedItemId === item.id
+                        const isRotating = rotatingItemId === item.id
 
-                // Use local rotation during drag, otherwise use item/crop rotation
-                const currentRotation = isRotating ? localRotation : (item.rotation ?? crop.rotation ?? 0)
+                        // Use local rotation during drag, otherwise use item/crop rotation
+                        const currentRotation = isRotating ? localRotation : (item.rotation ?? crop.rotation ?? 0)
 
-                // Since we preserve aspect ratio during resize, use item coordinates directly
-                // This prevents movement during resize operations
+                        // Since we preserve aspect ratio during resize, use item coordinates directly
+                        // This prevents movement during resize operations
 
-                // Convert pixel coordinates to percentages for rendering
-                const leftPct = (item.x / composition.pageWidth) * 100
-                const topPct = (item.y / composition.pageHeight) * 100
-                const widthPct = (item.width / composition.pageWidth) * 100
-                const heightPct = (item.height / composition.pageHeight) * 100
+                        // Convert pixel coordinates to percentages for rendering
+                        const leftPct = (item.x / composition.pageWidth) * 100
+                        const topPct = (item.y / composition.pageHeight) * 100
+                        const widthPct = (item.width / composition.pageWidth) * 100
+                        const heightPct = (item.height / composition.pageHeight) * 100
 
-                return (
-                    <div
-                        key={item.id}
-                        className={`freeform-item ${isSelected ? 'selected' : ''}`}
-                        style={{
-                            position: 'absolute',
-                            left: `${leftPct}%`,
-                            top: `${topPct}%`,
-                            width: `${widthPct}%`,
-                            height: `${heightPct}%`,
-                            boxSizing: 'border-box',
-                            cursor: isRotating ? 'grabbing' : 'grab',
-                            zIndex: isSelected ? 10 : 1,
-                        }}
-                        onMouseDown={(e) => handleItemMouseDown(e, item, 'move')}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Rotation ring - visible when selected, drag to rotate */}
-                        {isSelected && (
+                        return (
                             <div
-                                className="rotation-ring"
+                                key={item.id}
+                                className={`freeform-item ${isSelected ? 'selected' : ''}`}
                                 style={{
                                     position: 'absolute',
-                                    inset: -ROTATION_EDGE_THRESHOLD,
-                                    border: '2px dashed rgba(168, 85, 247, 0.5)',
-                                    borderRadius: '50%',
-                                    cursor: 'grab',
-                                    zIndex: 0
+                                    left: `${leftPct}%`,
+                                    top: `${topPct}%`,
+                                    width: `${widthPct}%`,
+                                    height: `${heightPct}%`,
+                                    boxSizing: 'border-box',
+                                    cursor: isRotating ? 'grabbing' : 'grab',
+                                    zIndex: isSelected ? 10 : 1,
                                 }}
-                                onMouseDown={(e) => handleItemMouseDown(e, item, 'rotate')}
-                            />
-                        )}
+                                onMouseDown={(e) => handleItemMouseDown(e, item, 'move')}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Rotation ring - visible when selected, drag to rotate */}
+                                {isSelected && (
+                                    <div
+                                        className="rotation-ring"
+                                        style={{
+                                            position: 'absolute',
+                                            inset: -ROTATION_EDGE_THRESHOLD,
+                                            border: '2px dashed rgba(168, 85, 247, 0.5)',
+                                            borderRadius: '50%',
+                                            cursor: 'grab',
+                                            zIndex: 0
+                                        }}
+                                        onMouseDown={(e) => handleItemMouseDown(e, item, 'rotate')}
+                                    />
+                                )}
 
-                        {/* Manga-style polygon border using SVG */}
-                        <ShapedBorder
-                            shapeId={item.frameShape || 'rectangle'}
-                            customPoints={item.customPoints}
-                            isSelected={isSelected}
-                            isEditingCorners={isSelected && !!item.customPoints}
-                            onCornerMouseDown={(e, cornerIndex) => handleCornerMouseDown(e, item, cornerIndex)}
-                            borderColor={item.borderColor || '#000'}
-                            borderWidth={item.borderWidth ?? 3}
-                            borderStyle={item.borderStyle || 'manga'}
-                        />
+                                {/* Manga-style polygon border using SVG */}
+                                <ShapedBorder
+                                    shapeId={item.frameShape || 'rectangle'}
+                                    customPoints={item.customPoints}
+                                    isSelected={isSelected}
+                                    isEditingCorners={isSelected && !!item.customPoints}
+                                    onCornerMouseDown={(e, cornerIndex) => handleCornerMouseDown(e, item, cornerIndex)}
+                                    borderColor={item.borderColor || '#000'}
+                                    borderWidth={item.borderWidth ?? 3}
+                                    borderStyle={item.borderStyle || 'manga'}
+                                />
 
-                        {/* Selection indicator - follows shape */}
-                        {isSelected && (
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    inset: -6,
-                                    clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
-                                    border: '2px solid var(--accent-primary)',
-                                    boxShadow: '0 0 12px var(--accent-primary)',
-                                    pointerEvents: 'none',
-                                    zIndex: 3
-                                }}
-                            />
-                        )}
+                                {/* Selection indicator - follows shape */}
+                                {isSelected && (
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            inset: -6,
+                                            clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
+                                            border: '2px solid var(--accent-primary)',
+                                            boxShadow: '0 0 12px var(--accent-primary)',
+                                            pointerEvents: 'none',
+                                            zIndex: 3
+                                        }}
+                                    />
+                                )}
 
-                        {/* Image container with clipping - matches gallery mode behavior */}
+                                {/* Image container with clipping - matches gallery mode behavior */}
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
+                                        overflow: 'hidden'
+                                    }}
+                                >
+                                    <RotatableImage
+                                        crop={crop}
+                                        currentRotation={currentRotation}
+                                        isRotating={isRotating}
+                                        filterCss={getFilterStyle(crop.filter)}
+                                        hideRotationOverlay={isSelected && !!item.customPoints}
+                                    />
+                                </div>
+
+
+                                {/* Resize handles - all four corners (hide when editing custom corners) */}
+                                {isSelected && !item.customPoints && (
+                                    <>
+                                        {/* Top-left */}
+                                        <div
+                                            className="resize-handle resize-tl"
+                                            style={{
+                                                position: 'absolute',
+                                                left: -8,
+                                                top: -8,
+                                                width: 14,
+                                                height: 14,
+                                                backgroundColor: '#000',
+                                                cursor: 'nwse-resize',
+                                                border: '2px solid var(--accent-primary)',
+                                                zIndex: 4
+                                            }}
+                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tl')}
+                                        />
+                                        {/* Top-right */}
+                                        <div
+                                            className="resize-handle resize-tr"
+                                            style={{
+                                                position: 'absolute',
+                                                right: -8,
+                                                top: -8,
+                                                width: 14,
+                                                height: 14,
+                                                backgroundColor: '#000',
+                                                cursor: 'nesw-resize',
+                                                border: '2px solid var(--accent-primary)',
+                                                zIndex: 4
+                                            }}
+                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tr')}
+                                        />
+                                        {/* Bottom-left */}
+                                        <div
+                                            className="resize-handle resize-bl"
+                                            style={{
+                                                position: 'absolute',
+                                                left: -8,
+                                                bottom: -8,
+                                                width: 14,
+                                                height: 14,
+                                                backgroundColor: '#000',
+                                                cursor: 'nesw-resize',
+                                                border: '2px solid var(--accent-primary)',
+                                                zIndex: 4
+                                            }}
+                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-bl')}
+                                        />
+                                        {/* Bottom-right */}
+                                        <div
+                                            className="resize-handle resize-br"
+                                            style={{
+                                                position: 'absolute',
+                                                right: -8,
+                                                bottom: -8,
+                                                width: 14,
+                                                height: 14,
+                                                backgroundColor: '#000',
+                                                cursor: 'nwse-resize',
+                                                border: '2px solid var(--accent-primary)',
+                                                zIndex: 4
+                                            }}
+                                            onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-br')}
+                                        />
+
+                                    </>
+                                )}
+                            </div>
+                        )
+                    })}
+
+                    {/* Empty state hint */}
+                    {placedItems.length === 0 && (
                         <div
                             style={{
                                 position: 'absolute',
                                 inset: 0,
-                                clipPath: getClipPath(item.frameShape || 'rectangle', item.customPoints),
-                                overflow: 'hidden'
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-muted)',
+                                opacity: 0.5,
+                                pointerEvents: 'none'
                             }}
                         >
-                            <RotatableImage
-                                crop={crop}
-                                currentRotation={currentRotation}
-                                isRotating={isRotating}
-                                filterCss={getFilterStyle(crop.filter)}
-                            />
+                            <svg
+                                style={{ width: 48, height: 48, marginBottom: 8 }}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.5}
+                                    d="M12 4v16m8-8H4"
+                                />
+                            </svg>
+                            <span>Drag crops here</span>
                         </div>
-
-
-                        {/* Resize handles - all four corners */}
-                        {isSelected && (
-                            <>
-                                {/* Top-left */}
-                                <div
-                                    className="resize-handle resize-tl"
-                                    style={{
-                                        position: 'absolute',
-                                        left: -8,
-                                        top: -8,
-                                        width: 14,
-                                        height: 14,
-                                        backgroundColor: '#000',
-                                        cursor: 'nwse-resize',
-                                        border: '2px solid var(--accent-primary)',
-                                        zIndex: 4
-                                    }}
-                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tl')}
-                                />
-                                {/* Top-right */}
-                                <div
-                                    className="resize-handle resize-tr"
-                                    style={{
-                                        position: 'absolute',
-                                        right: -8,
-                                        top: -8,
-                                        width: 14,
-                                        height: 14,
-                                        backgroundColor: '#000',
-                                        cursor: 'nesw-resize',
-                                        border: '2px solid var(--accent-primary)',
-                                        zIndex: 4
-                                    }}
-                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-tr')}
-                                />
-                                {/* Bottom-left */}
-                                <div
-                                    className="resize-handle resize-bl"
-                                    style={{
-                                        position: 'absolute',
-                                        left: -8,
-                                        bottom: -8,
-                                        width: 14,
-                                        height: 14,
-                                        backgroundColor: '#000',
-                                        cursor: 'nesw-resize',
-                                        border: '2px solid var(--accent-primary)',
-                                        zIndex: 4
-                                    }}
-                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-bl')}
-                                />
-                                {/* Bottom-right */}
-                                <div
-                                    className="resize-handle resize-br"
-                                    style={{
-                                        position: 'absolute',
-                                        right: -8,
-                                        bottom: -8,
-                                        width: 14,
-                                        height: 14,
-                                        backgroundColor: '#000',
-                                        cursor: 'nwse-resize',
-                                        border: '2px solid var(--accent-primary)',
-                                        zIndex: 4
-                                    }}
-                                    onMouseDown={(e) => handleItemMouseDown(e, item, 'resize-br')}
-                                />
-
-                            </>
-                        )}
-                    </div>
-                )
-            })}
-
-            {/* Empty state hint */}
-            {placedItems.length === 0 && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--text-muted)',
-                        opacity: 0.5,
-                        pointerEvents: 'none'
-                    }}
-                >
-                    <svg
-                        style={{ width: 48, height: 48, marginBottom: 8 }}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M12 4v16m8-8H4"
-                        />
-                    </svg>
-                    <span>Drag crops here</span>
+                    )}
                 </div>
-            )}
+            </div>
         </div>
     )
 }

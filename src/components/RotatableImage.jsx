@@ -17,6 +17,7 @@ const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavai
  * @param {string} filterCss - CSS filter string to apply (optional, defaults to 'none')
  * @param {number} containerInset - Inset in pixels for selection box (0 for freeform, 12 for CropCard)
  * @param {boolean} showCornerHandles - Whether to show corner handles on selection box
+ * @param {boolean} hideRotationOverlay - Whether to hide the rotation overlay (e.g., when editing corners)
  */
 const RotatableImage = memo(function RotatableImage({
     crop,
@@ -24,7 +25,8 @@ const RotatableImage = memo(function RotatableImage({
     isRotating,
     filterCss = 'none',
     containerInset = 0,
-    showCornerHandles = true
+    showCornerHandles = true,
+    hideRotationOverlay = false
 }) {
     const containerRef = useRef(null)
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
@@ -75,7 +77,9 @@ const RotatableImage = memo(function RotatableImage({
     }, [currentRotation, originalImage, isLoadingOriginal, crop.imageId])
 
     // Calculate rotation display data (pixel-based)
+    // Skip when editing corners to prevent overlap with corner handles
     const rotationDisplayData = useMemo(() => {
+        if (hideRotationOverlay) return null
         if (currentRotation === 0 || !originalImage) return null
 
         const containerWidth = containerSize.width || 100
@@ -104,7 +108,7 @@ const RotatableImage = memo(function RotatableImage({
             cropCenterX: (cropX + cropW / 2) * scaleX,
             cropCenterY: (cropY + cropH / 2) * scaleY
         }
-    }, [currentRotation, originalImage, containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
+    }, [hideRotationOverlay, currentRotation, originalImage, containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
 
     // Corner handle style (reusable)
     const cornerHandleStyle = {
