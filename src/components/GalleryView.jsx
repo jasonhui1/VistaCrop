@@ -26,7 +26,7 @@ function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
     return (
         <div className="glass-card flex-1 overflow-auto p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {crops.map(crop => (
+                {crops.slice().reverse().map(crop => (
                     <CropCard
                         key={crop.id}
                         crop={crop}
