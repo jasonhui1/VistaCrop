@@ -229,6 +229,47 @@ function ComposerView({ crops }) {
         e.dataTransfer.effectAllowed = 'copy'
     }, [])
 
+    // Handler for adding multiple crops at once (bulk selection)
+    const handleAddMultipleCrops = useCallback((cropIds) => {
+        const newItems = []
+        const itemSize = composition.pageWidth * 0.2
+        const padding = 20
+        const itemsPerRow = Math.floor(composition.pageWidth / (itemSize + padding))
+
+        cropIds.forEach((cropId, index) => {
+            const crop = crops.find(c => c.id === cropId)
+            if (!crop) return
+
+            const row = Math.floor(index / itemsPerRow)
+            const col = index % itemsPerRow
+
+            const cropAspectRatio = crop.width / crop.height
+            let width = itemSize
+            let height = width / cropAspectRatio
+
+            // Constrain height
+            if (height > itemSize) {
+                height = itemSize
+                width = height * cropAspectRatio
+            }
+
+            newItems.push({
+                id: Date.now() + index,
+                cropId,
+                x: padding + col * (itemSize + padding),
+                y: padding + row * (itemSize + padding),
+                width,
+                height,
+                objectFit: 'contain'
+            })
+        })
+
+        if (newItems.length > 0) {
+            setPlacedItems(prev => [...prev, ...newItems])
+            setSelectedItemId(newItems[newItems.length - 1].id)
+        }
+    }, [crops, composition.pageWidth, setPlacedItems])
+
     // === EXPORT HANDLER ===
     const handleExport = useCallback(async () => {
         await exportCanvas({ composition, panels, crops, mode, placedItems })
@@ -356,6 +397,7 @@ function ComposerView({ crops }) {
                 onUpdateItem={handleUpdateItem}
                 onDeleteItem={handleDeleteItem}
                 onCropDragStart={handleCropDragStart}
+                onAddMultipleCrops={handleAddMultipleCrops}
             />
 
             {/* Canvas Gallery Modal */}

@@ -39,10 +39,13 @@ function RightSidebar({
     crops,
     onUpdateItem,
     onDeleteItem,
-    onCropDragStart
+    onCropDragStart,
+    onAddMultipleCrops
 }) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedTags, setSelectedTags] = useState(new Set())
+    const [selectionMode, setSelectionMode] = useState(false)
+    const [selectedCropIds, setSelectedCropIds] = useState(new Set())
 
     // Collect all unique tags from all crops
     const allTags = useMemo(() => {
@@ -109,6 +112,43 @@ function RightSidebar({
     const clearFilters = () => {
         setSearchQuery('')
         setSelectedTags(new Set())
+    }
+
+    const toggleCropSelection = (cropId) => {
+        setSelectedCropIds(prev => {
+            const next = new Set(prev)
+            if (next.has(cropId)) {
+                next.delete(cropId)
+            } else {
+                next.add(cropId)
+            }
+            return next
+        })
+    }
+
+    const handleSelectAll = () => {
+        const allFilteredIds = filteredCrops.map(c => c.id)
+        setSelectedCropIds(new Set(allFilteredIds))
+    }
+
+    const handleDeselectAll = () => {
+        setSelectedCropIds(new Set())
+    }
+
+    const handleAddSelected = () => {
+        if (selectedCropIds.size > 0 && onAddMultipleCrops) {
+            onAddMultipleCrops(Array.from(selectedCropIds))
+            setSelectedCropIds(new Set())
+            setSelectionMode(false)
+        }
+    }
+
+    const toggleSelectionMode = () => {
+        if (selectionMode) {
+            // Exiting selection mode - clear selections
+            setSelectedCropIds(new Set())
+        }
+        setSelectionMode(!selectionMode)
     }
 
     const hasActiveFilters = searchQuery || selectedTags.size > 0
@@ -180,6 +220,49 @@ function RightSidebar({
                                 </p>
                             ) : (
                                 <>
+                                    {/* Selection Mode Toggle */}
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={toggleSelectionMode}
+                                            className={`flex-1 px-2 py-1.5 text-[10px] font-medium rounded transition-all ${selectionMode
+                                                    ? 'bg-purple-500 text-white'
+                                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
+                                                }`}
+                                        >
+                                            {selectionMode ? '✓ Select' : '☐ Select'}
+                                        </button>
+                                        {selectionMode && selectedCropIds.size > 0 && (
+                                            <button
+                                                onClick={handleAddSelected}
+                                                className="flex-1 px-2 py-1.5 text-[10px] font-medium rounded bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                                            >
+                                                Add {selectedCropIds.size}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Select All / Deselect All (in selection mode) */}
+                                    {selectionMode && filteredCrops.length > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px]">
+                                            <button
+                                                onClick={handleSelectAll}
+                                                className="text-purple-400 hover:text-purple-300"
+                                            >
+                                                All
+                                            </button>
+                                            <span className="text-[var(--text-muted)]">|</span>
+                                            <button
+                                                onClick={handleDeselectAll}
+                                                className="text-purple-400 hover:text-purple-300"
+                                            >
+                                                None
+                                            </button>
+                                            <span className="text-[var(--text-muted)] ml-auto">
+                                                {selectedCropIds.size} selected
+                                            </span>
+                                        </div>
+                                    )}
+
                                     {/* Compact Search */}
                                     <div className="relative">
                                         <svg
@@ -254,9 +337,15 @@ function RightSidebar({
                                                         {groupCrops.map((crop) => (
                                                             <div
                                                                 key={crop.id}
-                                                                draggable
-                                                                onDragStart={(e) => onCropDragStart(e, crop)}
-                                                                className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
+                                                                draggable={!selectionMode}
+                                                                onDragStart={(e) => !selectionMode && onCropDragStart(e, crop)}
+                                                                onClick={() => selectionMode && toggleCropSelection(crop.id)}
+                                                                className={`crop-drawer-item rounded-lg overflow-hidden border transition-colors ${selectionMode
+                                                                        ? selectedCropIds.has(crop.id)
+                                                                            ? 'border-purple-500 ring-2 ring-purple-500/30'
+                                                                            : 'border-[var(--border-color)] hover:border-purple-400 cursor-pointer'
+                                                                        : 'border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)]'
+                                                                    }`}
                                                             >
                                                                 <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
                                                                     <img
@@ -268,6 +357,19 @@ function RightSidebar({
                                                                         }}
                                                                         draggable={false}
                                                                     />
+                                                                    {/* Selection checkbox overlay */}
+                                                                    {selectionMode && (
+                                                                        <div className={`absolute top-1 left-1 w-5 h-5 rounded flex items-center justify-center ${selectedCropIds.has(crop.id)
+                                                                                ? 'bg-purple-500'
+                                                                                : 'bg-black/50'
+                                                                            }`}>
+                                                                            {selectedCropIds.has(crop.id) && (
+                                                                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                                                </svg>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                                 <div className="p-2 bg-[var(--bg-secondary)]">
                                                                     <span className="text-xs text-[var(--text-muted)]">
@@ -292,5 +394,6 @@ function RightSidebar({
 }
 
 export default memo(RightSidebar)
+
 
 
