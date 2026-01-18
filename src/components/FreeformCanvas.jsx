@@ -61,7 +61,7 @@ const ResizeHandles = memo(function ResizeHandles({ item, onMouseDown }) {
 })
 
 // ============================================================================
-// Rotation Ring Component
+// Rotation Ring Component (for original image rotation)
 // ============================================================================
 const RotationRing = memo(function RotationRing({ onMouseDown }) {
     return (
@@ -77,6 +77,50 @@ const RotationRing = memo(function RotationRing({ onMouseDown }) {
             }}
             onMouseDown={onMouseDown}
         />
+    )
+})
+
+// ============================================================================
+// Frame Rotation Handle Component (for selection box rotation)
+// ============================================================================
+const FrameRotationHandle = memo(function FrameRotationHandle({ onMouseDown, frameRotation }) {
+    return (
+        <div
+            className="frame-rotation-handle"
+            style={{
+                position: 'absolute',
+                top: -35,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 24,
+                height: 24,
+                backgroundColor: 'var(--accent-secondary, #10b981)',
+                borderRadius: '50%',
+                cursor: 'grab',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                border: '2px solid white'
+            }}
+            onMouseDown={onMouseDown}
+            title={`Frame rotation: ${Math.round(frameRotation || 0)}°`}
+        >
+            <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <path d="M21 12a9 9 0 0 0-9-9M21 3v9h-9" />
+                <path d="M3 12a9 9 0 0 0 9 9M3 21v-9h9" />
+            </svg>
+        </div>
     )
 })
 
@@ -399,7 +443,9 @@ const PlacedItem = memo(function PlacedItem({
     crop,
     isSelected,
     isRotating,
+    isFrameRotating,
     currentRotation,
+    currentFrameRotation,
     composition,
     filterCss,
     onMouseDown,
@@ -411,6 +457,9 @@ const PlacedItem = memo(function PlacedItem({
     const widthPct = (item.width / composition.pageWidth) * 100
     const heightPct = (item.height / composition.pageHeight) * 100
 
+    // Frame rotation (rotates the entire container/selection box)
+    const frameRotation = currentFrameRotation ?? item.frameRotation ?? 0
+
     const itemStyle = {
         position: 'absolute',
         left: `${leftPct}%`,
@@ -418,8 +467,10 @@ const PlacedItem = memo(function PlacedItem({
         width: `${widthPct}%`,
         height: `${heightPct}%`,
         boxSizing: 'border-box',
-        cursor: isRotating ? 'grabbing' : 'grab',
+        cursor: isRotating || isFrameRotating ? 'grabbing' : 'grab',
         zIndex: isSelected ? 10 : 1,
+        transform: frameRotation !== 0 ? `rotate(${frameRotation}deg)` : undefined,
+        transformOrigin: 'center center',
     }
 
     const imageContainerStyle = {
@@ -449,9 +500,17 @@ const PlacedItem = memo(function PlacedItem({
             onMouseDown={(e) => onMouseDown(e, item, 'move')}
             onClick={(e) => e.stopPropagation()}
         >
-            {/* Rotation ring - visible when selected */}
+            {/* Rotation ring for image rotation - visible when selected */}
             {isSelected && (
                 <RotationRing onMouseDown={(e) => onMouseDown(e, item, 'rotate')} />
+            )}
+
+            {/* Frame rotation handle - visible when selected */}
+            {isSelected && (
+                <FrameRotationHandle
+                    onMouseDown={(e) => onMouseDown(e, item, 'frame-rotate')}
+                    frameRotation={frameRotation}
+                />
             )}
 
             {/* Phone Mockup Frame */}
@@ -519,10 +578,11 @@ function FreeformCanvas({
     const canvasRef = useRef(null)
     const [dragState, setDragState] = useState(null)
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
-    const [rotatingItemId, setRotatingItemId] = useState(null)
-    const [localRotation, setLocalRotation] = useState(0)
-    const initialRotationRef = useRef({ angle: 0, startAngle: 0, centerX: 0, centerY: 0 })
     const [canvasResizeState, setCanvasResizeState] = useState(null)
+
+    // Rotation values during drag (not yet committed to item state)
+    const [imageRotation, setImageRotation] = useState(0)  // original image within crop
+    const [frameRotation, setFrameRotation] = useState(0)  // entire selection box
 
     // ========================================================================
     // Keyboard Event Handler
@@ -586,33 +646,37 @@ function FreeformCanvas({
         e.preventDefault()
         onSelectItem(item.id)
 
-        if (type === 'rotate') {
-            const itemElement = e.target.closest('.freeform-item')
-            if (!itemElement) return
-            const itemRect = itemElement.getBoundingClientRect()
-            const centerX = itemRect.left + itemRect.width / 2
-            const centerY = itemRect.top + itemRect.height / 2
-
-            const crop = crops.find(c => c.id === item.cropId)
-            const currentRotation = item.rotation ?? crop?.rotation ?? 0
-
-            const startAngle = Math.atan2(
-                e.clientY - centerY,
-                e.clientX - centerX
-            ) * (180 / Math.PI)
-
-            initialRotationRef.current = { angle: currentRotation, startAngle, centerX, centerY }
-            setRotatingItemId(item.id)
-            setLocalRotation(currentRotation)
-        }
-
-        setDragState({
+        // Base drag state
+        const baseDragState = {
             type,
             itemId: item.id,
             startX: e.clientX,
             startY: e.clientY,
             startItem: { ...item }
-        })
+        }
+
+        // For rotation types, add rotation-specific data
+        if (type === 'rotate' || type === 'frame-rotate') {
+            const itemElement = e.target.closest('.freeform-item')
+            if (!itemElement) return
+            const itemRect = itemElement.getBoundingClientRect()
+            const centerX = itemRect.left + itemRect.width / 2
+            const centerY = itemRect.top + itemRect.height / 2
+            const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
+
+            if (type === 'rotate') {
+                const crop = crops.find(c => c.id === item.cropId)
+                const currentRotation = item.rotation ?? crop?.rotation ?? 0
+                setImageRotation(currentRotation)
+                setDragState({ ...baseDragState, startAngle, centerX, centerY })
+            } else {
+                const currentFrameRotation = item.frameRotation ?? 0
+                setFrameRotation(currentFrameRotation)
+                setDragState({ ...baseDragState, startAngle, centerX, centerY })
+            }
+        } else {
+            setDragState(baseDragState)
+        }
     }, [onSelectItem, crops])
 
     const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
@@ -640,17 +704,34 @@ function FreeformCanvas({
         const deltaY = ((e.clientY - dragState.startY) / rect.height) * composition.pageHeight
         const updateFn = onUpdateItemSilent || onUpdateItem
 
-        // Handle rotation
+        // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
-            const { centerX, centerY, startAngle, angle } = initialRotationRef.current
+            const { centerX, centerY, startAngle, startItem } = dragState
+            const crop = crops.find(c => c.id === startItem.cropId)
+            const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
-            let newRotation = angle + (currentAngle - startAngle)
+            let newRotation = initialAngle + (currentAngle - startAngle)
 
             // Normalize to -180 to 180
             while (newRotation > 180) newRotation -= 360
             while (newRotation < -180) newRotation += 360
 
-            setLocalRotation(newRotation)
+            setImageRotation(newRotation)
+            return
+        }
+
+        // Handle frame rotation (rotating the entire selection box)
+        if (dragState.type === 'frame-rotate') {
+            const { centerX, centerY, startAngle, startItem } = dragState
+            const initialAngle = startItem.frameRotation ?? 0
+            const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
+            let newRotation = initialAngle + (currentAngle - startAngle)
+
+            // Normalize to -180 to 180
+            while (newRotation > 180) newRotation -= 360
+            while (newRotation < -180) newRotation += 360
+
+            setFrameRotation(newRotation)
             return
         }
 
@@ -710,20 +791,23 @@ function FreeformCanvas({
     // Mouse Up Handler
     // ========================================================================
     const handleMouseUp = useCallback(() => {
-        if (dragState?.type === 'rotate' && rotatingItemId) {
-            const item = placedItems.find(i => i.id === rotatingItemId)
-            if (item) {
-                const crop = crops.find(c => c.id === item.cropId)
-                if (crop) {
-                    onUpdateItem(rotatingItemId, { rotation: localRotation })
-                }
-            }
-        } else if (dragState && (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner')) {
+        if (!dragState) return
+
+        // Handle image rotation end - commit value to item state
+        if (dragState.type === 'rotate') {
+            onUpdateItem(dragState.itemId, { rotation: imageRotation })
+        }
+        // Handle frame rotation end - commit value to item state
+        else if (dragState.type === 'frame-rotate') {
+            onUpdateItem(dragState.itemId, { frameRotation: frameRotation })
+        }
+        // Handle other drag operations
+        else if (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner') {
             onDragEnd?.()
         }
+
         setDragState(null)
-        setRotatingItemId(null)
-    }, [dragState, rotatingItemId, localRotation, placedItems, crops, onUpdateItem, onDragEnd])
+    }, [dragState, imageRotation, frameRotation, onUpdateItem, onDragEnd])
 
     // ========================================================================
     // Canvas Resize Handlers
@@ -841,8 +925,11 @@ function FreeformCanvas({
                         if (!crop) return null
 
                         const isSelected = selectedItemId === item.id
-                        const isRotating = rotatingItemId === item.id
-                        const currentRotation = isRotating ? localRotation : (item.rotation ?? crop.rotation ?? 0)
+                        // Derive rotation state from dragState - no separate ID tracking needed
+                        const isDraggingImageRotation = dragState?.type === 'rotate' && dragState?.itemId === item.id
+                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && dragState?.itemId === item.id
+                        const currentRotation = isDraggingImageRotation ? imageRotation : (item.rotation ?? crop.rotation ?? 0)
+                        const currentFrameRotation = isDraggingFrameRotation ? frameRotation : item.frameRotation
 
                         return (
                             <PlacedItem
@@ -850,8 +937,10 @@ function FreeformCanvas({
                                 item={item}
                                 crop={crop}
                                 isSelected={isSelected}
-                                isRotating={isRotating}
+                                isRotating={isDraggingImageRotation}
+                                isFrameRotating={isDraggingFrameRotation}
                                 currentRotation={currentRotation}
+                                currentFrameRotation={currentFrameRotation}
                                 composition={composition}
                                 filterCss={getFilterStyle(crop.filter)}
                                 onMouseDown={handleItemMouseDown}

@@ -252,7 +252,37 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                 </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Frame Rotation Control */}
+            <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
+                <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-[var(--text-muted)]">Frame Rotation</label>
+                    {(selectedItem.frameRotation ?? 0) !== 0 && (
+                        <button
+                            onClick={() => onUpdateItem(selectedItem.id, { frameRotation: 0 })}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                            title="Reset frame rotation"
+                        >
+                            Reset
+                        </button>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        step="1"
+                        value={selectedItem.frameRotation ?? 0}
+                        onChange={(e) => onUpdateItem(selectedItem.id, { frameRotation: parseFloat(e.target.value) })}
+                        className="flex-1"
+                    />
+                    <span className="text-xs text-[var(--text-secondary)] w-10 text-right">
+                        {Math.round(selectedItem.frameRotation ?? 0)}°
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-2">
                 <label className="text-xs text-[var(--text-muted)]">Fit:</label>
                 <select
                     value={selectedItem.objectFit || 'contain'}

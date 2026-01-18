@@ -87,11 +87,11 @@ function ComposerView({ crops }) {
 
     // === EFFECTS ===
     // Auto-switch tab based on selection state
-    useEffect(() => {
-        if (mode === 'freeform') {
-            setRightSidebarTab(selectedItemId ? 'selected' : 'crops')
-        }
-    }, [selectedItemId, mode])
+    // useEffect(() => {
+    //     if (mode === 'freeform') {
+    //         setRightSidebarTab(selectedItemId ? 'selected' : 'crops')
+    //     }
+    // }, [selectedItemId, mode])
 
     // === COMPOSITION HANDLERS ===
     const handleLayoutChange = useCallback((layoutId) => {
