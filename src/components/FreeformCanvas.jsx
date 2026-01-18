@@ -761,10 +761,26 @@ function FreeformCanvas({
             const crop = crops.find(c => c.id === startItem.cropId)
             if (!crop) return
 
-            // Calculate delta in original image pixel space
-            // The movement in screen pixels needs to be converted to original image pixels
+            // Calculate delta in screen pixels
             const screenDeltaX = e.clientX - dragState.startX
             const screenDeltaY = e.clientY - dragState.startY
+
+            // Get the frame rotation to compensate for it
+            // Frame rotation rotates the whole frame, so we need to un-rotate screen delta
+            // Image rotation is applied as -imageRotation in the transform, and the offset
+            // is applied in the pre-rotated image space, so we need to account for that too
+            const frameRotation = startItem.frameRotation ?? 0
+            const imageRotation = startItem.rotation ?? crop.rotation ?? 0
+            // The offset is applied before the image rotation (-imageRotation),
+            // so we need to rotate screen delta by -(frameRotation) to get into frame space,
+            // then by +imageRotation to get into the original image's pre-rotation space
+            const totalRotationRad = ((frameRotation - imageRotation) * Math.PI) / 180
+            const cos = Math.cos(-totalRotationRad)
+            const sin = Math.sin(-totalRotationRad)
+
+            // Apply inverse rotation to get delta in image-aligned space
+            const rotatedDeltaX = screenDeltaX * cos - screenDeltaY * sin
+            const rotatedDeltaY = screenDeltaX * sin + screenDeltaY * cos
 
             // Scale from screen pixels to original image pixels based on crop size
             // The item's display size represents the crop's width/height
@@ -779,8 +795,8 @@ function FreeformCanvas({
             const initialOffsetY = startItem.cropOffsetY ?? 0
 
             // Invert the delta so moving right reveals more of the left side of the image
-            const newOffsetX = initialOffsetX - screenDeltaX * scaleToOriginalX
-            const newOffsetY = initialOffsetY - screenDeltaY * scaleToOriginalY
+            const newOffsetX = initialOffsetX - rotatedDeltaX * scaleToOriginalX
+            const newOffsetY = initialOffsetY - rotatedDeltaY * scaleToOriginalY
 
             setCropOffset({ x: newOffsetX, y: newOffsetY })
             return
