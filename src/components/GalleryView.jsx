@@ -1,6 +1,63 @@
+import { useState, useMemo } from 'react'
 import CropCard from './CropCard'
 
 function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
+    const [searchQuery, setSearchQuery] = useState('')
+    const [selectedTags, setSelectedTags] = useState(new Set())
+
+    // Collect all unique tags from all crops
+    const allTags = useMemo(() => {
+        const tagSet = new Set()
+        crops.forEach(crop => {
+            (crop.tags || []).forEach(tag => tagSet.add(tag))
+        })
+        return Array.from(tagSet).sort()
+    }, [crops])
+
+    // Filter crops based on search query and selected tags
+    const filteredCrops = useMemo(() => {
+        return crops.filter(crop => {
+            // Search filter: match notes or tags
+            const query = searchQuery.toLowerCase().trim()
+            if (query) {
+                const matchesNotes = (crop.notes || '').toLowerCase().includes(query)
+                const matchesTags = (crop.tags || []).some(tag =>
+                    tag.toLowerCase().includes(query)
+                )
+                if (!matchesNotes && !matchesTags) return false
+            }
+
+            // Tag filter: crop must have at least one selected tag (OR logic)
+            if (selectedTags.size > 0) {
+                const hasSelectedTag = (crop.tags || []).some(tag =>
+                    selectedTags.has(tag)
+                )
+                if (!hasSelectedTag) return false
+            }
+
+            return true
+        })
+    }, [crops, searchQuery, selectedTags])
+
+    const toggleTag = (tag) => {
+        setSelectedTags(prev => {
+            const next = new Set(prev)
+            if (next.has(tag)) {
+                next.delete(tag)
+            } else {
+                next.add(tag)
+            }
+            return next
+        })
+    }
+
+    const clearFilters = () => {
+        setSearchQuery('')
+        setSelectedTags(new Set())
+    }
+
+    const hasActiveFilters = searchQuery || selectedTags.size > 0
+
     if (crops.length === 0) {
         return (
             <div className="glass-card flex-1 flex flex-col items-center justify-center gap-6">
@@ -24,17 +81,90 @@ function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
     }
 
     return (
-        <div className="glass-card flex-1 overflow-auto p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {crops.slice().reverse().map(crop => (
-                    <CropCard
-                        key={crop.id}
-                        crop={crop}
-                        onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
-                        onDelete={() => onDeleteCrop(crop.id)}
-                    />
-                ))}
+        <div className="glass-card flex-1 overflow-auto p-6 flex flex-col gap-4">
+            {/* Search and Filter Bar */}
+            <div className="flex flex-col gap-3">
+                {/* Search Input */}
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1 max-w-md">
+                        <svg
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search crops by notes or tags..."
+                            className="w-full pr-4 py-2 text-sm"
+                            style={{ paddingLeft: '2.5rem' }}
+                        />
+                    </div>
+                    {hasActiveFilters && (
+                        <button
+                            onClick={clearFilters}
+                            className="px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-white bg-[var(--bg-tertiary)] hover:bg-[var(--bg-tertiary)]/80 rounded-lg transition-colors"
+                        >
+                            Clear
+                        </button>
+                    )}
+                    <span className="text-sm text-[var(--text-muted)]">
+                        {filteredCrops.length} of {crops.length} crops
+                    </span>
+                </div>
+
+                {/* Tag Filter Chips */}
+                {allTags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Tags:</span>
+                        {allTags.map(tag => (
+                            <button
+                                key={tag}
+                                onClick={() => toggleTag(tag)}
+                                className={`px-3 py-1 text-xs rounded-full transition-all ${selectedTags.has(tag)
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-tertiary)]/80'
+                                    }`}
+                            >
+                                {tag}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
+
+            {/* Crops Grid */}
+            {filteredCrops.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                        <svg className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <p className="text-[var(--text-secondary)]">No crops match your filters</p>
+                        <button
+                            onClick={clearFilters}
+                            className="mt-2 text-sm text-purple-400 hover:text-purple-300"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredCrops.slice().reverse().map(crop => (
+                        <CropCard
+                            key={crop.id}
+                            crop={crop}
+                            onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
+                            onDelete={() => onDeleteCrop(crop.id)}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
