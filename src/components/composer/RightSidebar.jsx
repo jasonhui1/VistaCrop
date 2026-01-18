@@ -1,6 +1,30 @@
 import { memo, useState, useMemo } from 'react'
 import SelectedItemControls from './SelectedItemControls'
 
+// Helper to determine which date group a timestamp belongs to
+function getDateGroup(timestamp) {
+    const now = new Date()
+    const date = new Date(timestamp)
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const weekAgo = new Date(today)
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    const monthAgo = new Date(today)
+    monthAgo.setDate(monthAgo.getDate() - 30)
+
+    const cropDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+    if (cropDate >= today) return 'Today'
+    if (cropDate >= yesterday) return 'Yesterday'
+    if (cropDate >= weekAgo) return 'This Week'
+    if (cropDate >= monthAgo) return 'This Month'
+    return 'Older'
+}
+
+const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+
 /**
  * Right sidebar component for Composer view
  * Contains tabs for Crops list and Selected item controls
@@ -51,6 +75,24 @@ function RightSidebar({
             return true
         })
     }, [crops, searchQuery, selectedTags])
+
+    // Group filtered crops by date
+    const groupedCrops = useMemo(() => {
+        const groups = {}
+        const sortedCrops = [...filteredCrops].sort((a, b) => b.id - a.id)
+
+        for (const crop of sortedCrops) {
+            const group = getDateGroup(crop.id)
+            if (!groups[group]) {
+                groups[group] = []
+            }
+            groups[group].push(crop)
+        }
+
+        return DATE_GROUP_ORDER
+            .filter(group => groups[group]?.length > 0)
+            .map(group => [group, groups[group]])
+    }, [filteredCrops])
 
     const toggleTag = (tag) => {
         setSelectedTags(prev => {
@@ -191,35 +233,49 @@ function RightSidebar({
                                         </div>
                                     )}
 
-                                    {/* Crops */}
+                                    {/* Crops with Date Groups */}
                                     {filteredCrops.length === 0 ? (
                                         <p className="text-xs text-[var(--text-muted)] text-center py-4">
                                             No matches
                                         </p>
                                     ) : (
-                                        <div className="flex flex-col gap-2">
-                                            {filteredCrops.slice().reverse().map((crop) => (
-                                                <div
-                                                    key={crop.id}
-                                                    draggable
-                                                    onDragStart={(e) => onCropDragStart(e, crop)}
-                                                    className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
-                                                >
-                                                    <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
-                                                        <img
-                                                            src={crop.imageData}
-                                                            alt=""
-                                                            className="w-full h-full object-cover"
-                                                            style={{
-                                                                transform: `rotate(${crop.rotation || 0}deg)`
-                                                            }}
-                                                            draggable={false}
-                                                        />
-                                                    </div>
-                                                    <div className="p-2 bg-[var(--bg-secondary)]">
-                                                        <span className="text-xs text-[var(--text-muted)]">
-                                                            {crop.width} × {crop.height}
+                                        <div className="flex flex-col gap-3">
+                                            {groupedCrops.map(([groupName, groupCrops]) => (
+                                                <div key={groupName}>
+                                                    {/* Compact Date Group Header */}
+                                                    <div className="flex items-center gap-1 mb-2">
+                                                        <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase">
+                                                            {groupName}
                                                         </span>
+                                                        <div className="flex-1 h-px bg-[var(--border-color)]"></div>
+                                                    </div>
+                                                    {/* Crops in this group */}
+                                                    <div className="flex flex-col gap-2">
+                                                        {groupCrops.map((crop) => (
+                                                            <div
+                                                                key={crop.id}
+                                                                draggable
+                                                                onDragStart={(e) => onCropDragStart(e, crop)}
+                                                                className="crop-drawer-item rounded-lg overflow-hidden border border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)] transition-colors"
+                                                            >
+                                                                <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
+                                                                    <img
+                                                                        src={crop.imageData}
+                                                                        alt=""
+                                                                        className="w-full h-full object-cover"
+                                                                        style={{
+                                                                            transform: `rotate(${crop.rotation || 0}deg)`
+                                                                        }}
+                                                                        draggable={false}
+                                                                    />
+                                                                </div>
+                                                                <div className="p-2 bg-[var(--bg-secondary)]">
+                                                                    <span className="text-xs text-[var(--text-muted)]">
+                                                                        {crop.width} × {crop.height}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             ))}
@@ -236,4 +292,5 @@ function RightSidebar({
 }
 
 export default memo(RightSidebar)
+
 

@@ -1,6 +1,31 @@
 import { useState, useMemo } from 'react'
 import CropCard from './CropCard'
 
+// Helper to determine which date group a timestamp belongs to
+function getDateGroup(timestamp) {
+    const now = new Date()
+    const date = new Date(timestamp)
+
+    // Reset time parts for day comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const weekAgo = new Date(today)
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    const monthAgo = new Date(today)
+    monthAgo.setDate(monthAgo.getDate() - 30)
+
+    const cropDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+    if (cropDate >= today) return 'Today'
+    if (cropDate >= yesterday) return 'Yesterday'
+    if (cropDate >= weekAgo) return 'This Week'
+    if (cropDate >= monthAgo) return 'This Month'
+    return 'Older'
+}
+
+const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+
 function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedTags, setSelectedTags] = useState(new Set())
@@ -38,6 +63,27 @@ function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
             return true
         })
     }, [crops, searchQuery, selectedTags])
+
+    // Group filtered crops by date
+    const groupedCrops = useMemo(() => {
+        const groups = {}
+
+        // Sort by newest first, then group
+        const sortedCrops = [...filteredCrops].sort((a, b) => b.id - a.id)
+
+        for (const crop of sortedCrops) {
+            const group = getDateGroup(crop.id)
+            if (!groups[group]) {
+                groups[group] = []
+            }
+            groups[group].push(crop)
+        }
+
+        // Return as ordered array of [groupName, crops[]]
+        return DATE_GROUP_ORDER
+            .filter(group => groups[group]?.length > 0)
+            .map(group => [group, groups[group]])
+    }, [filteredCrops])
 
     const toggleTag = (tag) => {
         setSelectedTags(prev => {
@@ -137,7 +183,7 @@ function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
                 )}
             </div>
 
-            {/* Crops Grid */}
+            {/* Crops Grid with Date Groups */}
             {filteredCrops.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
@@ -154,14 +200,31 @@ function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredCrops.slice().reverse().map(crop => (
-                        <CropCard
-                            key={crop.id}
-                            crop={crop}
-                            onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
-                            onDelete={() => onDeleteCrop(crop.id)}
-                        />
+                <div className="flex flex-col gap-6">
+                    {groupedCrops.map(([groupName, groupCrops]) => (
+                        <div key={groupName}>
+                            {/* Date Group Header */}
+                            <div className="flex items-center gap-3 mb-4">
+                                <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                    {groupName}
+                                </h3>
+                                <div className="flex-1 h-px bg-[var(--border-color)]"></div>
+                                <span className="text-xs text-[var(--text-muted)]">
+                                    {groupCrops.length} {groupCrops.length === 1 ? 'crop' : 'crops'}
+                                </span>
+                            </div>
+                            {/* Crops in this group */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {groupCrops.map(crop => (
+                                    <CropCard
+                                        key={crop.id}
+                                        crop={crop}
+                                        onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
+                                        onDelete={() => onDeleteCrop(crop.id)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
