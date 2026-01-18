@@ -218,7 +218,8 @@ function App() {
         </div>
 
         {/* Upload Button */}
-        <ImageUploader onImageUpload={handleImageUpload} />
+        {/* <ImageUploader onImageUpload={handleImageUpload} /> */}
+        <div></div>
       </header>
 
       {/* Main Content */}
