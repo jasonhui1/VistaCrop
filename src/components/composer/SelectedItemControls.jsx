@@ -282,6 +282,27 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                 </div>
             </div>
 
+            {/* Crop Position Control */}
+            {((selectedItem.cropOffsetX ?? 0) !== 0 || (selectedItem.cropOffsetY ?? 0) !== 0) && (
+                <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs text-[var(--text-muted)]">Crop Position</label>
+                        <button
+                            onClick={() => onUpdateItem(selectedItem.id, { cropOffsetX: 0, cropOffsetY: 0 })}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                            title="Reset crop position"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-[var(--text-muted)]">
+                        Offset: {Math.round(selectedItem.cropOffsetX ?? 0)}, {Math.round(selectedItem.cropOffsetY ?? 0)}
+                        <br />
+                        <span className="opacity-70">Ctrl+drag to adjust</span>
+                    </p>
+                </div>
+            )}
+
             <div className="flex items-center gap-2 mt-2">
                 <label className="text-xs text-[var(--text-muted)]">Fit:</label>
                 <select

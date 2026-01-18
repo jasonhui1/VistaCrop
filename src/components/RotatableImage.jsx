@@ -26,7 +26,10 @@ const RotatableImage = memo(function RotatableImage({
     filterCss = 'none',
     containerInset = 0,
     showCornerHandles = true,
-    hideRotationOverlay = false
+    hideRotationOverlay = false,
+    cropOffsetX = 0,
+    cropOffsetY = 0,
+    isPanning = false
 }) {
     const containerRef = useRef(null)
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
@@ -79,9 +82,8 @@ const RotatableImage = memo(function RotatableImage({
     // Calculate rotation display data (pixel-based)
     // When hideRotationOverlay is true, we still need the data to render the rotated image correctly
     // We just hide the overlay UI elements (dark background, selection box, corner handles)
-    const rotationDisplayData = useMemo(() => {
-        if (currentRotation === 0 || !originalImage) return null
-
+    // Calculate display data for both rotation and panning
+    const displayData = useMemo(() => {
         const containerWidth = containerSize.width || 100
         const containerHeight = containerSize.height || 100
 
@@ -95,8 +97,8 @@ const RotatableImage = memo(function RotatableImage({
 
         const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
         const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
-        const cropX = crop.x || 0
-        const cropY = crop.y || 0
+        const cropX = (crop.x || 0) + cropOffsetX
+        const cropY = (crop.y || 0) + cropOffsetY
         const cropW = crop.width || 100
         const cropH = crop.height || 100
 
@@ -106,9 +108,34 @@ const RotatableImage = memo(function RotatableImage({
             offsetX: -cropX * scaleX,
             offsetY: -cropY * scaleY,
             cropCenterX: (cropX + cropW / 2) * scaleX,
-            cropCenterY: (cropY + cropH / 2) * scaleY
+            cropCenterY: (cropY + cropH / 2) * scaleY,
+            scaleX,
+            scaleY
         }
-    }, [currentRotation, originalImage, containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight])
+    }, [containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight, cropOffsetX, cropOffsetY])
+
+    // Determine if we need to show the original image (rotation or panning with offset)
+    const showOriginalImage = (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0) && originalImage
+
+    // For panning preview, also load original image
+    useEffect(() => {
+        if ((cropOffsetX !== 0 || cropOffsetY !== 0) && !originalImage && !isLoadingOriginal && crop.imageId) {
+            const loadImage = async () => {
+                setIsLoadingOriginal(true)
+                try {
+                    const imageData = await getImage(crop.imageId)
+                    if (imageData && imageData.data) {
+                        setOriginalImage(imageData.data)
+                    }
+                } catch (error) {
+                    console.error('Failed to lazy-load original image for panning:', error)
+                } finally {
+                    setIsLoadingOriginal(false)
+                }
+            }
+            loadImage()
+        }
+    }, [cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
 
     // Corner handle style (reusable)
     const cornerHandleStyle = {
@@ -152,11 +179,11 @@ const RotatableImage = memo(function RotatableImage({
                 </div>
             )}
 
-            {/* When rotating with original image available, show original behind selection */}
-            {rotationDisplayData ? (
+            {/* When rotating or panning with original image available, show original behind selection */}
+            {showOriginalImage ? (
                 <>
-                    {/* Dark overlay - hide when editing corners */}
-                    {!hideRotationOverlay && (
+                    {/* Dark overlay - hide when editing corners or just panning */}
+                    {!hideRotationOverlay && currentRotation !== 0 && (
                         <div
                             style={{
                                 position: 'absolute',
@@ -168,31 +195,44 @@ const RotatableImage = memo(function RotatableImage({
                         />
                     )}
 
-                    {/* Selection box that clips the rotated original image */}
+                    {/* Selection box that clips the rotated/panned original image */}
                     <div
                         style={{
                             position: 'absolute',
                             inset: containerInset,
                             overflow: 'hidden',
-                            // Only show selection styling when not hiding overlay
-                            ...(hideRotationOverlay ? {} : {
+                            // Only show selection styling when rotating and not hiding overlay
+                            ...((hideRotationOverlay || currentRotation === 0) ? {} : {
                                 outline: '2px solid #a855f7',
                                 boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
                             }),
+                            // Show panning indicator border
+                            ...(isPanning ? {
+                                outline: '2px solid var(--accent-secondary, #10b981)',
+                                boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.3)'
+                            } : {}),
                             zIndex: 2
                         }}
                     >
-                        {/* Original image that rotates - using PIXEL values */}
+                        {/* Original image that rotates/pans - using PIXEL values */}
                         <div
                             style={{
                                 position: 'absolute',
-                                left: rotationDisplayData.offsetX,
-                                top: rotationDisplayData.offsetY,
-                                width: rotationDisplayData.displayedOrigWidth,
-                                height: rotationDisplayData.displayedOrigHeight,
-                                transform: `rotate(${-currentRotation}deg)`,
-                                transformOrigin: `${rotationDisplayData.cropCenterX}px ${rotationDisplayData.cropCenterY}px`,
-                                transition: isRotating ? 'none' : 'transform 0.15s ease-out'
+                                left: 0,
+                                top: 0,
+                                width: displayData.displayedOrigWidth,
+                                height: displayData.displayedOrigHeight,
+                                // Use translate for GPU-accelerated positioning, combined with rotation
+                                transform: currentRotation !== 0
+                                    ? `translate(${displayData.offsetX}px, ${displayData.offsetY}px) rotate(${-currentRotation}deg)`
+                                    : `translate(${displayData.offsetX}px, ${displayData.offsetY}px)`,
+                                transformOrigin: currentRotation !== 0
+                                    ? `${displayData.cropCenterX - displayData.offsetX}px ${displayData.cropCenterY - displayData.offsetY}px`
+                                    : undefined,
+                                // No transition during active rotation or panning for instant feedback
+                                transition: (isRotating || isPanning) ? 'none' : 'transform 0.15s ease-out',
+                                // Use will-change for GPU acceleration during active panning/rotation
+                                willChange: (isPanning || isRotating) ? 'transform' : 'auto'
                             }}
                         >
                             <img
@@ -208,8 +248,8 @@ const RotatableImage = memo(function RotatableImage({
                             />
                         </div>
 
-                        {/* Corner handles inside selection - hide when editing custom corners */}
-                        {showCornerHandles && !hideRotationOverlay && (
+                        {/* Corner handles inside selection - hide when editing custom corners or panning */}
+                        {showCornerHandles && !hideRotationOverlay && !isPanning && currentRotation !== 0 && (
                             <>
                                 <div style={{ ...cornerHandleStyle, top: -2, left: -2 }} />
                                 <div style={{ ...cornerHandleStyle, top: -2, right: -2 }} />

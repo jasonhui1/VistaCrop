@@ -444,8 +444,10 @@ const PlacedItem = memo(function PlacedItem({
     isSelected,
     isRotating,
     isFrameRotating,
+    isPanning,
     currentRotation,
     currentFrameRotation,
+    currentCropOffset,
     composition,
     filterCss,
     onMouseDown,
@@ -490,6 +492,9 @@ const PlacedItem = memo(function PlacedItem({
             isRotating={isRotating}
             filterCss={filterCss}
             hideRotationOverlay={isEditingCorners}
+            cropOffsetX={currentCropOffset?.x ?? item.cropOffsetX ?? 0}
+            cropOffsetY={currentCropOffset?.y ?? item.cropOffsetY ?? 0}
+            isPanning={isPanning}
         />
     )
 
@@ -583,6 +588,8 @@ function FreeformCanvas({
     // Rotation values during drag (not yet committed to item state)
     const [imageRotation, setImageRotation] = useState(0)  // original image within crop
     const [frameRotation, setFrameRotation] = useState(0)  // entire selection box
+    // Crop offset values during Ctrl+drag (panning within original image)
+    const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 })
 
     // ========================================================================
     // Keyboard Event Handler
@@ -646,13 +653,26 @@ function FreeformCanvas({
         e.preventDefault()
         onSelectItem(item.id)
 
+        // Check if Ctrl is held for crop panning (only during move)
+        const actualType = (type === 'move' && e.ctrlKey) ? 'crop-pan' : type
+
         // Base drag state
         const baseDragState = {
-            type,
+            type: actualType,
             itemId: item.id,
             startX: e.clientX,
             startY: e.clientY,
             startItem: { ...item }
+        }
+
+        // For crop-pan, initialize offset from item
+        if (actualType === 'crop-pan') {
+            setCropOffset({
+                x: item.cropOffsetX ?? 0,
+                y: item.cropOffsetY ?? 0
+            })
+            setDragState(baseDragState)
+            return
         }
 
         // For rotation types, add rotation-specific data
@@ -735,6 +755,37 @@ function FreeformCanvas({
             return
         }
 
+        // Handle crop panning (Ctrl+drag to shift crop position within original image)
+        if (dragState.type === 'crop-pan') {
+            const { startItem } = dragState
+            const crop = crops.find(c => c.id === startItem.cropId)
+            if (!crop) return
+
+            // Calculate delta in original image pixel space
+            // The movement in screen pixels needs to be converted to original image pixels
+            const screenDeltaX = e.clientX - dragState.startX
+            const screenDeltaY = e.clientY - dragState.startY
+
+            // Scale from screen pixels to original image pixels based on crop size
+            // The item's display size represents the crop's width/height
+            const item = placedItems.find(i => i.id === dragState.itemId)
+            if (!item) return
+            const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
+            const itemDisplayHeight = (item.height / composition.pageHeight) * rect.height
+            const scaleToOriginalX = crop.width / itemDisplayWidth
+            const scaleToOriginalY = crop.height / itemDisplayHeight
+
+            const initialOffsetX = startItem.cropOffsetX ?? 0
+            const initialOffsetY = startItem.cropOffsetY ?? 0
+
+            // Invert the delta so moving right reveals more of the left side of the image
+            const newOffsetX = initialOffsetX - screenDeltaX * scaleToOriginalX
+            const newOffsetY = initialOffsetY - screenDeltaY * scaleToOriginalY
+
+            setCropOffset({ x: newOffsetX, y: newOffsetY })
+            return
+        }
+
         // Handle move
         if (dragState.type === 'move') {
             updateFn(dragState.itemId, {
@@ -801,13 +852,20 @@ function FreeformCanvas({
         else if (dragState.type === 'frame-rotate') {
             onUpdateItem(dragState.itemId, { frameRotation: frameRotation })
         }
+        // Handle crop pan end - commit offset to item state
+        else if (dragState.type === 'crop-pan') {
+            onUpdateItem(dragState.itemId, {
+                cropOffsetX: cropOffset.x,
+                cropOffsetY: cropOffset.y
+            })
+        }
         // Handle other drag operations
         else if (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner') {
             onDragEnd?.()
         }
 
         setDragState(null)
-    }, [dragState, imageRotation, frameRotation, onUpdateItem, onDragEnd])
+    }, [dragState, imageRotation, frameRotation, cropOffset, onUpdateItem, onDragEnd])
 
     // ========================================================================
     // Canvas Resize Handlers
@@ -928,8 +986,10 @@ function FreeformCanvas({
                         // Derive rotation state from dragState - no separate ID tracking needed
                         const isDraggingImageRotation = dragState?.type === 'rotate' && dragState?.itemId === item.id
                         const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && dragState?.itemId === item.id
+                        const isDraggingCropPan = dragState?.type === 'crop-pan' && dragState?.itemId === item.id
                         const currentRotation = isDraggingImageRotation ? imageRotation : (item.rotation ?? crop.rotation ?? 0)
                         const currentFrameRotation = isDraggingFrameRotation ? frameRotation : item.frameRotation
+                        const currentCropOffset = isDraggingCropPan ? cropOffset : null
 
                         return (
                             <PlacedItem
@@ -939,8 +999,10 @@ function FreeformCanvas({
                                 isSelected={isSelected}
                                 isRotating={isDraggingImageRotation}
                                 isFrameRotating={isDraggingFrameRotation}
+                                isPanning={isDraggingCropPan}
                                 currentRotation={currentRotation}
                                 currentFrameRotation={currentFrameRotation}
+                                currentCropOffset={currentCropOffset}
                                 composition={composition}
                                 filterCss={getFilterStyle(crop.filter)}
                                 onMouseDown={handleItemMouseDown}
