@@ -143,12 +143,18 @@ export async function createCanvas(options = {}) {
  * @param {string} canvasId - The ID of the canvas
  * @param {Object} composition - Canvas composition settings
  * @param {Array} placedItems - Array of placed items in freeform mode
+ * @param {string} [thumbnail] - Optional base64 thumbnail preview image
  */
-export async function saveCanvas(canvasId, composition, placedItems) {
+export async function saveCanvas(canvasId, composition, placedItems, thumbnail = null) {
+    const body = { composition, placedItems, updatedAt: Date.now() }
+    if (thumbnail) {
+        body.thumbnail = thumbnail
+    }
+
     const response = await fetch(`${API_BASE_URL}/canvas/${canvasId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ composition, placedItems, updatedAt: Date.now() })
+        body: JSON.stringify(body)
     });
 
     if (!response.ok) {

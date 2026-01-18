@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
+import { loadThumbnail } from '@/lib/thumbnailDb';
 
 export async function GET() {
     const db = readDb();
-    return NextResponse.json(db.canvases || []);
+    const canvases = db.canvases || [];
+
+    // Load thumbnail data for each canvas
+    const canvasesWithThumbnails = canvases.map(canvas => {
+        if (canvas.thumbnailPath) {
+            return {
+                ...canvas,
+                thumbnail: loadThumbnail(canvas.thumbnailPath)
+            };
+        }
+        return canvas;
+    });
+
+    return NextResponse.json(canvasesWithThumbnails);
 }
 
 export async function POST(request) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
-import { LeftSidebar, RightSidebar, CanvasToolbar } from './composer'
+import { LeftSidebar, RightSidebar, CanvasToolbar, CanvasGallery } from './composer'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useCanvasPersistence } from '../hooks/useCanvasPersistence'
@@ -14,7 +14,7 @@ import {
     changeCompositionLayout,
     PAGE_PRESETS
 } from '../utils/panelLayouts'
-import { exportCanvas } from '../utils/exportCanvas'
+import { exportCanvas, generateThumbnail } from '../utils/exportCanvas'
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
@@ -47,6 +47,7 @@ function ComposerView({ crops }) {
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
     const [editingCanvasSize, setEditingCanvasSize] = useState(false)
     const [rightSidebarTab, setRightSidebarTab] = useState('crops')
+    const [showGallery, setShowGallery] = useState(false)
 
     // === CANVAS PERSISTENCE ===
     const handleLoadState = useCallback((canvasData) => {
@@ -57,11 +58,22 @@ function ComposerView({ crops }) {
         setSelectedPanelIndex(null)
     }, [resetPlacedItems])
 
+    // Thumbnail generator for canvas previews
+    const getThumbnail = useCallback(async () => {
+        return generateThumbnail({
+            composition,
+            placedItems,
+            crops,
+            mode
+        })
+    }, [composition, placedItems, crops, mode])
+
     const persistence = useCanvasPersistence({
         composition,
         placedItems,
         mode,
-        onLoadState: handleLoadState
+        onLoadState: handleLoadState,
+        getThumbnail
     })
 
     // === DERIVED STATE ===
@@ -265,12 +277,8 @@ function ComposerView({ crops }) {
                     canvasId={persistence.canvasId}
                     isSaving={persistence.isSaving}
                     isLoading={persistence.isLoading}
-                    savedCanvases={persistence.savedCanvases}
-                    showLoadMenu={persistence.showLoadMenu}
-                    onToggleLoadMenu={persistence.toggleLoadMenu}
                     onFetchCanvases={persistence.fetchSavedCanvases}
-                    onLoadCanvas={persistence.handleLoadCanvas}
-                    onDeleteCanvas={persistence.handleDeleteCanvas}
+                    onOpenGallery={() => setShowGallery(true)}
                     onSave={persistence.handleSave}
                     onExport={handleExport}
                     hasUnsavedChanges={persistence.hasUnsavedChanges}
@@ -348,6 +356,17 @@ function ComposerView({ crops }) {
                 onUpdateItem={handleUpdateItem}
                 onDeleteItem={handleDeleteItem}
                 onCropDragStart={handleCropDragStart}
+            />
+
+            {/* Canvas Gallery Modal */}
+            <CanvasGallery
+                isOpen={showGallery}
+                onClose={() => setShowGallery(false)}
+                canvases={persistence.savedCanvases}
+                currentCanvasId={persistence.canvasId}
+                onLoadCanvas={persistence.handleLoadCanvas}
+                onDeleteCanvas={persistence.handleDeleteCanvas}
+                isLoading={persistence.isLoading}
             />
         </div>
     )

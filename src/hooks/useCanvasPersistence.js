@@ -6,8 +6,14 @@ const AUTO_SAVE_DELAY = 30000
 
 /**
  * Custom hook for canvas persistence (save, load, delete, auto-save)
+ * @param {Object} params
+ * @param {Object} params.composition - Canvas composition settings
+ * @param {Array} params.placedItems - Array of placed items
+ * @param {string} params.mode - Canvas mode
+ * @param {Function} params.onLoadState - Callback when canvas is loaded
+ * @param {Function} [params.getThumbnail] - Optional async function to generate thumbnail
  */
-export function useCanvasPersistence({ composition, placedItems, mode, onLoadState }) {
+export function useCanvasPersistence({ composition, placedItems, mode, onLoadState, getThumbnail }) {
     const [canvasId, setCanvasId] = useState(null)
     const [isSaving, setIsSaving] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
@@ -47,7 +53,9 @@ export function useCanvasPersistence({ composition, placedItems, mode, onLoadSta
 
         autoSaveTimerRef.current = setTimeout(async () => {
             try {
-                await saveCanvas(canvasId, composition, placedItems)
+                // Generate thumbnail if function is provided
+                const thumbnail = getThumbnail ? await getThumbnail() : null
+                await saveCanvas(canvasId, composition, placedItems, thumbnail)
                 setHasUnsavedChanges(false)
                 setLastSavedAt(Date.now())
                 console.log('Auto-saved canvas:', canvasId)
@@ -61,7 +69,7 @@ export function useCanvasPersistence({ composition, placedItems, mode, onLoadSta
                 clearTimeout(autoSaveTimerRef.current)
             }
         }
-    }, [hasUnsavedChanges, canvasId, composition, placedItems])
+    }, [hasUnsavedChanges, canvasId, composition, placedItems, getThumbnail])
 
     // Fetch list of saved canvases
     const fetchSavedCanvases = useCallback(async () => {
@@ -89,7 +97,9 @@ export function useCanvasPersistence({ composition, placedItems, mode, onLoadSta
                 setCanvasId(currentCanvasId)
             }
 
-            await saveCanvas(currentCanvasId, composition, placedItems)
+            // Generate thumbnail if function is provided
+            const thumbnail = getThumbnail ? await getThumbnail() : null
+            await saveCanvas(currentCanvasId, composition, placedItems, thumbnail)
             setHasUnsavedChanges(false)
             setLastSavedAt(Date.now())
             console.log('Canvas saved successfully:', currentCanvasId)
@@ -98,7 +108,7 @@ export function useCanvasPersistence({ composition, placedItems, mode, onLoadSta
         } finally {
             setIsSaving(false)
         }
-    }, [canvasId, composition, placedItems, mode])
+    }, [canvasId, composition, placedItems, mode, getThumbnail])
 
     // Handle loading a canvas
     const handleLoadCanvas = useCallback(async (selectedCanvasId) => {

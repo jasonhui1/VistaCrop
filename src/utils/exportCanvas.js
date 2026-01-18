@@ -93,7 +93,7 @@ function drawItemBorder(ctx, item, shapeId, x, y, width, height) {
 /**
  * Draw item with rotation using original image
  */
-async function drawRotatedItem(ctx, item, crop, x, y, width, height) {
+async function drawRotatedItem(ctx, item, crop, x, y, width, height, scale = 1) {
     const rotation = item.rotation ?? crop.rotation ?? 0
 
     try {
@@ -189,13 +189,17 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
 /**
  * Export canvas in freeform mode
  */
-async function exportFreeformMode(ctx, placedItems, crops) {
+async function exportFreeformMode(ctx, placedItems, crops, scale = 1) {
     for (const item of placedItems) {
         const crop = crops.find(c => c.id === item.cropId)
         if (!crop) continue
 
         const rotation = item.rotation ?? crop.rotation ?? 0
-        const { x, y, width, height } = item
+        // Scale all coordinates for thumbnail mode
+        const x = item.x * scale
+        const y = item.y * scale
+        const width = item.width * scale
+        const height = item.height * scale
         const shapeId = item.frameShape || 'rectangle'
 
         ctx.save()
@@ -206,25 +210,30 @@ async function exportFreeformMode(ctx, placedItems, crops) {
 
         // Draw the image (with or without rotation)
         if (rotation !== 0 && crop.imageId) {
-            await drawRotatedItem(ctx, item, crop, x, y, width, height)
+            await drawRotatedItem(ctx, item, crop, x, y, width, height, scale)
         } else {
             await drawNonRotatedItem(ctx, crop, x, y, width, height)
         }
 
         ctx.restore()
 
-        // Draw border on top
-        drawItemBorder(ctx, item, shapeId, x, y, width, height)
+        // Draw border on top (scale border width too)
+        const scaledItem = scale !== 1 ? {
+            ...item,
+            borderWidth: (item.borderWidth ?? 3) * scale
+        } : item
+        drawItemBorder(ctx, scaledItem, shapeId, x, y, width, height)
     }
 }
 
 /**
- * Export the canvas to a PNG file and trigger download
+ * Render the canvas content to an off-screen canvas
+ * @returns {HTMLCanvasElement} The rendered canvas element
  */
-export async function exportCanvas({ composition, panels, crops, mode, placedItems }) {
+async function renderCanvas({ composition, panels, crops, mode, placedItems, scale = 1 }) {
     const canvas = document.createElement('canvas')
-    canvas.width = composition.pageWidth
-    canvas.height = composition.pageHeight
+    canvas.width = Math.round(composition.pageWidth * scale)
+    canvas.height = Math.round(composition.pageHeight * scale)
     const ctx = canvas.getContext('2d')
 
     // Fill background
@@ -234,12 +243,59 @@ export async function exportCanvas({ composition, panels, crops, mode, placedIte
     if (mode === 'panels') {
         await exportPanelMode(ctx, composition, panels, crops)
     } else {
-        await exportFreeformMode(ctx, placedItems, crops)
+        await exportFreeformMode(ctx, placedItems, crops, scale)
     }
+
+    return canvas
+}
+
+/**
+ * Export the canvas to a PNG file and trigger download
+ */
+export async function exportCanvas({ composition, panels, crops, mode, placedItems }) {
+    const canvas = await renderCanvas({ composition, panels, crops, mode, placedItems, scale: 1 })
 
     // Trigger download
     const link = document.createElement('a')
     link.download = `manga-page-${Date.now()}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
+}
+
+/**
+ * Generate a thumbnail of the canvas
+ * @param {Object} params - Same as exportCanvas
+ * @param {number} [maxWidth=800] - Maximum thumbnail width
+ * @param {number} [maxHeight=600] - Maximum thumbnail height
+ * @returns {Promise<string|null>} Base64 data URL of the thumbnail or null on error
+ */
+export async function generateThumbnail({
+    composition,
+    panels,
+    crops,
+    mode,
+    placedItems,
+    maxWidth = 800,
+    maxHeight = 600
+}) {
+    if (!composition || !placedItems || placedItems.length === 0) {
+        return null
+    }
+
+    try {
+        // Calculate scale to fit thumbnail dimensions while maintaining aspect ratio
+        const pageWidth = composition.pageWidth || 1000
+        const pageHeight = composition.pageHeight || 1000
+        const scaleX = maxWidth / pageWidth
+        const scaleY = maxHeight / pageHeight
+        const scale = Math.min(scaleX, scaleY, 1) // Never upscale
+
+        const canvas = await renderCanvas({ composition, panels, crops, mode, placedItems, scale })
+
+        // Return as base64 data URL (WebP for better quality at smaller size)
+        return canvas.toDataURL('image/webp', 0.9)
+    } catch (error) {
+        console.error('Failed to generate thumbnail:', error)
+        return null
+    }
 }
