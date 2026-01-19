@@ -263,6 +263,42 @@ export async function exportCanvas({ composition, panels, crops, mode, placedIte
 }
 
 /**
+ * Export all pages to separate PNG files
+ */
+export async function exportAllPages({ pages, crops, mode }) {
+    for (let i = 0; i < pages.length; i++) {
+        const page = pages[i]
+        const composition = {
+            pageWidth: page.pageWidth,
+            pageHeight: page.pageHeight,
+            backgroundColor: page.backgroundColor,
+            layoutId: page.layoutId || 'single',
+            assignments: page.assignments || [],
+            margin: page.margin || 40
+        }
+
+        const canvas = await renderCanvas({
+            composition,
+            panels: [], // Freeform mode doesn't use panels
+            crops,
+            mode,
+            placedItems: page.placedItems || [],
+            scale: 1
+        })
+
+        const link = document.createElement('a')
+        link.download = `page-${i + 1}-${Date.now()}.png`
+        link.href = canvas.toDataURL('image/png')
+        link.click()
+
+        // Small delay between downloads to prevent browser issues
+        if (i < pages.length - 1) {
+            await new Promise(r => setTimeout(r, 200))
+        }
+    }
+}
+
+/**
  * Generate a thumbnail of the canvas
  * @param {Object} params - Same as exportCanvas
  * @param {number} [maxWidth=800] - Maximum thumbnail width

@@ -139,14 +139,14 @@ export async function createCanvas(options = {}) {
 }
 
 /**
- * Save canvas composition and placed items
+ * Save canvas with multi-page support
  * @param {string} canvasId - The ID of the canvas
- * @param {Object} composition - Canvas composition settings
- * @param {Array} placedItems - Array of placed items in freeform mode
+ * @param {Array} pages - Array of page objects with their placedItems
+ * @param {string} mode - Canvas mode ('freeform' or 'panels')
  * @param {string} [thumbnail] - Optional base64 thumbnail preview image
  */
-export async function saveCanvas(canvasId, composition, placedItems, thumbnail = null) {
-    const body = { composition, placedItems, updatedAt: Date.now() }
+export async function saveCanvas(canvasId, pages, mode, thumbnail = null) {
+    const body = { pages, mode, updatedAt: Date.now() }
     if (thumbnail) {
         body.thumbnail = thumbnail
     }

@@ -333,3 +333,129 @@ input[type="color"]::-webkit-color-swatch {
   transform: scale(1.1);
   background-color: #dc2626 !important;
 }
+
+/* Page Strip Styles */
+.page-strip {
+  position: relative;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 6px;
+  margin-bottom: 8px;
+}
+
+.page-strip-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.page-thumbnail {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 50px;
+}
+
+.page-thumbnail:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.page-thumbnail.active {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.page-thumbnail .page-number {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.page-thumbnail.active .page-number {
+  color: var(--accent-primary);
+}
+
+.page-thumbnail .page-preview {
+  width: 40px;
+  max-height: 60px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.page-thumbnail .item-count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 0.55rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.page-add-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  min-height: 70px;
+  background: transparent;
+  border: 2px dashed var(--border-color);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-add-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.page-context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  min-width: 120px;
+}
+
+.page-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.page-context-menu button:hover {
+  background: var(--bg-tertiary);
+}
+
+.page-context-menu button.danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}

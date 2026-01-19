@@ -228,6 +228,25 @@ export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_POR
 }
 
 /**
+ * Create an empty page for multi-page compositions
+ * Each page has independent dimensions and placed items
+ */
+export function createEmptyPage(pageNumber = 1, pagePreset = 'A4_PORTRAIT') {
+    const preset = PAGE_PRESETS[pagePreset] || PAGE_PRESETS.A4_PORTRAIT
+    return {
+        id: Date.now() + pageNumber,
+        name: `Page ${pageNumber}`,
+        pagePreset,
+        pageWidth: preset.width,
+        pageHeight: preset.height,
+        backgroundColor: '#1a1a1a',
+        placedItems: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    }
+}
+
+/**
  * Update a panel assignment in a composition
  */
 export function updatePanelAssignment(composition, panelIndex, updates) {

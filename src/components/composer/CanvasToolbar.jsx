@@ -25,9 +25,13 @@ function CanvasToolbar({
     onOpenGallery,
     onSave,
     onExport,
+    onExportAll,
     // Auto-save indicator
     hasUnsavedChanges,
-    lastSavedAt
+    lastSavedAt,
+    // Multi-page
+    pageCount = 1,
+    currentPage = 1
 }) {
 
     return (
@@ -39,6 +43,11 @@ function CanvasToolbar({
                 <span className="text-xs text-[var(--text-muted)]">
                     ({mode === 'freeform' ? itemCount : panelCount})
                 </span>
+                {pageCount > 1 && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--accent-primary)] text-white">
+                        Page {currentPage}/{pageCount}
+                    </span>
+                )}
                 {hasUnsavedChanges && (
                     <span className="text-xs text-yellow-500" title="Unsaved changes">
                         •
@@ -146,6 +155,7 @@ function CanvasToolbar({
                 <button
                     onClick={onExport}
                     className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
+                    title="Export current page"
                 >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -153,6 +163,22 @@ function CanvasToolbar({
                     </svg>
                     Export
                 </button>
+
+                {/* Export All button - only show when multiple pages */}
+                {onExportAll && (
+                    <button
+                        onClick={onExportAll}
+                        className="text-xs px-3 py-1.5 rounded bg-[var(--accent-gradient)] text-white hover:opacity-90 transition-opacity flex items-center gap-1"
+                        style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' }}
+                        title={`Export all ${pageCount} pages`}
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export All ({pageCount})
+                    </button>
+                )}
             </div>
         </div>
     )

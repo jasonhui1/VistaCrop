@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
-import { LeftSidebar, RightSidebar, CanvasToolbar, CanvasGallery } from './composer'
+import { LeftSidebar, RightSidebar, CanvasToolbar, CanvasGallery, PageStrip } from './composer'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useCanvasPersistence } from '../hooks/useCanvasPersistence'
@@ -9,26 +9,45 @@ import {
     getLayout,
     calculatePanelPositions,
     createEmptyComposition,
+    createEmptyPage,
     updatePanelAssignment,
     clearPanelAssignment,
     changeCompositionLayout,
     PAGE_PRESETS
 } from '../utils/panelLayouts'
-import { exportCanvas, generateThumbnail } from '../utils/exportCanvas'
+import { exportCanvas, exportAllPages, generateThumbnail } from '../utils/exportCanvas'
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
- * Supports both panel-based layouts and freeform placement
+ * Supports both panel-based layouts and freeform placement with multi-page support
  */
 function ComposerView({ crops }) {
     // === MODE STATE ===
     const [mode, setMode] = useState('freeform')
 
-    // === COMPOSITION STATE ===
-    const [composition, setComposition] = useState(() => createEmptyComposition())
-    const [selectedPanelIndex, setSelectedPanelIndex] = useState(null)
+    // === MULTI-PAGE STATE ===
+    const [pages, setPages] = useState(() => [createEmptyPage(1)])
+    const [currentPageIndex, setCurrentPageIndex] = useState(0)
 
-    // === FREEFORM STATE (with undo/redo) ===
+    // Current page derived state
+    const currentPage = pages[currentPageIndex] || pages[0]
+
+    // Create a composition-like object from current page for compatibility
+    const composition = useMemo(() => ({
+        id: currentPage.id,
+        name: currentPage.name,
+        layoutId: currentPage.layoutId || 'single',
+        pagePreset: currentPage.pagePreset,
+        pageWidth: currentPage.pageWidth,
+        pageHeight: currentPage.pageHeight,
+        margin: currentPage.margin || 40,
+        backgroundColor: currentPage.backgroundColor,
+        assignments: currentPage.assignments || [],
+        createdAt: currentPage.createdAt,
+        updatedAt: currentPage.updatedAt
+    }), [currentPage])
+
+    // === FREEFORM STATE (with undo/redo) - synced with current page ===
     const {
         state: placedItems,
         setState: setPlacedItems,
@@ -39,8 +58,10 @@ function ComposerView({ crops }) {
         canUndo,
         canRedo,
         reset: resetPlacedItems
-    } = useUndoRedo([])
+    } = useUndoRedo(currentPage.placedItems || [])
+
     const [selectedItemId, setSelectedItemId] = useState(null)
+    const [selectedPanelIndex, setSelectedPanelIndex] = useState(null)
 
     // === UI STATE ===
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
@@ -49,16 +70,145 @@ function ComposerView({ crops }) {
     const [rightSidebarTab, setRightSidebarTab] = useState('crops')
     const [showGallery, setShowGallery] = useState(false)
 
+    // === PAGE MANAGEMENT ===
+    const updateCurrentPage = useCallback((updates) => {
+        setPages(prev => prev.map((page, idx) =>
+            idx === currentPageIndex
+                ? { ...page, ...updates, updatedAt: Date.now() }
+                : page
+        ))
+    }, [currentPageIndex])
+
+    // Sync placedItems changes back to pages
+    const syncPlacedItemsToPage = useCallback((newPlacedItems) => {
+        setPages(prev => prev.map((page, idx) =>
+            idx === currentPageIndex
+                ? { ...page, placedItems: newPlacedItems, updatedAt: Date.now() }
+                : page
+        ))
+    }, [currentPageIndex])
+
+    // When switching pages, save current items and load new page items
+    const handleSelectPage = useCallback((index) => {
+        if (index === currentPageIndex) return
+
+        // Save current placed items to current page
+        setPages(prev => prev.map((page, idx) =>
+            idx === currentPageIndex
+                ? { ...page, placedItems: placedItems }
+                : page
+        ))
+
+        // Switch to new page
+        setCurrentPageIndex(index)
+        resetPlacedItems(pages[index]?.placedItems || [])
+        setSelectedItemId(null)
+        setSelectedPanelIndex(null)
+    }, [currentPageIndex, placedItems, pages, resetPlacedItems])
+
+    const handleAddPage = useCallback(() => {
+        // Save current items first
+        setPages(prev => {
+            const updated = prev.map((page, idx) =>
+                idx === currentPageIndex
+                    ? { ...page, placedItems: placedItems }
+                    : page
+            )
+            const newPage = createEmptyPage(updated.length + 1, currentPage.pagePreset)
+            return [...updated, newPage]
+        })
+        // Switch to new page
+        setCurrentPageIndex(pages.length)
+        resetPlacedItems([])
+        setSelectedItemId(null)
+    }, [currentPageIndex, placedItems, pages.length, currentPage.pagePreset, resetPlacedItems])
+
+    const handleDeletePage = useCallback((index) => {
+        if (pages.length <= 1) return // Must have at least one page
+
+        setPages(prev => prev.filter((_, idx) => idx !== index))
+
+        // Adjust current index if needed
+        if (index <= currentPageIndex && currentPageIndex > 0) {
+            const newIndex = currentPageIndex - 1
+            setCurrentPageIndex(newIndex)
+            resetPlacedItems(pages[newIndex]?.placedItems || [])
+        } else if (index === currentPageIndex) {
+            // Deleted current page, load previous or next
+            const newIndex = Math.min(index, pages.length - 2)
+            resetPlacedItems(pages[newIndex === index ? index + 1 : newIndex]?.placedItems || [])
+        }
+        setSelectedItemId(null)
+    }, [pages, currentPageIndex, resetPlacedItems])
+
+    const handleDuplicatePage = useCallback((index) => {
+        const pageToDuplicate = pages[index]
+        if (!pageToDuplicate) return
+
+        // Save current items first
+        setPages(prev => {
+            const updated = prev.map((page, idx) =>
+                idx === currentPageIndex
+                    ? { ...page, placedItems: placedItems }
+                    : page
+            )
+            const duplicated = {
+                ...pageToDuplicate,
+                id: Date.now(),
+                name: `${pageToDuplicate.name} (copy)`,
+                placedItems: pageToDuplicate.placedItems.map(item => ({
+                    ...item,
+                    id: Date.now() + Math.random()
+                })),
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            }
+            // Insert after the duplicated page
+            const before = updated.slice(0, index + 1)
+            const after = updated.slice(index + 1)
+            return [...before, duplicated, ...after]
+        })
+    }, [pages, currentPageIndex, placedItems])
+
     // === CANVAS PERSISTENCE ===
     const handleLoadState = useCallback((canvasData) => {
-        if (canvasData.composition) setComposition(canvasData.composition)
-        if (canvasData.placedItems) resetPlacedItems(canvasData.placedItems)
+        // Support both old single-page format and new multi-page format
+        if (canvasData.pages) {
+            setPages(canvasData.pages)
+            setCurrentPageIndex(0)
+            resetPlacedItems(canvasData.pages[0]?.placedItems || [])
+        } else if (canvasData.composition) {
+            // Legacy format: convert to page
+            const legacyPage = {
+                id: canvasData.composition.id || Date.now(),
+                name: 'Page 1',
+                pagePreset: canvasData.composition.pagePreset,
+                pageWidth: canvasData.composition.pageWidth,
+                pageHeight: canvasData.composition.pageHeight,
+                backgroundColor: canvasData.composition.backgroundColor,
+                placedItems: canvasData.placedItems || [],
+                createdAt: canvasData.composition.createdAt || Date.now(),
+                updatedAt: Date.now()
+            }
+            setPages([legacyPage])
+            setCurrentPageIndex(0)
+            resetPlacedItems(canvasData.placedItems || [])
+        }
         if (canvasData.mode) setMode(canvasData.mode)
         setSelectedItemId(null)
         setSelectedPanelIndex(null)
     }, [resetPlacedItems])
 
-    // Thumbnail generator for canvas previews
+    // Gather current state for saving (sync current page items first)
+    const getPagesForSave = useCallback(() => {
+        return pages.map((page, idx) =>
+            idx === currentPageIndex
+                ? { ...page, placedItems: placedItems }
+                : page
+        )
+    }, [pages, currentPageIndex, placedItems])
+
+    // Thumbnail generator for canvas previews (use current page)
     const getThumbnail = useCallback(async () => {
         return generateThumbnail({
             composition,
@@ -69,8 +219,7 @@ function ComposerView({ crops }) {
     }, [composition, placedItems, crops, mode])
 
     const persistence = useCanvasPersistence({
-        composition,
-        placedItems,
+        pages: getPagesForSave(),
         mode,
         onLoadState: handleLoadState,
         getThumbnail
@@ -97,62 +246,52 @@ function ComposerView({ crops }) {
         ? composition.assignments[selectedPanelIndex]
         : null
 
-    // === EFFECTS ===
-    // Auto-switch tab based on selection state
-    // useEffect(() => {
-    //     if (mode === 'freeform') {
-    //         setRightSidebarTab(selectedItemId ? 'selected' : 'crops')
-    //     }
-    // }, [selectedItemId, mode])
-
     // === COMPOSITION HANDLERS ===
     const handleLayoutChange = useCallback((layoutId) => {
-        setComposition(prev => changeCompositionLayout(prev, layoutId))
+        updateCurrentPage({ layoutId })
         setSelectedPanelIndex(null)
-    }, [])
+    }, [updateCurrentPage])
 
     const handlePagePresetChange = useCallback((presetKey) => {
         const preset = PAGE_PRESETS[presetKey]
         if (preset) {
-            setComposition(prev => ({
-                ...prev,
+            updateCurrentPage({
                 pagePreset: presetKey,
                 pageWidth: preset.width,
-                pageHeight: preset.height,
-                updatedAt: Date.now()
-            }))
+                pageHeight: preset.height
+            })
         }
-    }, [])
+    }, [updateCurrentPage])
 
     const handleCompositionChange = useCallback((updates) => {
-        setComposition(prev => ({
-            ...prev,
-            ...updates,
-            updatedAt: Date.now()
-        }))
-    }, [])
+        updateCurrentPage(updates)
+    }, [updateCurrentPage])
 
     const handleUpdatePageSize = useCallback((updates) => {
-        setComposition(prev => ({
-            ...prev,
+        updateCurrentPage({
             ...updates,
-            pagePreset: 'custom',
-            updatedAt: Date.now()
-        }))
-    }, [])
+            pagePreset: 'custom'
+        })
+    }, [updateCurrentPage])
 
     // === PANEL MODE HANDLERS ===
     const handleDropCropToPanel = useCallback((panelIndex, cropId) => {
-        setComposition(prev => updatePanelAssignment(prev, panelIndex, { cropId }))
-    }, [])
+        const newAssignments = [...(composition.assignments || [])]
+        newAssignments[panelIndex] = { ...newAssignments[panelIndex], cropId }
+        updateCurrentPage({ assignments: newAssignments })
+    }, [composition.assignments, updateCurrentPage])
 
     const handleClearPanel = useCallback((panelIndex) => {
-        setComposition(prev => clearPanelAssignment(prev, panelIndex))
-    }, [])
+        const newAssignments = [...(composition.assignments || [])]
+        newAssignments[panelIndex] = { panelIndex, cropId: null, zoom: 1, offsetX: 0, offsetY: 0 }
+        updateCurrentPage({ assignments: newAssignments })
+    }, [composition.assignments, updateCurrentPage])
 
     const handlePanelZoom = useCallback((panelIndex, zoom) => {
-        setComposition(prev => updatePanelAssignment(prev, panelIndex, { zoom }))
-    }, [])
+        const newAssignments = [...(composition.assignments || [])]
+        newAssignments[panelIndex] = { ...newAssignments[panelIndex], zoom }
+        updateCurrentPage({ assignments: newAssignments })
+    }, [composition.assignments, updateCurrentPage])
 
     // === FREEFORM MODE HANDLERS ===
     const handleDropCropToFreeform = useCallback((cropId, x, y) => {
@@ -183,15 +322,19 @@ function ComposerView({ crops }) {
             height,
             objectFit: 'contain'
         }
-        setPlacedItems(prev => [...prev, newItem])
+        const newItems = [...placedItems, newItem]
+        setPlacedItems(newItems)
+        syncPlacedItemsToPage(newItems)
         setSelectedItemId(newItem.id)
-    }, [crops, composition.pageWidth, composition.pageHeight, setPlacedItems])
+    }, [crops, composition.pageWidth, composition.pageHeight, setPlacedItems, placedItems, syncPlacedItemsToPage])
 
     const handleUpdateItem = useCallback((itemId, updates) => {
-        setPlacedItems(prev => prev.map(item =>
+        const newItems = placedItems.map(item =>
             item.id === itemId ? { ...item, ...updates } : item
-        ))
-    }, [setPlacedItems])
+        )
+        setPlacedItems(newItems)
+        syncPlacedItemsToPage(newItems)
+    }, [setPlacedItems, placedItems, syncPlacedItemsToPage])
 
     const handleUpdateItemSilent = useCallback((itemId, updates) => {
         setPlacedItemsSilent(prev => prev.map(item =>
@@ -201,28 +344,35 @@ function ComposerView({ crops }) {
 
     const handleDragEnd = useCallback(() => {
         recordPlacedItemsState()
-    }, [recordPlacedItemsState])
+        // Sync to page after drag
+        syncPlacedItemsToPage(placedItems)
+    }, [recordPlacedItemsState, syncPlacedItemsToPage, placedItems])
 
     const handleDeleteItem = useCallback((itemId) => {
-        setPlacedItems(prev => prev.filter(item => item.id !== itemId))
+        const newItems = placedItems.filter(item => item.id !== itemId)
+        setPlacedItems(newItems)
+        syncPlacedItemsToPage(newItems)
         if (selectedItemId === itemId) {
             setSelectedItemId(null)
         }
-    }, [selectedItemId, setPlacedItems])
+    }, [selectedItemId, setPlacedItems, placedItems, syncPlacedItemsToPage])
 
     const handleClear = useCallback(() => {
         setPlacedItems([])
+        syncPlacedItemsToPage([])
         setSelectedItemId(null)
-    }, [setPlacedItems])
+    }, [setPlacedItems, syncPlacedItemsToPage])
 
     const handleNudge = useCallback(({ dx, dy }) => {
         if (!selectedItemId) return
-        setPlacedItems(prev => prev.map(item =>
+        const newItems = placedItems.map(item =>
             item.id === selectedItemId
                 ? { ...item, x: item.x + dx, y: item.y + dy }
                 : item
-        ))
-    }, [selectedItemId, setPlacedItems])
+        )
+        setPlacedItems(newItems)
+        syncPlacedItemsToPage(newItems)
+    }, [selectedItemId, setPlacedItems, placedItems, syncPlacedItemsToPage])
 
     const handleCropDragStart = useCallback((e, crop) => {
         e.dataTransfer.setData('application/crop-id', crop.id.toString())
@@ -265,15 +415,22 @@ function ComposerView({ crops }) {
         })
 
         if (newItems.length > 0) {
-            setPlacedItems(prev => [...prev, ...newItems])
+            const allItems = [...placedItems, ...newItems]
+            setPlacedItems(allItems)
+            syncPlacedItemsToPage(allItems)
             setSelectedItemId(newItems[newItems.length - 1].id)
         }
-    }, [crops, composition.pageWidth, setPlacedItems])
+    }, [crops, composition.pageWidth, setPlacedItems, placedItems, syncPlacedItemsToPage])
 
-    // === EXPORT HANDLER ===
+    // === EXPORT HANDLERS ===
     const handleExport = useCallback(async () => {
         await exportCanvas({ composition, panels, crops, mode, placedItems })
     }, [composition, panels, crops, mode, placedItems])
+
+    const handleExportAll = useCallback(async () => {
+        const allPages = getPagesForSave()
+        await exportAllPages({ pages: allPages, crops, mode })
+    }, [getPagesForSave, crops, mode])
 
     // === KEYBOARD SHORTCUTS ===
     useKeyboardShortcuts({
@@ -322,9 +479,25 @@ function ComposerView({ crops }) {
                     onOpenGallery={() => setShowGallery(true)}
                     onSave={persistence.handleSave}
                     onExport={handleExport}
+                    onExportAll={pages.length > 1 ? handleExportAll : null}
                     hasUnsavedChanges={persistence.hasUnsavedChanges}
                     lastSavedAt={persistence.lastSavedAt}
+                    pageCount={pages.length}
+                    currentPage={currentPageIndex + 1}
                 />
+
+                {/* Page Strip */}
+                {mode === 'freeform' && (
+                    <PageStrip
+                        pages={pages.map((p, i) => i === currentPageIndex ? { ...p, placedItems } : p)}
+                        currentPageIndex={currentPageIndex}
+                        onSelectPage={handleSelectPage}
+                        onAddPage={handleAddPage}
+                        onDeletePage={handleDeletePage}
+                        onDuplicatePage={handleDuplicatePage}
+                        disabled={persistence.isSaving || persistence.isLoading}
+                    />
+                )}
 
                 {/* Canvas Container */}
                 <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-lg p-2 min-h-0">
