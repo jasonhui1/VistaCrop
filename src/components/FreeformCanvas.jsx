@@ -3,6 +3,8 @@ import { FILTERS } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
+import { useComposerStore, useCropsStore } from '../stores'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 
 // ============================================================================
 // Constants
@@ -567,22 +569,42 @@ const PlacedItem = memo(function PlacedItem({
 // ============================================================================
 // Main FreeformCanvas Component
 // ============================================================================
+// Self-contained component that subscribes directly to stores
 // ============================================================================
-// Main FreeformCanvas Component
-// ============================================================================
-function FreeformCanvas({
-    composition,
-    crops,
-    placedItems,
-    selectedItemId,
-    onSelectItem,
-    onUpdateItem,
-    onUpdateItemSilent,
-    onDragEnd,
-    onDropCrop,
-    onDeleteItem,
-    onUpdatePageSize
-}) {
+function FreeformCanvas() {
+    // === STORE SUBSCRIPTIONS ===
+    const crops = useCropsStore((s) => s.crops)
+    const placedItems = useComposerStore((s) => s.placedItems)
+    const selectedItemId = useComposerStore((s) => s.selectedItemId)
+    const setSelectedItemId = useComposerStore((s) => s.setSelectedItemId)
+    const editingCanvasSize = useComposerStore((s) => s.editingCanvasSize)
+    const getComposition = useComposerStore((s) => s.getComposition)
+
+    // Item actions from store
+    const updateItem = useComposerStore((s) => s.updateItem)
+    const updateItemSilent = useComposerStore((s) => s.updateItemSilent)
+    const deleteItem = useComposerStore((s) => s.deleteItem)
+    const handleDragEnd = useComposerStore((s) => s.handleDragEnd)
+    const dropCropToFreeform = useComposerStore((s) => s.dropCropToFreeform)
+    const handleUpdatePageSize = useComposerStore((s) => s.handleUpdatePageSize)
+    const undo = useComposerStore((s) => s.undo)
+    const redo = useComposerStore((s) => s.redo)
+    const nudgeSelectedItem = useComposerStore((s) => s.nudgeSelectedItem)
+    const mode = useComposerStore((s) => s.mode)
+
+    // Derived state
+    const composition = getComposition()
+
+    // === KEYBOARD SHORTCUTS ===
+    // Note: Save (Ctrl+S) is handled by CanvasToolbar which owns persistence
+    useKeyboardShortcuts({
+        enabled: mode === 'freeform',
+        onDelete: () => selectedItemId && deleteItem(selectedItemId),
+        onUndo: undo,
+        onRedo: redo,
+        onNudge: ({ dx, dy }) => nudgeSelectedItem(dx, dy)
+    })
+
     const canvasRef = useRef(null)
     const [dragState, setDragState] = useState(null)
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
@@ -599,20 +621,6 @@ function FreeformCanvas({
     const [frameRotation, setFrameRotation] = useState(0)  // entire selection box
     // Crop offset values during Ctrl+drag (panning within original image)
     const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 })
-
-    // ========================================================================
-    // Keyboard Event Handler
-    // ========================================================================
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !e.target.matches('input, textarea')) {
-                e.preventDefault()
-                onDeleteItem(selectedItemId)
-            }
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [selectedItemId, onDeleteItem])
 
     // ========================================================================
     // Utility Functions
@@ -650,9 +658,13 @@ function FreeformCanvas({
             const rect = canvasRef.current.getBoundingClientRect()
             const x = ((e.clientX - rect.left) / rect.width) * composition.pageWidth
             const y = ((e.clientY - rect.top) / rect.height) * composition.pageHeight
-            onDropCrop(parseInt(cropId, 10), x, y)
+            // Find crop and drop it
+            const crop = crops.find(c => c.id === parseInt(cropId, 10))
+            if (crop) {
+                dropCropToFreeform(crop, x, y, composition.pageWidth, composition.pageHeight)
+            }
         }
-    }, [onDropCrop, composition.pageWidth, composition.pageHeight])
+    }, [crops, dropCropToFreeform, composition.pageWidth, composition.pageHeight])
 
     // ========================================================================
     // Item Interaction Handlers
@@ -660,7 +672,7 @@ function FreeformCanvas({
     const handleItemMouseDown = useCallback((e, item, type = 'move') => {
         e.stopPropagation()
         e.preventDefault()
-        onSelectItem(item.id)
+        setSelectedItemId(item.id)
 
         // Reset local updates on new drag start
         setLocalItemUpdates(null)
@@ -728,7 +740,7 @@ function FreeformCanvas({
                 })
             }
         }
-    }, [onSelectItem, crops])
+    }, [setSelectedItemId, crops])
 
     const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
         e.stopPropagation()
@@ -894,29 +906,29 @@ function FreeformCanvas({
 
         // Commit any local updates to the global store
         if (localItemUpdates) {
-            onUpdateItem(dragState.itemId, localItemUpdates)
+            updateItem(dragState.itemId, localItemUpdates)
         }
         // Backward compatibility for cases where localItemUpdates might not be set (e.g. slight click)
         // OR cases explicitly handled separately before (rotate/pan)
         else if (dragState.type === 'rotate') {
             // Redundant safeguard if localItemUpdates wasn't set, but handleMouseMove should have set it
-            onUpdateItem(dragState.itemId, { rotation: imageRotation })
+            updateItem(dragState.itemId, { rotation: imageRotation })
         }
         else if (dragState.type === 'frame-rotate') {
-            onUpdateItem(dragState.itemId, { frameRotation: frameRotation })
+            updateItem(dragState.itemId, { frameRotation: frameRotation })
         }
         else if (dragState.type === 'crop-pan') {
-            onUpdateItem(dragState.itemId, {
+            updateItem(dragState.itemId, {
                 cropOffsetX: cropOffset.x,
                 cropOffsetY: cropOffset.y
             })
         }
 
-        onDragEnd?.()
+        handleDragEnd?.()
 
         setDragState(null)
         setLocalItemUpdates(null)
-    }, [dragState, localItemUpdates, imageRotation, frameRotation, cropOffset, onUpdateItem, onDragEnd])
+    }, [dragState, localItemUpdates, imageRotation, frameRotation, cropOffset, updateItem, handleDragEnd])
 
     // ========================================================================
     // Canvas Resize Handlers
@@ -949,10 +961,10 @@ function FreeformCanvas({
         else if (edge === 'bottom') updates.pageHeight = Math.max(MIN_CANVAS_SIZE, startHeight + deltaScreenY * screenToPageY)
         else if (edge === 'top') updates.pageHeight = Math.max(MIN_CANVAS_SIZE, startHeight - deltaScreenY * screenToPageY)
 
-        if (Object.keys(updates).length > 0 && onUpdatePageSize) {
-            onUpdatePageSize(updates)
+        if (Object.keys(updates).length > 0 && editingCanvasSize) {
+            handleUpdatePageSize(updates)
         }
-    }, [canvasResizeState, onUpdatePageSize])
+    }, [canvasResizeState, editingCanvasSize, handleUpdatePageSize])
 
     const handleCanvasResizeEnd = useCallback(() => {
         setCanvasResizeState(null)
@@ -1003,7 +1015,7 @@ function FreeformCanvas({
         <div style={wrapperStyle}>
             <div style={{ position: 'relative', height: '100%', maxWidth: '100%' }}>
                 {/* Canvas resize handles */}
-                {onUpdatePageSize && (
+                {editingCanvasSize && (
                     <>
                         {['top', 'bottom', 'left', 'right'].map(edge => (
                             <CanvasResizeHandle
@@ -1026,7 +1038,7 @@ function FreeformCanvas({
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
-                    onClick={() => onSelectItem(null)}
+                    onClick={() => setSelectedItemId(null)}
                 >
                     {/* Render placed items */}
                     {placedItems.map((item) => {

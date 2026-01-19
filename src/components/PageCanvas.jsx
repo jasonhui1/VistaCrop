@@ -1,18 +1,33 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
+import { useComposerStore, useCropsStore } from '../stores'
+import { getLayout, calculatePanelPositions } from '../utils/panelLayouts'
 
 /**
  * PageCanvas - Renders the composition with assigned crops in panels
+ * Self-contained component that subscribes directly to stores
  */
-function PageCanvas({
-    composition,
-    panels,
-    crops,
-    selectedPanelIndex,
-    onSelectPanel,
-    onDropCrop,
-    previewMode = false
-}) {
+function PageCanvas({ previewMode = false }) {
+    // === STORE SUBSCRIPTIONS ===
+    const crops = useCropsStore((s) => s.crops)
+    const getComposition = useComposerStore((s) => s.getComposition)
+    const selectedPanelIndex = useComposerStore((s) => s.selectedPanelIndex)
+    const setSelectedPanelIndex = useComposerStore((s) => s.setSelectedPanelIndex)
+    const dropCropToPanel = useComposerStore((s) => s.dropCropToPanel)
+
+    // Derived state
+    const composition = getComposition()
+    const currentLayout = useMemo(() => getLayout(composition.layoutId), [composition.layoutId])
+    const panels = useMemo(() =>
+        calculatePanelPositions(
+            currentLayout,
+            composition.pageWidth,
+            composition.pageHeight,
+            composition.margin
+        ),
+        [currentLayout, composition.pageWidth, composition.pageHeight, composition.margin]
+    )
+
     const canvasRef = useRef(null)
     const [dragOverPanel, setDragOverPanel] = useState(null)
 
@@ -43,9 +58,9 @@ function PageCanvas({
 
         const cropId = e.dataTransfer.getData('application/crop-id')
         if (cropId) {
-            onDropCrop(panelIndex, parseInt(cropId, 10))
+            dropCropToPanel(panelIndex, parseInt(cropId, 10))
         }
-    }, [onDropCrop])
+    }, [dropCropToPanel])
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
@@ -104,7 +119,7 @@ function PageCanvas({
                         key={index}
                         className={`composer-panel ${crop ? 'panel-slot-filled' : 'panel-slot-empty'}`}
                         style={panelStyle}
-                        onClick={() => onSelectPanel(index)}
+                        onClick={() => setSelectedPanelIndex(index)}
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, index)}

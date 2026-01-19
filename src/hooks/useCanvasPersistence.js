@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createCanvas, saveCanvas, listCanvases, loadCanvas, deleteCanvas } from '../utils/api'
+import { generateThumbnail } from '../utils/exportCanvas'
+import { useComposerStore, useCropsStore } from '../stores'
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DELAY = 30000
 
 /**
  * Custom hook for canvas persistence (save, load, delete, auto-save)
- * Now supports multi-page canvases
+ * Now supports multi-page canvases and generates thumbnails internally
  * @param {Object} params
  * @param {Array} params.pages - Array of page objects (replaces composition/placedItems)
  * @param {string} params.mode - Canvas mode
  * @param {Function} params.onLoadState - Callback when canvas is loaded
- * @param {Function} [params.getThumbnail] - Optional async function to generate thumbnail
  */
-export function useCanvasPersistence({ pages, mode, onLoadState, getThumbnail }) {
+export function useCanvasPersistence({ pages, mode, onLoadState }) {
     const [canvasId, setCanvasId] = useState(null)
     const [isSaving, setIsSaving] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
@@ -22,6 +23,22 @@ export function useCanvasPersistence({ pages, mode, onLoadState, getThumbnail })
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [lastSavedAt, setLastSavedAt] = useState(null)
     const autoSaveTimerRef = useRef(null)
+
+    // Get state from stores for thumbnail generation
+    const getComposition = useComposerStore((s) => s.getComposition)
+    const placedItems = useComposerStore((s) => s.placedItems)
+    const crops = useCropsStore((s) => s.crops)
+
+    // Internal thumbnail generation function
+    const getThumbnail = useCallback(async () => {
+        const composition = getComposition()
+        return generateThumbnail({
+            composition,
+            placedItems,
+            crops,
+            mode
+        })
+    }, [getComposition, placedItems, crops, mode])
 
     // Close load menu when clicking outside
     useEffect(() => {

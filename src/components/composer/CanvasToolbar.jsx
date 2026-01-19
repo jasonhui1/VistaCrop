@@ -1,28 +1,41 @@
-import { memo } from 'react'
-import { useComposerStore } from '../../stores'
+import { memo, useCallback, useMemo } from 'react'
+import { useComposerStore, useCropsStore } from '../../stores'
+import { getLayout, calculatePanelPositions } from '../../utils/panelLayouts'
+import { exportCanvas, exportAllPages } from '../../utils/exportCanvas'
 import { useCanvasPersistence } from '../../hooks/useCanvasPersistence'
-import { getLayout } from '../../utils/panelLayouts'
+import CanvasGallery from './CanvasGallery'
 
 /**
  * Canvas toolbar component for Composer view
  * Contains mode info, action buttons (clear, edit size, undo/redo), and save/load/export
- * Now uses Zustand stores directly
+ * Self-contained: uses Zustand stores and manages its own persistence
  */
-function CanvasToolbar({ onExport, onExportAll, persistence }) {
-    // Get state from store
+function CanvasToolbar() {
+    // Get state from stores
+    const crops = useCropsStore((s) => s.crops)
     const mode = useComposerStore((s) => s.mode)
     const pages = useComposerStore((s) => s.pages)
     const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
     const placedItems = useComposerStore((s) => s.placedItems)
     const editingCanvasSize = useComposerStore((s) => s.editingCanvasSize)
     const setEditingCanvasSize = useComposerStore((s) => s.setEditingCanvasSize)
+    const showGallery = useComposerStore((s) => s.showGallery)
     const setShowGallery = useComposerStore((s) => s.setShowGallery)
     const getComposition = useComposerStore((s) => s.getComposition)
+    const getPagesForSave = useComposerStore((s) => s.getPagesForSave)
+    const loadState = useComposerStore((s) => s.loadState)
     const clearItems = useComposerStore((s) => s.clearItems)
     const undo = useComposerStore((s) => s.undo)
     const redo = useComposerStore((s) => s.redo)
     const canUndo = useComposerStore((s) => s.canUndo)
     const canRedo = useComposerStore((s) => s.canRedo)
+
+    // === CANVAS PERSISTENCE (self-contained) ===
+    const persistence = useCanvasPersistence({
+        pages: getPagesForSave(),
+        mode,
+        onLoadState: loadState
+    })
 
     // Derived state
     const composition = getComposition()
@@ -32,6 +45,26 @@ function CanvasToolbar({ onExport, onExportAll, persistence }) {
     const pageCount = pages.length
     const currentPage = currentPageIndex + 1
 
+    // Calculate panels for panel mode export
+    const panels = useMemo(() =>
+        calculatePanelPositions(
+            currentLayout,
+            composition.pageWidth,
+            composition.pageHeight,
+            composition.margin
+        ),
+        [currentLayout, composition.pageWidth, composition.pageHeight, composition.margin]
+    )
+
+    // === EXPORT HANDLERS ===
+    const handleExport = useCallback(async () => {
+        await exportCanvas({ composition, panels, crops, mode, placedItems })
+    }, [composition, panels, crops, mode, placedItems])
+
+    const handleExportAll = useCallback(async () => {
+        const allPages = getPagesForSave()
+        await exportAllPages({ pages: allPages, crops, mode })
+    }, [getPagesForSave, crops, mode])
     return (
         <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -151,7 +184,7 @@ function CanvasToolbar({ onExport, onExportAll, persistence }) {
                 </button>
 
                 <button
-                    onClick={onExport}
+                    onClick={handleExport}
                     className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
                     title="Export current page"
                 >
@@ -163,9 +196,9 @@ function CanvasToolbar({ onExport, onExportAll, persistence }) {
                 </button>
 
                 {/* Export All button - only show when multiple pages */}
-                {onExportAll && (
+                {pageCount > 1 && (
                     <button
-                        onClick={onExportAll}
+                        onClick={handleExportAll}
                         className="text-xs px-3 py-1.5 rounded bg-[var(--accent-gradient)] text-white hover:opacity-90 transition-opacity flex items-center gap-1"
                         style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' }}
                         title={`Export all ${pageCount} pages`}
@@ -178,6 +211,17 @@ function CanvasToolbar({ onExport, onExportAll, persistence }) {
                     </button>
                 )}
             </div>
+
+            {/* Canvas Gallery Modal - rendered here since toolbar owns persistence */}
+            <CanvasGallery
+                isOpen={showGallery}
+                onClose={() => setShowGallery(false)}
+                canvases={persistence.savedCanvases}
+                currentCanvasId={persistence.canvasId}
+                onLoadCanvas={persistence.handleLoadCanvas}
+                onDeleteCanvas={persistence.handleDeleteCanvas}
+                isLoading={persistence.isLoading}
+            />
         </div>
     )
 }

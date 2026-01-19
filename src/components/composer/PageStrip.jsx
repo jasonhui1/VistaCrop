@@ -148,14 +148,14 @@ function PageStrip() {
 
 /**
  * PageNavigationArrows - Left/right arrows on canvas sides that appear on hover
- * Still uses props since it's a simple presentational component
+ * Self-contained component that subscribes to store
  */
-export function PageNavigationArrows({
-    currentPageIndex,
-    pageCount,
-    onPrevPage,
-    onNextPage
-}) {
+export function PageNavigationArrows() {
+    const pages = useComposerStore((s) => s.pages)
+    const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
+    const selectPage = useComposerStore((s) => s.selectPage)
+
+    const pageCount = pages.length
     if (pageCount <= 1) return null
 
     const hasPrev = currentPageIndex > 0
@@ -166,7 +166,7 @@ export function PageNavigationArrows({
             {/* Left Arrow */}
             <button
                 className={`page-nav-arrow page-nav-arrow-left ${hasPrev ? '' : 'disabled'}`}
-                onClick={hasPrev ? onPrevPage : undefined}
+                onClick={hasPrev ? () => selectPage(currentPageIndex - 1) : undefined}
                 disabled={!hasPrev}
                 title="Previous page"
             >
@@ -178,7 +178,7 @@ export function PageNavigationArrows({
             {/* Right Arrow */}
             <button
                 className={`page-nav-arrow page-nav-arrow-right ${hasNext ? '' : 'disabled'}`}
-                onClick={hasNext ? onNextPage : undefined}
+                onClick={hasNext ? () => selectPage(currentPageIndex + 1) : undefined}
                 disabled={!hasNext}
                 title="Next page"
             >

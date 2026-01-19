@@ -2,14 +2,15 @@ import { useEffect, useCallback } from 'react'
 
 /**
  * Custom hook for keyboard shortcuts in the composer
+ * Reusable - accepts callback props, no store dependencies
  * 
  * @param {Object} options - Shortcut handlers
  * @param {Function} options.onDelete - Called when Delete/Backspace pressed
  * @param {Function} options.onUndo - Called when Ctrl+Z pressed
  * @param {Function} options.onRedo - Called when Ctrl+Y or Ctrl+Shift+Z pressed
  * @param {Function} options.onSave - Called when Ctrl+S pressed
- * @param {Function} options.onNudge - Called with direction { dx, dy } when arrow keys pressed
- * @param {boolean} options.enabled - Whether shortcuts are enabled
+ * @param {Function} options.onNudge - Called with { dx, dy } when arrow keys pressed
+ * @param {boolean} options.enabled - Whether shortcuts are enabled (default: true)
  */
 export function useKeyboardShortcuts({
     onDelete,
@@ -18,7 +19,7 @@ export function useKeyboardShortcuts({
     onSave,
     onNudge,
     enabled = true
-}) {
+} = {}) {
     const handleKeyDown = useCallback((e) => {
         if (!enabled) return
 
