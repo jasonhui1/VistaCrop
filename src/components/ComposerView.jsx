@@ -40,11 +40,8 @@ function ComposerView() {
     const undo = useComposerStore((s) => s.undo)
     const redo = useComposerStore((s) => s.redo)
 
-    // Page management
+    // Page management - only selectPage needed for navigation arrows
     const selectPage = useComposerStore((s) => s.selectPage)
-    const addPage = useComposerStore((s) => s.addPage)
-    const deletePage = useComposerStore((s) => s.deletePage)
-    const duplicatePage = useComposerStore((s) => s.duplicatePage)
 
     // Composition/page actions
     const getComposition = useComposerStore((s) => s.getComposition)
@@ -149,18 +146,8 @@ function ComposerView() {
                     persistence={persistence}
                 />
 
-                {/* Page Strip */}
-                {mode === 'freeform' && (
-                    <PageStrip
-                        pages={pages.map((p, i) => i === currentPageIndex ? { ...p, placedItems } : p)}
-                        currentPageIndex={currentPageIndex}
-                        onSelectPage={selectPage}
-                        onAddPage={addPage}
-                        onDeletePage={deletePage}
-                        onDuplicatePage={duplicatePage}
-                        disabled={persistence.isSaving || persistence.isLoading}
-                    />
-                )}
+                {/* Page Strip - now gets state from store */}
+                {mode === 'freeform' && <PageStrip />}
 
                 {/* Canvas Container with Navigation Arrows */}
                 <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-lg p-2 min-h-0 canvas-with-nav">

@@ -1,18 +1,28 @@
 import { memo, useState, useCallback } from 'react'
+import { useComposerStore } from '../../stores'
+import { useCanvasPersistence } from '../../hooks/useCanvasPersistence'
 
 /**
  * PageStrip - Collapsible horizontal page navigation strip with thumbnails
  * Allows adding, deleting, duplicating pages with context menu
+ * Now uses Zustand stores directly
  */
-function PageStrip({
-    pages,
-    currentPageIndex,
-    onSelectPage,
-    onAddPage,
-    onDeletePage,
-    onDuplicatePage,
-    disabled = false
-}) {
+function PageStrip() {
+    // Get state and actions from store
+    const pages = useComposerStore((s) => s.pages)
+    const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
+    const placedItems = useComposerStore((s) => s.placedItems)
+    const selectPage = useComposerStore((s) => s.selectPage)
+    const addPage = useComposerStore((s) => s.addPage)
+    const deletePage = useComposerStore((s) => s.deletePage)
+    const duplicatePage = useComposerStore((s) => s.duplicatePage)
+
+    // Merge current page's placedItems for accurate display
+    const displayPages = pages.map((p, i) =>
+        i === currentPageIndex ? { ...p, placedItems } : p
+    )
+
+    // Local UI state
     const [isExpanded, setIsExpanded] = useState(false)
     const [contextMenuPage, setContextMenuPage] = useState(null)
     const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 })
@@ -29,17 +39,17 @@ function PageStrip({
 
     const handleDelete = useCallback(() => {
         if (contextMenuPage !== null) {
-            onDeletePage(contextMenuPage)
+            deletePage(contextMenuPage)
         }
         closeContextMenu()
-    }, [contextMenuPage, onDeletePage, closeContextMenu])
+    }, [contextMenuPage, deletePage, closeContextMenu])
 
     const handleDuplicate = useCallback(() => {
         if (contextMenuPage !== null) {
-            onDuplicatePage(contextMenuPage)
+            duplicatePage(contextMenuPage)
         }
         closeContextMenu()
-    }, [contextMenuPage, onDuplicatePage, closeContextMenu])
+    }, [contextMenuPage, duplicatePage, closeContextMenu])
 
     return (
         <div className="page-strip-container" onClick={closeContextMenu}>
@@ -64,20 +74,19 @@ function PageStrip({
                     <polyline points="6 9 12 15 18 9" />
                 </svg>
                 <span className="page-strip-toggle-label">
-                    Pages ({pages.length})
+                    Pages ({displayPages.length})
                 </span>
             </button>
 
             {/* Collapsible content */}
             <div className={`page-strip ${isExpanded ? 'expanded' : 'collapsed'}`}>
                 <div className="page-strip-scroll">
-                    {pages.map((page, index) => (
+                    {displayPages.map((page, index) => (
                         <button
                             key={page.id}
                             className={`page-thumbnail ${index === currentPageIndex ? 'active' : ''}`}
-                            onClick={() => onSelectPage(index)}
+                            onClick={() => selectPage(index)}
                             onContextMenu={(e) => handleContextMenu(e, index)}
-                            disabled={disabled}
                             title={page.name}
                         >
                             <span className="page-number">{index + 1}</span>
@@ -97,8 +106,7 @@ function PageStrip({
 
                     <button
                         className="page-add-btn"
-                        onClick={onAddPage}
-                        disabled={disabled}
+                        onClick={addPage}
                         title="Add new page"
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -123,7 +131,7 @@ function PageStrip({
                         </svg>
                         Duplicate
                     </button>
-                    {pages.length > 1 && (
+                    {displayPages.length > 1 && (
                         <button onClick={handleDelete} className="danger">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <polyline points="3 6 5 6 21 6" />
@@ -140,6 +148,7 @@ function PageStrip({
 
 /**
  * PageNavigationArrows - Left/right arrows on canvas sides that appear on hover
+ * Still uses props since it's a simple presentational component
  */
 export function PageNavigationArrows({
     currentPageIndex,

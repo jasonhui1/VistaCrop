@@ -1,11 +1,18 @@
 import { memo } from 'react'
+import { useComposerStore } from '../../stores'
 import { FRAME_SHAPES, getShapeList } from '../../utils/frameShapes'
 
 /**
  * Selected item controls component for the right sidebar
  * Contains frame shape, border, and style controls
+ * Now uses Zustand stores directly
  */
-function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
+function SelectedItemControls() {
+    // Get state and actions from store
+    const selectedItem = useComposerStore((s) => s.getSelectedItem)()
+    const updateItem = useComposerStore((s) => s.updateItem)
+    const deleteItem = useComposerStore((s) => s.deleteItem)
+
     if (!selectedItem) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center py-8">
@@ -18,6 +25,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
             </div>
         )
     }
+
+    const onUpdateItem = (id, updates) => updateItem(id, updates)
+    const onDeleteItem = (id) => deleteItem(id)
 
     return (
         <div className="space-y-2">

@@ -41,8 +41,6 @@ function RightSidebar() {
     const setActiveTab = useComposerStore((s) => s.setRightSidebarTab)
     const mode = useComposerStore((s) => s.mode)
     const selectedItem = useComposerStore((s) => s.getSelectedItem)()
-    const updateItem = useComposerStore((s) => s.updateItem)
-    const deleteItem = useComposerStore((s) => s.deleteItem)
     const getComposition = useComposerStore((s) => s.getComposition)
     const addMultipleCrops = useComposerStore((s) => s.addMultipleCrops)
 
@@ -241,11 +239,7 @@ function RightSidebar() {
                             style={{ display: activeTab === 'selected' ? 'block' : 'none' }}
                         >
                             {mode === 'freeform' && (
-                                <SelectedItemControls
-                                    selectedItem={selectedItem}
-                                    onUpdateItem={updateItem}
-                                    onDeleteItem={deleteItem}
-                                />
+                                <SelectedItemControls />
                             )}
                         </div>
 
