@@ -8,8 +8,7 @@ import { useCanvasPersistence } from '../hooks/useCanvasPersistence'
 import { useComposerStore, useCropsStore } from '../stores'
 import {
     getLayout,
-    calculatePanelPositions,
-    PAGE_PRESETS
+    calculatePanelPositions
 } from '../utils/panelLayouts'
 import { exportCanvas, exportAllPages, generateThumbnail } from '../utils/exportCanvas'
 
@@ -24,7 +23,6 @@ function ComposerView() {
 
     // === COMPOSER STATE FROM STORE ===
     const mode = useComposerStore((s) => s.mode)
-    const setMode = useComposerStore((s) => s.setMode)
     const pages = useComposerStore((s) => s.pages)
     const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
     const placedItems = useComposerStore((s) => s.placedItems)
@@ -34,22 +32,13 @@ function ComposerView() {
     const setSelectedPanelIndex = useComposerStore((s) => s.setSelectedPanelIndex)
 
     // UI State
-    const leftSidebarOpen = useComposerStore((s) => s.leftSidebarOpen)
-    const setLeftSidebarOpen = useComposerStore((s) => s.setLeftSidebarOpen)
-    const rightSidebarOpen = useComposerStore((s) => s.rightSidebarOpen)
-    const setRightSidebarOpen = useComposerStore((s) => s.setRightSidebarOpen)
     const editingCanvasSize = useComposerStore((s) => s.editingCanvasSize)
-    const setEditingCanvasSize = useComposerStore((s) => s.setEditingCanvasSize)
-    const rightSidebarTab = useComposerStore((s) => s.rightSidebarTab)
-    const setRightSidebarTab = useComposerStore((s) => s.setRightSidebarTab)
     const showGallery = useComposerStore((s) => s.showGallery)
     const setShowGallery = useComposerStore((s) => s.setShowGallery)
 
     // Undo/Redo
     const undo = useComposerStore((s) => s.undo)
     const redo = useComposerStore((s) => s.redo)
-    const canUndo = useComposerStore((s) => s.canUndo)
-    const canRedo = useComposerStore((s) => s.canRedo)
 
     // Page management
     const selectPage = useComposerStore((s) => s.selectPage)
@@ -59,18 +48,13 @@ function ComposerView() {
 
     // Composition/page actions
     const getComposition = useComposerStore((s) => s.getComposition)
-    const updateCurrentPage = useComposerStore((s) => s.updateCurrentPage)
-    const handleLayoutChange = useComposerStore((s) => s.handleLayoutChange)
-    const handlePagePresetChange = useComposerStore((s) => s.handlePagePresetChange)
     const handleUpdatePageSize = useComposerStore((s) => s.handleUpdatePageSize)
 
     // Item actions
     const updateItem = useComposerStore((s) => s.updateItem)
     const updateItemSilent = useComposerStore((s) => s.updateItemSilent)
     const deleteItem = useComposerStore((s) => s.deleteItem)
-    const clearItems = useComposerStore((s) => s.clearItems)
     const dropCropToFreeform = useComposerStore((s) => s.dropCropToFreeform)
-    const addMultipleCrops = useComposerStore((s) => s.addMultipleCrops)
     const nudgeSelectedItem = useComposerStore((s) => s.nudgeSelectedItem)
     const handleDragEnd = useComposerStore((s) => s.handleDragEnd)
 
@@ -85,9 +69,6 @@ function ComposerView() {
 
     // === DERIVED STATE ===
     const composition = getComposition()
-    const selectedItem = selectedItemId
-        ? placedItems.find(item => item.id === selectedItemId)
-        : null
     const selectedAssignment = selectedPanelIndex !== null
         ? composition.assignments[selectedPanelIndex]
         : null
@@ -121,26 +102,13 @@ function ComposerView() {
         getThumbnail
     })
 
-    // === HANDLERS (wrapping store actions for callbacks) ===
-    const handleCompositionChange = useCallback((updates) => {
-        updateCurrentPage(updates)
-    }, [updateCurrentPage])
+
 
     const handleDropCropToFreeform = useCallback((cropId, x, y) => {
         const crop = crops.find(c => c.id === cropId)
         if (!crop) return
         dropCropToFreeform(crop, x, y, composition.pageWidth, composition.pageHeight)
     }, [crops, composition.pageWidth, composition.pageHeight, dropCropToFreeform])
-
-    const handleAddMultipleCrops = useCallback((cropIds) => {
-        const cropsToAdd = cropIds.map(id => crops.find(c => c.id === id)).filter(Boolean)
-        addMultipleCrops(cropsToAdd, composition.pageWidth, composition.pageHeight)
-    }, [crops, composition.pageWidth, composition.pageHeight, addMultipleCrops])
-
-    const handleCropDragStart = useCallback((e, crop) => {
-        e.dataTransfer.setData('application/crop-id', crop.id.toString())
-        e.dataTransfer.effectAllowed = 'copy'
-    }, [])
 
     const handleNudge = useCallback(({ dx, dy }) => {
         nudgeSelectedItem(dx, dy)
@@ -169,45 +137,16 @@ function ComposerView() {
     // === RENDER ===
     return (
         <div className="glass-card flex-1 flex overflow-hidden">
-            {/* Left Sidebar */}
-            <LeftSidebar
-                isOpen={leftSidebarOpen}
-                onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
-                mode={mode}
-                onModeChange={setMode}
-                composition={composition}
-                onCompositionChange={handleCompositionChange}
-                onLayoutChange={handleLayoutChange}
-                onPagePresetChange={handlePagePresetChange}
-            />
+            {/* Left Sidebar - now gets all state from store */}
+            <LeftSidebar />
 
             {/* Main Canvas Area */}
             <div className="flex-1 flex flex-col p-2 overflow-hidden">
-                {/* Toolbar */}
+                {/* Toolbar - now gets most state from store */}
                 <CanvasToolbar
-                    mode={mode}
-                    layoutName={currentLayout.name}
-                    itemCount={placedItems.length}
-                    panelCount={currentLayout.panels.length}
-                    editingCanvasSize={editingCanvasSize}
-                    onToggleEditCanvasSize={() => setEditingCanvasSize(!editingCanvasSize)}
-                    onClear={clearItems}
-                    canUndo={canUndo()}
-                    canRedo={canRedo()}
-                    onUndo={undo}
-                    onRedo={redo}
-                    canvasId={persistence.canvasId}
-                    isSaving={persistence.isSaving}
-                    isLoading={persistence.isLoading}
-                    onFetchCanvases={persistence.fetchSavedCanvases}
-                    onOpenGallery={() => setShowGallery(true)}
-                    onSave={persistence.handleSave}
                     onExport={handleExport}
                     onExportAll={pages.length > 1 ? handleExportAll : null}
-                    hasUnsavedChanges={persistence.hasUnsavedChanges}
-                    lastSavedAt={persistence.lastSavedAt}
-                    pageCount={pages.length}
-                    currentPage={currentPageIndex + 1}
+                    persistence={persistence}
                 />
 
                 {/* Page Strip */}
@@ -292,20 +231,8 @@ function ComposerView() {
                 )}
             </div>
 
-            {/* Right Sidebar */}
-            <RightSidebar
-                isOpen={rightSidebarOpen}
-                onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}
-                activeTab={rightSidebarTab}
-                onTabChange={setRightSidebarTab}
-                mode={mode}
-                selectedItem={selectedItem}
-                crops={crops}
-                onUpdateItem={updateItem}
-                onDeleteItem={deleteItem}
-                onCropDragStart={handleCropDragStart}
-                onAddMultipleCrops={handleAddMultipleCrops}
-            />
+            {/* Right Sidebar - now gets all state from store */}
+            <RightSidebar />
 
             {/* Canvas Gallery Modal */}
             <CanvasGallery

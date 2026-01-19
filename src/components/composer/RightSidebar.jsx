@@ -1,5 +1,6 @@
-import { memo, useState, useMemo } from 'react'
+import { memo, useState, useMemo, useCallback } from 'react'
 import SelectedItemControls from './SelectedItemControls'
+import { useComposerStore, useCropsStore } from '../../stores'
 
 // Helper to determine which date group a timestamp belongs to
 function getDateGroup(timestamp) {
@@ -28,20 +29,24 @@ const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Olde
 /**
  * Right sidebar component for Composer view
  * Contains tabs for Crops list and Selected item controls
+ * Now uses Zustand stores directly instead of props
  */
-function RightSidebar({
-    isOpen,
-    onToggle,
-    activeTab,
-    onTabChange,
-    mode,
-    selectedItem,
-    crops,
-    onUpdateItem,
-    onDeleteItem,
-    onCropDragStart,
-    onAddMultipleCrops
-}) {
+function RightSidebar() {
+    // === STATE FROM STORES ===
+    const crops = useCropsStore((s) => s.crops)
+
+    const isOpen = useComposerStore((s) => s.rightSidebarOpen)
+    const setIsOpen = useComposerStore((s) => s.setRightSidebarOpen)
+    const activeTab = useComposerStore((s) => s.rightSidebarTab)
+    const setActiveTab = useComposerStore((s) => s.setRightSidebarTab)
+    const mode = useComposerStore((s) => s.mode)
+    const selectedItem = useComposerStore((s) => s.getSelectedItem)()
+    const updateItem = useComposerStore((s) => s.updateItem)
+    const deleteItem = useComposerStore((s) => s.deleteItem)
+    const getComposition = useComposerStore((s) => s.getComposition)
+    const addMultipleCrops = useComposerStore((s) => s.addMultipleCrops)
+
+    // === LOCAL STATE ===
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedTags, setSelectedTags] = useState(new Set())
     const [selectionMode, setSelectionMode] = useState(false)
@@ -144,13 +149,15 @@ function RightSidebar({
         setSelectedCropIds(new Set())
     }
 
-    const handleAddSelected = () => {
-        if (selectedCropIds.size > 0 && onAddMultipleCrops) {
-            onAddMultipleCrops(Array.from(selectedCropIds))
+    const handleAddSelected = useCallback(() => {
+        if (selectedCropIds.size > 0) {
+            const composition = getComposition()
+            const cropsToAdd = Array.from(selectedCropIds).map(id => crops.find(c => c.id === id)).filter(Boolean)
+            addMultipleCrops(cropsToAdd, composition.pageWidth, composition.pageHeight)
             setSelectedCropIds(new Set())
             setSelectionMode(false)
         }
-    }
+    }, [selectedCropIds, crops, addMultipleCrops, getComposition])
 
     const toggleSelectionMode = () => {
         if (selectionMode) {
@@ -160,6 +167,11 @@ function RightSidebar({
         setSelectionMode(!selectionMode)
     }
 
+    const handleCropDragStart = useCallback((e, crop) => {
+        e.dataTransfer.setData('application/crop-id', crop.id.toString())
+        e.dataTransfer.effectAllowed = 'copy'
+    }, [])
+
     const hasActiveFilters = searchQuery || selectedTags.size > 0
 
     return (
@@ -167,7 +179,7 @@ function RightSidebar({
             {/* Sidebar Toggle + Size Controls */}
             <div className="flex items-center justify-between border-b border-[var(--border-color)]">
                 <button
-                    onClick={onToggle}
+                    onClick={() => setIsOpen(!isOpen)}
                     className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
                     title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
                 >
@@ -199,7 +211,7 @@ function RightSidebar({
                     {/* Tab buttons */}
                     <div className="flex border-b border-[var(--border-color)]">
                         <button
-                            onClick={() => onTabChange('crops')}
+                            onClick={() => setActiveTab('crops')}
                             className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === 'crops'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
@@ -208,7 +220,7 @@ function RightSidebar({
                             Crops
                         </button>
                         <button
-                            onClick={() => onTabChange('selected')}
+                            onClick={() => setActiveTab('selected')}
                             className={`flex-1 py-2 text-xs font-medium transition-colors relative ${activeTab === 'selected'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
@@ -231,8 +243,8 @@ function RightSidebar({
                             {mode === 'freeform' && (
                                 <SelectedItemControls
                                     selectedItem={selectedItem}
-                                    onUpdateItem={onUpdateItem}
-                                    onDeleteItem={onDeleteItem}
+                                    onUpdateItem={updateItem}
+                                    onDeleteItem={deleteItem}
                                 />
                             )}
                         </div>
@@ -369,7 +381,7 @@ function RightSidebar({
                                                             <div
                                                                 key={crop.id}
                                                                 draggable={!selectionMode}
-                                                                onDragStart={(e) => !selectionMode && onCropDragStart(e, crop)}
+                                                                onDragStart={(e) => !selectionMode && handleCropDragStart(e, crop)}
                                                                 onClick={() => selectionMode && toggleCropSelection(crop.id)}
                                                                 className={`crop-drawer-item rounded-lg overflow-hidden border transition-colors ${selectionMode
                                                                     ? selectedCropIds.has(crop.id)
@@ -425,6 +437,3 @@ function RightSidebar({
 }
 
 export default memo(RightSidebar)
-
-
-

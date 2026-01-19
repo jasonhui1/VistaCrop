@@ -1,27 +1,31 @@
 import { memo } from 'react'
+import { useComposerStore } from '../../stores'
 import { PAGE_PRESETS, getLayoutList } from '../../utils/panelLayouts'
 
 /**
  * Left sidebar component for Composer view
  * Contains mode toggle, layout selection, page settings, and tips
+ * Now uses Zustand stores directly
  */
-function LeftSidebar({
-    isOpen,
-    onToggle,
-    mode,
-    onModeChange,
-    composition,
-    onCompositionChange,
-    onLayoutChange,
-    onPagePresetChange
-}) {
+function LeftSidebar() {
+    // Get state and actions from store
+    const isOpen = useComposerStore((s) => s.leftSidebarOpen)
+    const setIsOpen = useComposerStore((s) => s.setLeftSidebarOpen)
+    const mode = useComposerStore((s) => s.mode)
+    const setMode = useComposerStore((s) => s.setMode)
+    const getComposition = useComposerStore((s) => s.getComposition)
+    const updateCurrentPage = useComposerStore((s) => s.updateCurrentPage)
+    const handleLayoutChange = useComposerStore((s) => s.handleLayoutChange)
+    const handlePagePresetChange = useComposerStore((s) => s.handlePagePresetChange)
+
+    const composition = getComposition()
     const allLayouts = getLayoutList()
 
     return (
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-r border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
             {/* Sidebar Toggle */}
             <button
-                onClick={onToggle}
+                onClick={() => setIsOpen(!isOpen)}
                 className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
@@ -39,7 +43,7 @@ function LeftSidebar({
                         </h3>
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
-                                onClick={() => onModeChange('freeform')}
+                                onClick={() => setMode('freeform')}
                                 className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
@@ -48,7 +52,7 @@ function LeftSidebar({
                                 Freeform
                             </button>
                             <button
-                                onClick={() => onModeChange('panels')}
+                                onClick={() => setMode('panels')}
                                 className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
@@ -69,7 +73,7 @@ function LeftSidebar({
                                 {allLayouts.map((layout) => (
                                     <button
                                         key={layout.id}
-                                        onClick={() => onLayoutChange(layout.id)}
+                                        onClick={() => handleLayoutChange(layout.id)}
                                         className={`layout-thumbnail p-2 rounded-lg border transition-all ${composition.layoutId === layout.id
                                             ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
                                             : 'border-[var(--border-color)] hover:border-[var(--accent-secondary)] bg-[var(--bg-tertiary)]'
@@ -112,7 +116,7 @@ function LeftSidebar({
                         </h3>
                         <select
                             value={composition.pagePreset}
-                            onChange={(e) => onPagePresetChange(e.target.value)}
+                            onChange={(e) => handlePagePresetChange(e.target.value)}
                             className="w-full text-sm"
                         >
                             {Object.entries(PAGE_PRESETS).map(([key, preset]) => (
@@ -130,13 +134,13 @@ function LeftSidebar({
                             <input
                                 type="color"
                                 value={composition.backgroundColor}
-                                onChange={(e) => onCompositionChange({ backgroundColor: e.target.value })}
+                                onChange={(e) => updateCurrentPage({ backgroundColor: e.target.value })}
                                 className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
                             />
                             <input
                                 type="text"
                                 value={composition.backgroundColor}
-                                onChange={(e) => onCompositionChange({ backgroundColor: e.target.value })}
+                                onChange={(e) => updateCurrentPage({ backgroundColor: e.target.value })}
                                 className="flex-1 text-xs"
                             />
                         </div>
