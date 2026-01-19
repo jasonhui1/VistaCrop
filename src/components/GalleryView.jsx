@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import CropCard from './CropCard'
+import { useCropsStore } from '../stores'
 
 // Helper to determine which date group a timestamp belongs to
 function getDateGroup(timestamp) {
@@ -26,7 +27,12 @@ function getDateGroup(timestamp) {
 
 const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
 
-function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
+function GalleryView() {
+    // Get state and actions from store
+    const crops = useCropsStore((s) => s.crops)
+    const onUpdateCrop = useCropsStore((s) => s.updateCrop)
+    const onDeleteCrop = useCropsStore((s) => s.deleteCrop)
+
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedTags, setSelectedTags] = useState(new Set())
 
