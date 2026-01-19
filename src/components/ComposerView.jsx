@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
 import { LeftSidebar, RightSidebar, CanvasToolbar, CanvasGallery, PageStrip } from './composer'
+import { PageNavigationArrows } from './composer/PageStrip'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useCanvasPersistence } from '../hooks/useCanvasPersistence'
@@ -499,8 +500,18 @@ function ComposerView({ crops }) {
                     />
                 )}
 
-                {/* Canvas Container */}
-                <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-lg p-2 min-h-0">
+                {/* Canvas Container with Navigation Arrows */}
+                <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-lg p-2 min-h-0 canvas-with-nav">
+                    {/* Page Navigation Arrows */}
+                    {mode === 'freeform' && pages.length > 1 && (
+                        <PageNavigationArrows
+                            currentPageIndex={currentPageIndex}
+                            pageCount={pages.length}
+                            onPrevPage={() => handleSelectPage(currentPageIndex - 1)}
+                            onNextPage={() => handleSelectPage(currentPageIndex + 1)}
+                        />
+                    )}
+
                     {mode === 'panels' ? (
                         <PageCanvas
                             composition={composition}

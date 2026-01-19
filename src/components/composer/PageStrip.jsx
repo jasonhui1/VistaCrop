@@ -1,8 +1,8 @@
 import { memo, useState, useCallback } from 'react'
 
 /**
- * PageStrip - Horizontal page navigation strip showing page thumbnails
- * Allows adding, deleting, duplicating, and reordering pages
+ * PageStrip - Collapsible horizontal page navigation strip with thumbnails
+ * Allows adding, deleting, duplicating pages with context menu
  */
 function PageStrip({
     pages,
@@ -13,6 +13,7 @@ function PageStrip({
     onDuplicatePage,
     disabled = false
 }) {
+    const [isExpanded, setIsExpanded] = useState(false)
     const [contextMenuPage, setContextMenuPage] = useState(null)
     const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 })
 
@@ -41,43 +42,71 @@ function PageStrip({
     }, [contextMenuPage, onDuplicatePage, closeContextMenu])
 
     return (
-        <div className="page-strip" onClick={closeContextMenu}>
-            <div className="page-strip-scroll">
-                {pages.map((page, index) => (
-                    <button
-                        key={page.id}
-                        className={`page-thumbnail ${index === currentPageIndex ? 'active' : ''}`}
-                        onClick={() => onSelectPage(index)}
-                        onContextMenu={(e) => handleContextMenu(e, index)}
-                        disabled={disabled}
-                        title={page.name}
-                    >
-                        <span className="page-number">{index + 1}</span>
-                        <div
-                            className="page-preview"
-                            style={{
-                                aspectRatio: `${page.pageWidth} / ${page.pageHeight}`,
-                                backgroundColor: page.backgroundColor
-                            }}
-                        >
-                            {page.placedItems?.length > 0 && (
-                                <span className="item-count">{page.placedItems.length}</span>
-                            )}
-                        </div>
-                    </button>
-                ))}
-
-                <button
-                    className="page-add-btn"
-                    onClick={onAddPage}
-                    disabled={disabled}
-                    title="Add new page"
+        <div className="page-strip-container" onClick={closeContextMenu}>
+            {/* Collapse/Expand toggle */}
+            <button
+                className="page-strip-toggle"
+                onClick={(e) => {
+                    e.stopPropagation()
+                    setIsExpanded(!isExpanded)
+                }}
+                title={isExpanded ? 'Collapse pages' : 'Expand pages'}
+            >
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                </button>
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+                <span className="page-strip-toggle-label">
+                    Pages ({pages.length})
+                </span>
+            </button>
+
+            {/* Collapsible content */}
+            <div className={`page-strip ${isExpanded ? 'expanded' : 'collapsed'}`}>
+                <div className="page-strip-scroll">
+                    {pages.map((page, index) => (
+                        <button
+                            key={page.id}
+                            className={`page-thumbnail ${index === currentPageIndex ? 'active' : ''}`}
+                            onClick={() => onSelectPage(index)}
+                            onContextMenu={(e) => handleContextMenu(e, index)}
+                            disabled={disabled}
+                            title={page.name}
+                        >
+                            <span className="page-number">{index + 1}</span>
+                            <div
+                                className="page-preview"
+                                style={{
+                                    aspectRatio: `${page.pageWidth} / ${page.pageHeight}`,
+                                    backgroundColor: page.backgroundColor
+                                }}
+                            >
+                                {page.placedItems?.length > 0 && (
+                                    <span className="item-count">{page.placedItems.length}</span>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+
+                    <button
+                        className="page-add-btn"
+                        onClick={onAddPage}
+                        disabled={disabled}
+                        title="Add new page"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Context Menu */}
@@ -106,6 +135,49 @@ function PageStrip({
                 </div>
             )}
         </div>
+    )
+}
+
+/**
+ * PageNavigationArrows - Left/right arrows on canvas sides that appear on hover
+ */
+export function PageNavigationArrows({
+    currentPageIndex,
+    pageCount,
+    onPrevPage,
+    onNextPage
+}) {
+    if (pageCount <= 1) return null
+
+    const hasPrev = currentPageIndex > 0
+    const hasNext = currentPageIndex < pageCount - 1
+
+    return (
+        <>
+            {/* Left Arrow */}
+            <button
+                className={`page-nav-arrow page-nav-arrow-left ${hasPrev ? '' : 'disabled'}`}
+                onClick={hasPrev ? onPrevPage : undefined}
+                disabled={!hasPrev}
+                title="Previous page"
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
+            </button>
+
+            {/* Right Arrow */}
+            <button
+                className={`page-nav-arrow page-nav-arrow-right ${hasNext ? '' : 'disabled'}`}
+                onClick={hasNext ? onNextPage : undefined}
+                disabled={!hasNext}
+                title="Next page"
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                </svg>
+            </button>
+        </>
     )
 }
 

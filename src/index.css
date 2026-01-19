@@ -334,13 +334,54 @@ input[type="color"]::-webkit-color-swatch {
   background-color: #dc2626 !important;
 }
 
-/* Page Strip Styles */
-.page-strip {
+/* Page Strip Styles - Container */
+.page-strip-container {
   position: relative;
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-  padding: 6px;
   margin-bottom: 8px;
+}
+
+.page-strip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 6px 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-strip-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.page-strip-toggle-label {
+  font-weight: 500;
+}
+
+/* Collapsible page strip */
+.page-strip {
+  background: var(--bg-tertiary);
+  border-radius: 0 8px 8px 8px;
+  padding: 6px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.page-strip.expanded {
+  max-height: 120px;
+  opacity: 1;
+}
+
+.page-strip.collapsed {
+  max-height: 0;
+  padding: 0 6px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .page-strip-scroll {
@@ -458,4 +499,53 @@ input[type="color"]::-webkit-color-swatch {
 .page-context-menu button.danger:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #f87171;
+}
+
+/* Page Navigation Arrows - Canvas Sides */
+.canvas-with-nav {
+  position: relative;
+}
+
+.page-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 20;
+}
+
+.canvas-with-nav:hover .page-nav-arrow {
+  opacity: 0.7;
+}
+
+.page-nav-arrow:hover {
+  opacity: 1 !important;
+  background: rgba(139, 92, 246, 0.8);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.page-nav-arrow.disabled {
+  opacity: 0.2 !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.page-nav-arrow-left {
+  left: 8px;
+}
+
+.page-nav-arrow-right {
+  right: 8px;
 }
