@@ -567,6 +567,9 @@ const PlacedItem = memo(function PlacedItem({
 // ============================================================================
 // Main FreeformCanvas Component
 // ============================================================================
+// ============================================================================
+// Main FreeformCanvas Component
+// ============================================================================
 function FreeformCanvas({
     composition,
     crops,
@@ -585,7 +588,13 @@ function FreeformCanvas({
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
     const [canvasResizeState, setCanvasResizeState] = useState(null)
 
+    // Local state for active drag updates
+    // This accumulates all changes during a drag (move, resize, rotate, custom corners)
+    // and is only committed to the store on mouse up
+    const [localItemUpdates, setLocalItemUpdates] = useState(null)
+
     // Rotation values during drag (not yet committed to item state)
+    // Note: We still keep these for the rotation UI/logic, but they will also feed into localItemUpdates
     const [imageRotation, setImageRotation] = useState(0)  // original image within crop
     const [frameRotation, setFrameRotation] = useState(0)  // entire selection box
     // Crop offset values during Ctrl+drag (panning within original image)
@@ -653,6 +662,9 @@ function FreeformCanvas({
         e.preventDefault()
         onSelectItem(item.id)
 
+        // Reset local updates on new drag start
+        setLocalItemUpdates(null)
+
         // Check if Ctrl is held for crop panning (only during move)
         const actualType = (type === 'move' && e.ctrlKey) ? 'crop-pan' : type
 
@@ -667,11 +679,17 @@ function FreeformCanvas({
 
         // For crop-pan, initialize offset from item
         if (actualType === 'crop-pan') {
-            setCropOffset({
+            const initialOffset = {
                 x: item.cropOffsetX ?? 0,
                 y: item.cropOffsetY ?? 0
-            })
+            }
+            setCropOffset(initialOffset)
             setDragState(baseDragState)
+            // Initialize local updates with current state to ensure continuity
+            setLocalItemUpdates({
+                cropOffsetX: initialOffset.x,
+                cropOffsetY: initialOffset.y
+            })
             return
         }
 
@@ -689,19 +707,37 @@ function FreeformCanvas({
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
+                setLocalItemUpdates({ rotation: currentRotation })
             } else {
                 const currentFrameRotation = item.frameRotation ?? 0
                 setFrameRotation(currentFrameRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
+                setLocalItemUpdates({ frameRotation: currentFrameRotation })
             }
         } else {
             setDragState(baseDragState)
+            // Initialize local updates for move/resize
+            if (type === 'move') {
+                setLocalItemUpdates({ x: item.x, y: item.y })
+            } else if (type.startsWith('resize-')) {
+                setLocalItemUpdates({
+                    x: item.x,
+                    y: item.y,
+                    width: item.width,
+                    height: item.height
+                })
+            }
         }
     }, [onSelectItem, crops])
 
     const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
         e.stopPropagation()
         e.preventDefault()
+
+        const currentPoints = item.customPoints ||
+            (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
+
+        setLocalItemUpdates({ customPoints: currentPoints })
 
         setDragState({
             type: 'corner',
@@ -714,7 +750,7 @@ function FreeformCanvas({
     }, [])
 
     // ========================================================================
-    // Mouse Move Handler - Handles all drag operations
+    // Mouse Move Handler - Handles all drag operations by updating LOCAL state
     // ========================================================================
     const handleMouseMove = useCallback((e) => {
         if (!dragState || !canvasRef.current) return
@@ -722,7 +758,6 @@ function FreeformCanvas({
         const rect = canvasRef.current.getBoundingClientRect()
         const deltaX = ((e.clientX - dragState.startX) / rect.width) * composition.pageWidth
         const deltaY = ((e.clientY - dragState.startY) / rect.height) * composition.pageHeight
-        const updateFn = onUpdateItemSilent || onUpdateItem
 
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
@@ -737,6 +772,7 @@ function FreeformCanvas({
             while (newRotation < -180) newRotation += 360
 
             setImageRotation(newRotation)
+            setLocalItemUpdates({ rotation: newRotation })
             return
         }
 
@@ -752,6 +788,7 @@ function FreeformCanvas({
             while (newRotation < -180) newRotation += 360
 
             setFrameRotation(newRotation)
+            setLocalItemUpdates({ frameRotation: newRotation })
             return
         }
 
@@ -765,16 +802,10 @@ function FreeformCanvas({
             const screenDeltaX = e.clientX - dragState.startX
             const screenDeltaY = e.clientY - dragState.startY
 
-            // Get the frame rotation to compensate for it
-            // Frame rotation rotates the whole frame, so we need to un-rotate screen delta
-            // Image rotation is applied as -imageRotation in the transform, and the offset
-            // is applied in the pre-rotated image space, so we need to account for that too
-            const frameRotation = startItem.frameRotation ?? 0
-            const imageRotation = startItem.rotation ?? crop.rotation ?? 0
-            // The offset is applied before the image rotation (-imageRotation),
-            // so we need to rotate screen delta by -(frameRotation) to get into frame space,
-            // then by +imageRotation to get into the original image's pre-rotation space
-            const totalRotationRad = ((frameRotation - imageRotation) * Math.PI) / 180
+            const frameRotationValue = startItem.frameRotation ?? 0
+            const imageRotationValue = startItem.rotation ?? crop.rotation ?? 0
+
+            const totalRotationRad = ((frameRotationValue - imageRotationValue) * Math.PI) / 180
             const cos = Math.cos(-totalRotationRad)
             const sin = Math.sin(-totalRotationRad)
 
@@ -783,7 +814,6 @@ function FreeformCanvas({
             const rotatedDeltaY = screenDeltaX * sin + screenDeltaY * cos
 
             // Scale from screen pixels to original image pixels based on crop size
-            // The item's display size represents the crop's width/height
             const item = placedItems.find(i => i.id === dragState.itemId)
             if (!item) return
             const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
@@ -799,12 +829,13 @@ function FreeformCanvas({
             const newOffsetY = initialOffsetY - rotatedDeltaY * scaleToOriginalY
 
             setCropOffset({ x: newOffsetX, y: newOffsetY })
+            setLocalItemUpdates({ cropOffsetX: newOffsetX, cropOffsetY: newOffsetY })
             return
         }
 
         // Handle move
         if (dragState.type === 'move') {
-            updateFn(dragState.itemId, {
+            setLocalItemUpdates({
                 x: Math.max(0, Math.min(composition.pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
                 y: Math.max(0, Math.min(composition.pageHeight - dragState.startItem.height, dragState.startItem.y + deltaY))
             })
@@ -822,7 +853,7 @@ function FreeformCanvas({
                 corner, deltaX, deltaY, dragState.startItem,
                 aspectRatio, composition.pageWidth, composition.pageHeight
             )
-            updateFn(dragState.itemId, updates)
+            setLocalItemUpdates(updates)
             return
         }
 
@@ -849,39 +880,43 @@ function FreeformCanvas({
                 return [...point]
             })
 
-            updateFn(dragState.itemId, { customPoints: newPoints })
+            setLocalItemUpdates({ customPoints: newPoints })
+            // Update start pos for next delta calculation
             setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, crops, placedItems, composition.pageWidth, composition.pageHeight])
 
     // ========================================================================
-    // Mouse Up Handler
+    // Mouse Up Handler - Commits LOCAL state to STORE
     // ========================================================================
     const handleMouseUp = useCallback(() => {
         if (!dragState) return
 
-        // Handle image rotation end - commit value to item state
-        if (dragState.type === 'rotate') {
+        // Commit any local updates to the global store
+        if (localItemUpdates) {
+            onUpdateItem(dragState.itemId, localItemUpdates)
+        }
+        // Backward compatibility for cases where localItemUpdates might not be set (e.g. slight click)
+        // OR cases explicitly handled separately before (rotate/pan)
+        else if (dragState.type === 'rotate') {
+            // Redundant safeguard if localItemUpdates wasn't set, but handleMouseMove should have set it
             onUpdateItem(dragState.itemId, { rotation: imageRotation })
         }
-        // Handle frame rotation end - commit value to item state
         else if (dragState.type === 'frame-rotate') {
             onUpdateItem(dragState.itemId, { frameRotation: frameRotation })
         }
-        // Handle crop pan end - commit offset to item state
         else if (dragState.type === 'crop-pan') {
             onUpdateItem(dragState.itemId, {
                 cropOffsetX: cropOffset.x,
                 cropOffsetY: cropOffset.y
             })
         }
-        // Handle other drag operations
-        else if (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner') {
-            onDragEnd?.()
-        }
+
+        onDragEnd?.()
 
         setDragState(null)
-    }, [dragState, imageRotation, frameRotation, cropOffset, onUpdateItem, onDragEnd])
+        setLocalItemUpdates(null)
+    }, [dragState, localItemUpdates, imageRotation, frameRotation, cropOffset, onUpdateItem, onDragEnd])
 
     // ========================================================================
     // Canvas Resize Handlers
@@ -998,19 +1033,33 @@ function FreeformCanvas({
                         const crop = getCropById(item.cropId)
                         if (!crop) return null
 
+                        // Merge store item with local updates if this item is being dragged
+                        const isDragging = dragState?.itemId === item.id
+                        const displayItem = isDragging && localItemUpdates
+                            ? { ...item, ...localItemUpdates }
+                            : item
+
                         const isSelected = selectedItemId === item.id
-                        // Derive rotation state from dragState - no separate ID tracking needed
-                        const isDraggingImageRotation = dragState?.type === 'rotate' && dragState?.itemId === item.id
-                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && dragState?.itemId === item.id
-                        const isDraggingCropPan = dragState?.type === 'crop-pan' && dragState?.itemId === item.id
-                        const currentRotation = isDraggingImageRotation ? imageRotation : (item.rotation ?? crop.rotation ?? 0)
-                        const currentFrameRotation = isDraggingFrameRotation ? frameRotation : item.frameRotation
-                        const currentCropOffset = isDraggingCropPan ? cropOffset : null
+
+                        // Derived values for specific interaction types
+                        const isDraggingImageRotation = dragState?.type === 'rotate' && isDragging
+                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && isDragging
+                        const isDraggingCropPan = dragState?.type === 'crop-pan' && isDragging
+
+                        // We can use the props from displayItem which now includes local updates
+                        const currentRotation = displayItem.rotation ?? crop.rotation ?? 0
+                        const currentFrameRotation = displayItem.frameRotation ?? 0
+                        // For crop offset, we pass the separate prop or fall back to item props
+                        // Construct an object for the PlacedItem to use
+                        const currentCropOffset = {
+                            x: displayItem.cropOffsetX ?? 0,
+                            y: displayItem.cropOffsetY ?? 0
+                        }
 
                         return (
                             <PlacedItem
                                 key={item.id}
-                                item={item}
+                                item={displayItem}
                                 crop={crop}
                                 isSelected={isSelected}
                                 isRotating={isDraggingImageRotation}
