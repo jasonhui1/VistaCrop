@@ -46,6 +46,15 @@ function RightSidebar({
     const [selectedTags, setSelectedTags] = useState(new Set())
     const [selectionMode, setSelectionMode] = useState(false)
     const [selectedCropIds, setSelectedCropIds] = useState(new Set())
+    const [sidebarSize, setSidebarSize] = useState('S') // 'S', 'M', 'L'
+
+    // Width configuration based on size
+    const sizeConfig = {
+        S: { width: 'w-48', columns: 1, thumbClass: 'aspect-[4/3]' },
+        M: { width: 'w-72', columns: 2, thumbClass: 'aspect-square' },
+        L: { width: 'w-96', columns: 3, thumbClass: 'aspect-square' }
+    }
+    const currentConfig = sizeConfig[sidebarSize]
 
     // Collect all unique tags from all crops
     const allTags = useMemo(() => {
@@ -154,17 +163,36 @@ function RightSidebar({
     const hasActiveFilters = searchQuery || selectedTags.size > 0
 
     return (
-        <div className={`${isOpen ? 'w-48' : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
-            {/* Sidebar Toggle */}
-            <button
-                onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
-                title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            >
-                <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
-            </button>
+        <div className={`${isOpen ? currentConfig.width : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
+            {/* Sidebar Toggle + Size Controls */}
+            <div className="flex items-center justify-between border-b border-[var(--border-color)]">
+                <button
+                    onClick={onToggle}
+                    className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                    title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                >
+                    <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                </button>
+                {isOpen && (
+                    <div className="flex items-center gap-0.5 pr-2">
+                        {['S', 'M', 'L'].map(size => (
+                            <button
+                                key={size}
+                                onClick={() => setSidebarSize(size)}
+                                className={`w-6 h-6 text-[10px] font-medium rounded transition-all ${sidebarSize === size
+                                    ? 'bg-purple-500 text-white'
+                                    : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-tertiary)]'
+                                    }`}
+                                title={`${size === 'S' ? 'Small' : size === 'M' ? 'Medium' : 'Large'} width`}
+                            >
+                                {size}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {isOpen && (
                 <div className="overflow-y-auto flex-1 flex flex-col">
@@ -225,8 +253,8 @@ function RightSidebar({
                                         <button
                                             onClick={toggleSelectionMode}
                                             className={`flex-1 px-2 py-1.5 text-[10px] font-medium rounded transition-all ${selectionMode
-                                                    ? 'bg-purple-500 text-white'
-                                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
+                                                ? 'bg-purple-500 text-white'
+                                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                                 }`}
                                         >
                                             {selectionMode ? '✓ Select' : '☐ Select'}
@@ -332,8 +360,11 @@ function RightSidebar({
                                                         </span>
                                                         <div className="flex-1 h-px bg-[var(--border-color)]"></div>
                                                     </div>
-                                                    {/* Crops in this group */}
-                                                    <div className="flex flex-col gap-2">
+                                                    {/* Crops in this group - responsive grid */}
+                                                    <div
+                                                        className="grid gap-2"
+                                                        style={{ gridTemplateColumns: `repeat(${currentConfig.columns}, 1fr)` }}
+                                                    >
                                                         {groupCrops.map((crop) => (
                                                             <div
                                                                 key={crop.id}
@@ -341,13 +372,13 @@ function RightSidebar({
                                                                 onDragStart={(e) => !selectionMode && onCropDragStart(e, crop)}
                                                                 onClick={() => selectionMode && toggleCropSelection(crop.id)}
                                                                 className={`crop-drawer-item rounded-lg overflow-hidden border transition-colors ${selectionMode
-                                                                        ? selectedCropIds.has(crop.id)
-                                                                            ? 'border-purple-500 ring-2 ring-purple-500/30'
-                                                                            : 'border-[var(--border-color)] hover:border-purple-400 cursor-pointer'
-                                                                        : 'border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)]'
+                                                                    ? selectedCropIds.has(crop.id)
+                                                                        ? 'border-purple-500 ring-2 ring-purple-500/30'
+                                                                        : 'border-[var(--border-color)] hover:border-purple-400 cursor-pointer'
+                                                                    : 'border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)]'
                                                                     }`}
                                                             >
-                                                                <div className="aspect-video bg-[var(--bg-tertiary)] relative overflow-hidden">
+                                                                <div className={`${currentConfig.thumbClass} bg-[var(--bg-tertiary)] relative overflow-hidden`}>
                                                                     <img
                                                                         src={crop.imageData}
                                                                         alt=""
@@ -360,8 +391,8 @@ function RightSidebar({
                                                                     {/* Selection checkbox overlay */}
                                                                     {selectionMode && (
                                                                         <div className={`absolute top-1 left-1 w-5 h-5 rounded flex items-center justify-center ${selectedCropIds.has(crop.id)
-                                                                                ? 'bg-purple-500'
-                                                                                : 'bg-black/50'
+                                                                            ? 'bg-purple-500'
+                                                                            : 'bg-black/50'
                                                                             }`}>
                                                                             {selectedCropIds.has(crop.id) && (
                                                                                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
