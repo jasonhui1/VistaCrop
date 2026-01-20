@@ -1,22 +1,24 @@
 import { memo } from 'react'
-import { useComposerStore } from '../../stores'
+import { useCanvasStore, useUIStore } from '../../stores'
 import { PAGE_PRESETS, getLayoutList } from '../../utils/panelLayouts'
 
 /**
  * Left sidebar component for Composer view
  * Contains mode toggle, layout selection, page settings, and tips
- * Now uses Zustand stores directly
+ * Uses separated stores: useCanvasStore, useUIStore
  */
 function LeftSidebar() {
-    // Get state and actions from store
-    const isOpen = useComposerStore((s) => s.leftSidebarOpen)
-    const setIsOpen = useComposerStore((s) => s.setLeftSidebarOpen)
-    const mode = useComposerStore((s) => s.mode)
-    const setMode = useComposerStore((s) => s.setMode)
-    const getComposition = useComposerStore((s) => s.getComposition)
-    const updateCurrentPage = useComposerStore((s) => s.updateCurrentPage)
-    const handleLayoutChange = useComposerStore((s) => s.handleLayoutChange)
-    const handlePagePresetChange = useComposerStore((s) => s.handlePagePresetChange)
+    // === UI STORE ===
+    const isOpen = useUIStore((s) => s.leftSidebarOpen)
+    const setIsOpen = useUIStore((s) => s.setLeftSidebarOpen)
+
+    // === CANVAS STORE ===
+    const mode = useCanvasStore((s) => s.mode)
+    const setMode = useCanvasStore((s) => s.setMode)
+    const getComposition = useCanvasStore((s) => s.getComposition)
+    const updateCurrentPage = useCanvasStore((s) => s.updateCurrentPage)
+    const handleLayoutChange = useCanvasStore((s) => s.handleLayoutChange)
+    const handlePagePresetChange = useCanvasStore((s) => s.handlePagePresetChange)
 
     const composition = getComposition()
     const allLayouts = getLayoutList()

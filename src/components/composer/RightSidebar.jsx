@@ -1,6 +1,6 @@
 import { memo, useState, useMemo, useCallback } from 'react'
 import SelectedItemControls from './SelectedItemControls'
-import { useComposerStore, useCropsStore } from '../../stores'
+import { useCanvasStore, useUIStore, useCropsStore } from '../../stores'
 
 // Helper to determine which date group a timestamp belongs to
 function getDateGroup(timestamp) {
@@ -29,20 +29,26 @@ const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Olde
 /**
  * Right sidebar component for Composer view
  * Contains tabs for Crops list and Selected item controls
- * Now uses Zustand stores directly instead of props
+ * Uses separated stores: useCanvasStore, useUIStore, useCropsStore
  */
 function RightSidebar() {
-    // === STATE FROM STORES ===
+    // === CROPS STORE ===
     const crops = useCropsStore((s) => s.crops)
 
-    const isOpen = useComposerStore((s) => s.rightSidebarOpen)
-    const setIsOpen = useComposerStore((s) => s.setRightSidebarOpen)
-    const activeTab = useComposerStore((s) => s.rightSidebarTab)
-    const setActiveTab = useComposerStore((s) => s.setRightSidebarTab)
-    const mode = useComposerStore((s) => s.mode)
-    const selectedItem = useComposerStore((s) => s.getSelectedItem)()
-    const getComposition = useComposerStore((s) => s.getComposition)
-    const addMultipleCrops = useComposerStore((s) => s.addMultipleCrops)
+    // === UI STORE ===
+    const isOpen = useUIStore((s) => s.rightSidebarOpen)
+    const setIsOpen = useUIStore((s) => s.setRightSidebarOpen)
+    const activeTab = useUIStore((s) => s.rightSidebarTab)
+    const setActiveTab = useUIStore((s) => s.setRightSidebarTab)
+    const selectedItemId = useUIStore((s) => s.selectedItemId)
+
+    // === CANVAS STORE ===
+    const mode = useCanvasStore((s) => s.mode)
+    const getComposition = useCanvasStore((s) => s.getComposition)
+    const addMultipleCrops = useCanvasStore((s) => s.addMultipleCrops)
+    const getItemById = useCanvasStore((s) => s.getItemById)
+
+    const selectedItem = selectedItemId ? getItemById(selectedItemId) : null
 
     // === LOCAL STATE ===
     const [searchQuery, setSearchQuery] = useState('')

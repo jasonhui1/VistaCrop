@@ -2,8 +2,11 @@ import { create } from 'zustand'
 import { createEmptyPage, PAGE_PRESETS } from '../utils/panelLayouts'
 
 /**
- * Composer store - manages canvas/composer state
- * Replaces state from ComposerView.jsx including pages, placedItems, and UI state
+ * Canvas Store - manages canvas/pages/items state
+ * Separated from UI state for cleaner architecture
+ * 
+ * Note: Selection state (selectedItemId, selectedPanelIndex) is in useUIStore
+ * Note: Persistence state is in usePersistenceStore
  */
 
 // Simple undo/redo implementation for placed items
@@ -77,7 +80,7 @@ const createUndoRedoSlice = (set, get) => ({
     }
 })
 
-export const useComposerStore = create((set, get) => ({
+export const useCanvasStore = create((set, get) => ({
     // === MODE STATE ===
     mode: 'freeform', // 'panels' | 'freeform'
 
@@ -87,28 +90,12 @@ export const useComposerStore = create((set, get) => ({
 
     // === FREEFORM STATE ===
     placedItems: [],
-    selectedItemId: null,
-    selectedPanelIndex: null,
-
-    // === UI STATE ===
-    leftSidebarOpen: true,
-    rightSidebarOpen: true,
-    editingCanvasSize: false,
-    rightSidebarTab: 'crops',
-    showGallery: false,
 
     // === UNDO/REDO (mixed in) ===
     ...createUndoRedoSlice(set, get),
 
     // === SETTERS ===
     setMode: (mode) => set({ mode }),
-    setSelectedItemId: (id) => set({ selectedItemId: id }),
-    setSelectedPanelIndex: (index) => set({ selectedPanelIndex: index }),
-    setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
-    setRightSidebarOpen: (open) => set({ rightSidebarOpen: open }),
-    setEditingCanvasSize: (editing) => set({ editingCanvasSize: editing }),
-    setRightSidebarTab: (tab) => set({ rightSidebarTab: tab }),
-    setShowGallery: (show) => set({ showGallery: show }),
 
     // === DERIVED STATE HELPERS ===
     getCurrentPage: () => {
@@ -131,11 +118,6 @@ export const useComposerStore = create((set, get) => ({
             createdAt: page.createdAt,
             updatedAt: page.updatedAt
         }
-    },
-
-    getSelectedItem: () => {
-        const { placedItems, selectedItemId } = get()
-        return selectedItemId ? placedItems.find(item => item.id === selectedItemId) : null
     },
 
     // === PAGE MANAGEMENT ===
@@ -172,9 +154,7 @@ export const useComposerStore = create((set, get) => ({
                     ? { ...page, placedItems: placedItems }
                     : page
             ),
-            currentPageIndex: index,
-            selectedItemId: null,
-            selectedPanelIndex: null
+            currentPageIndex: index
         }))
 
         // Reset undo history for new page
@@ -195,8 +175,7 @@ export const useComposerStore = create((set, get) => ({
             const newPage = createEmptyPage(updated.length + 1, currentPage.pagePreset)
             return {
                 pages: [...updated, newPage],
-                currentPageIndex: pages.length,
-                selectedItemId: null
+                currentPageIndex: pages.length
             }
         })
 
@@ -219,8 +198,7 @@ export const useComposerStore = create((set, get) => ({
 
             return {
                 pages: newPages,
-                currentPageIndex: newIndex,
-                selectedItemId: null
+                currentPageIndex: newIndex
             }
         })
 
@@ -259,7 +237,6 @@ export const useComposerStore = create((set, get) => ({
     // === COMPOSITION HANDLERS ===
     handleLayoutChange: (layoutId) => {
         get().updateCurrentPage({ layoutId })
-        set({ selectedPanelIndex: null })
     },
 
     handlePagePresetChange: (presetKey) => {
@@ -313,20 +290,17 @@ export const useComposerStore = create((set, get) => ({
     },
 
     deleteItem: (itemId) => {
-        const { placedItems, selectedItemId, syncPlacedItemsToPage, pushToUndoStack } = get()
+        const { placedItems, syncPlacedItemsToPage, pushToUndoStack } = get()
         pushToUndoStack()
         const newItems = placedItems.filter(item => item.id !== itemId)
-        set({
-            placedItems: newItems,
-            selectedItemId: selectedItemId === itemId ? null : selectedItemId
-        })
+        set({ placedItems: newItems })
         syncPlacedItemsToPage(newItems)
     },
 
     clearItems: () => {
         const { syncPlacedItemsToPage, pushToUndoStack } = get()
         pushToUndoStack()
-        set({ placedItems: [], selectedItemId: null })
+        set({ placedItems: [] })
         syncPlacedItemsToPage([])
     },
 
@@ -363,8 +337,10 @@ export const useComposerStore = create((set, get) => ({
 
         pushToUndoStack()
         const newItems = [...placedItems, newItem]
-        set({ placedItems: newItems, selectedItemId: newItem.id })
+        set({ placedItems: newItems })
         syncPlacedItemsToPage(newItems)
+
+        return newItem.id // Return new item ID for selection
     },
 
     // Add multiple crops at once (bulk selection)
@@ -403,19 +379,21 @@ export const useComposerStore = create((set, get) => ({
         if (newItems.length > 0) {
             pushToUndoStack()
             const allItems = [...placedItems, ...newItems]
-            set({ placedItems: allItems, selectedItemId: newItems[newItems.length - 1].id })
+            set({ placedItems: allItems })
             syncPlacedItemsToPage(allItems)
+            return newItems[newItems.length - 1].id // Return last item ID for selection
         }
+        return null
     },
 
-    // Nudge selected item
-    nudgeSelectedItem: (dx, dy) => {
-        const { selectedItemId, placedItems, syncPlacedItemsToPage, pushToUndoStack } = get()
-        if (!selectedItemId) return
+    // Nudge selected item (requires selectedItemId from UI store)
+    nudgeItem: (itemId, dx, dy) => {
+        if (!itemId) return
+        const { placedItems, syncPlacedItemsToPage, pushToUndoStack } = get()
 
         pushToUndoStack()
         const newItems = placedItems.map(item =>
-            item.id === selectedItemId
+            item.id === itemId
                 ? { ...item, x: item.x + dx, y: item.y + dy }
                 : item
         )
@@ -472,9 +450,7 @@ export const useComposerStore = create((set, get) => ({
         if (canvasData.pages) {
             set({
                 pages: canvasData.pages,
-                currentPageIndex: 0,
-                selectedItemId: null,
-                selectedPanelIndex: null
+                currentPageIndex: 0
             })
             resetHistory(canvasData.pages[0]?.placedItems || [])
         } else if (canvasData.composition) {
@@ -492,9 +468,7 @@ export const useComposerStore = create((set, get) => ({
             }
             set({
                 pages: [legacyPage],
-                currentPageIndex: 0,
-                selectedItemId: null,
-                selectedPanelIndex: null
+                currentPageIndex: 0
             })
             resetHistory(canvasData.placedItems || [])
         }
@@ -502,5 +476,13 @@ export const useComposerStore = create((set, get) => ({
         if (canvasData.mode) {
             set({ mode: canvasData.mode })
         }
+    },
+
+    // Get item by ID (helper for components)
+    getItemById: (itemId) => {
+        return get().placedItems.find(item => item.id === itemId)
     }
 }))
+
+// Backward compatibility alias
+export const useComposerStore = useCanvasStore

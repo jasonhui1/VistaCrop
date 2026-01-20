@@ -1,16 +1,19 @@
 import { memo } from 'react'
-import { useComposerStore } from '../../stores'
+import { useCanvasStore, useUIStore } from '../../stores'
 
 /**
  * PanelControls - Controls for the selected panel in panel mode
- * Self-contained component that subscribes to store
+ * Uses separated stores: useCanvasStore, useUIStore
  */
 function PanelControls() {
-    const mode = useComposerStore((s) => s.mode)
-    const selectedPanelIndex = useComposerStore((s) => s.selectedPanelIndex)
-    const getComposition = useComposerStore((s) => s.getComposition)
-    const handlePanelZoom = useComposerStore((s) => s.handlePanelZoom)
-    const clearPanel = useComposerStore((s) => s.clearPanel)
+    // === CANVAS STORE ===
+    const mode = useCanvasStore((s) => s.mode)
+    const getComposition = useCanvasStore((s) => s.getComposition)
+    const handlePanelZoom = useCanvasStore((s) => s.handlePanelZoom)
+    const clearPanel = useCanvasStore((s) => s.clearPanel)
+
+    // === UI STORE ===
+    const selectedPanelIndex = useUIStore((s) => s.selectedPanelIndex)
 
     // Only show in panel mode with a selected panel
     if (mode !== 'panels' || selectedPanelIndex === null) return null

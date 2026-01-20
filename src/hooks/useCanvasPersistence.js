@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createCanvas, saveCanvas, listCanvases, loadCanvas, deleteCanvas } from '../utils/api'
 import { generateThumbnail } from '../utils/exportCanvas'
-import { useComposerStore, useCropsStore } from '../stores'
+import { useCanvasStore, useCropsStore } from '../stores'
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DELAY = 30000
@@ -25,8 +25,8 @@ export function useCanvasPersistence({ pages, mode, onLoadState }) {
     const autoSaveTimerRef = useRef(null)
 
     // Get state from stores for thumbnail generation
-    const getComposition = useComposerStore((s) => s.getComposition)
-    const placedItems = useComposerStore((s) => s.placedItems)
+    const getComposition = useCanvasStore((s) => s.getComposition)
+    const placedItems = useCanvasStore((s) => s.placedItems)
     const crops = useCropsStore((s) => s.crops)
 
     // Internal thumbnail generation function

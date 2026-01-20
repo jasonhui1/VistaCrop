@@ -1,17 +1,22 @@
 import { memo } from 'react'
-import { useComposerStore } from '../../stores'
+import { useCanvasStore, useUIStore } from '../../stores'
 import { FRAME_SHAPES, getShapeList } from '../../utils/frameShapes'
 
 /**
  * Selected item controls component for the right sidebar
  * Contains frame shape, border, and style controls
- * Now uses Zustand stores directly
+ * Uses separated stores: useCanvasStore for items, useUIStore for selection
  */
 function SelectedItemControls() {
-    // Get state and actions from store
-    const selectedItem = useComposerStore((s) => s.getSelectedItem)()
-    const updateItem = useComposerStore((s) => s.updateItem)
-    const deleteItem = useComposerStore((s) => s.deleteItem)
+    // Get selected item ID from UI store
+    const selectedItemId = useUIStore((s) => s.selectedItemId)
+
+    // Get item data and actions from canvas store
+    const getItemById = useCanvasStore((s) => s.getItemById)
+    const updateItem = useCanvasStore((s) => s.updateItem)
+    const deleteItem = useCanvasStore((s) => s.deleteItem)
+
+    const selectedItem = selectedItemId ? getItemById(selectedItemId) : null
 
     if (!selectedItem) {
         return (

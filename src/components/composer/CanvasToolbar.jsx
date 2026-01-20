@@ -1,45 +1,59 @@
-import { memo, useCallback, useMemo } from 'react'
-import { useComposerStore, useCropsStore } from '../../stores'
+import { memo, useCallback, useMemo, useEffect } from 'react'
+import { useCanvasStore, useUIStore, usePersistenceStore, useCropsStore } from '../../stores'
 import { getLayout, calculatePanelPositions } from '../../utils/panelLayouts'
 import { exportCanvas, exportAllPages } from '../../utils/exportCanvas'
-import { useCanvasPersistence } from '../../hooks/useCanvasPersistence'
 import CanvasGallery from './CanvasGallery'
 
 /**
  * Canvas toolbar component for Composer view
  * Contains mode info, action buttons (clear, edit size, undo/redo), and save/load/export
- * Self-contained: uses Zustand stores and manages its own persistence
+ * Uses new separated stores: useCanvasStore, useUIStore, usePersistenceStore
  */
 function CanvasToolbar() {
-    // Get state from stores
+    // === CROPS STORE ===
     const crops = useCropsStore((s) => s.crops)
-    const mode = useComposerStore((s) => s.mode)
-    const pages = useComposerStore((s) => s.pages)
-    const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
-    const placedItems = useComposerStore((s) => s.placedItems)
-    const editingCanvasSize = useComposerStore((s) => s.editingCanvasSize)
-    const setEditingCanvasSize = useComposerStore((s) => s.setEditingCanvasSize)
-    const showGallery = useComposerStore((s) => s.showGallery)
-    const setShowGallery = useComposerStore((s) => s.setShowGallery)
-    const getComposition = useComposerStore((s) => s.getComposition)
-    const getPagesForSave = useComposerStore((s) => s.getPagesForSave)
-    const loadState = useComposerStore((s) => s.loadState)
-    const clearItems = useComposerStore((s) => s.clearItems)
-    const undo = useComposerStore((s) => s.undo)
-    const redo = useComposerStore((s) => s.redo)
-    const canUndo = useComposerStore((s) => s.canUndo)
-    const canRedo = useComposerStore((s) => s.canRedo)
 
-    // === CANVAS PERSISTENCE (self-contained) ===
-    const persistence = useCanvasPersistence({
-        pages: getPagesForSave(),
-        mode,
-        onLoadState: loadState
-    })
+    // === CANVAS STORE ===
+    const mode = useCanvasStore((s) => s.mode)
+    const pages = useCanvasStore((s) => s.pages)
+    const currentPageIndex = useCanvasStore((s) => s.currentPageIndex)
+    const placedItems = useCanvasStore((s) => s.placedItems)
+    const getPagesForSave = useCanvasStore((s) => s.getPagesForSave)
+    const loadState = useCanvasStore((s) => s.loadState)
+    const clearItems = useCanvasStore((s) => s.clearItems)
+    const undo = useCanvasStore((s) => s.undo)
+    const redo = useCanvasStore((s) => s.redo)
+    const canUndo = useCanvasStore((s) => s.canUndo)
+    const canRedo = useCanvasStore((s) => s.canRedo)
 
-    // Derived state
-    const composition = getComposition()
-    const currentLayout = getLayout(composition.layoutId)
+    // === UI STORE ===
+    const editingCanvasSize = useUIStore((s) => s.editingCanvasSize)
+    const setEditingCanvasSize = useUIStore((s) => s.setEditingCanvasSize)
+    const showGallery = useUIStore((s) => s.showGallery)
+    const setShowGallery = useUIStore((s) => s.setShowGallery)
+
+    // === PERSISTENCE STORE ===
+    const isSaving = usePersistenceStore((s) => s.isSaving)
+    const isLoading = usePersistenceStore((s) => s.isLoading)
+    const savedCanvases = usePersistenceStore((s) => s.savedCanvases)
+    const hasUnsavedChanges = usePersistenceStore((s) => s.hasUnsavedChanges)
+    const canvasId = usePersistenceStore((s) => s.canvasId)
+    const saveCanvas = usePersistenceStore((s) => s.saveCanvas)
+    const loadCanvas = usePersistenceStore((s) => s.loadCanvas)
+    const deleteCanvas = usePersistenceStore((s) => s.deleteCanvas)
+    const fetchSavedCanvases = usePersistenceStore((s) => s.fetchSavedCanvases)
+    const markUnsavedChanges = usePersistenceStore((s) => s.markUnsavedChanges)
+
+    // Direct subscriptions to current page properties (avoids getComposition)
+    const currentPageData = useCanvasStore((s) => s.pages[s.currentPageIndex] || s.pages[0])
+    const layoutId = currentPageData?.layoutId || 'single'
+    const pageWidth = currentPageData?.pageWidth || 800
+    const pageHeight = currentPageData?.pageHeight || 1200
+    const margin = currentPageData?.margin || 40
+    const backgroundColor = currentPageData?.backgroundColor || '#ffffff'
+
+    // Derived layout state
+    const currentLayout = getLayout(layoutId)
     const itemCount = placedItems.length
     const panelCount = currentLayout.panels.length
     const pageCount = pages.length
@@ -47,24 +61,54 @@ function CanvasToolbar() {
 
     // Calculate panels for panel mode export
     const panels = useMemo(() =>
-        calculatePanelPositions(
-            currentLayout,
-            composition.pageWidth,
-            composition.pageHeight,
-            composition.margin
-        ),
-        [currentLayout, composition.pageWidth, composition.pageHeight, composition.margin]
+        calculatePanelPositions(currentLayout, pageWidth, pageHeight, margin),
+        [currentLayout, pageWidth, pageHeight, margin]
     )
+
+    // Mark unsaved changes when pages change
+    useEffect(() => {
+        markUnsavedChanges()
+    }, [pages, placedItems, markUnsavedChanges])
+
+    // Fetch saved canvases on mount
+    useEffect(() => {
+        fetchSavedCanvases()
+    }, [fetchSavedCanvases])
+
+    // === SAVE HANDLER ===
+    const handleSave = useCallback(() => {
+        const getCanvasData = () => ({
+            pages: getPagesForSave(),
+            mode,
+            composition: { pageWidth, pageHeight, backgroundColor },
+            placedItems,
+            crops
+        })
+        saveCanvas(getCanvasData)
+    }, [getPagesForSave, mode, pageWidth, pageHeight, backgroundColor, placedItems, crops, saveCanvas])
+
+    // === LOAD HANDLER ===
+    const handleLoadCanvas = useCallback((selectedCanvasId) => {
+        loadCanvas(selectedCanvasId, loadState)
+        setShowGallery(false)
+    }, [loadCanvas, loadState, setShowGallery])
+
+    // === DELETE HANDLER ===
+    const handleDeleteCanvas = useCallback((canvasIdToDelete) => {
+        deleteCanvas(canvasIdToDelete)
+    }, [deleteCanvas])
 
     // === EXPORT HANDLERS ===
     const handleExport = useCallback(async () => {
+        const composition = { pageWidth, pageHeight, backgroundColor, margin, layoutId }
         await exportCanvas({ composition, panels, crops, mode, placedItems })
-    }, [composition, panels, crops, mode, placedItems])
+    }, [pageWidth, pageHeight, backgroundColor, margin, layoutId, panels, crops, mode, placedItems])
 
     const handleExportAll = useCallback(async () => {
         const allPages = getPagesForSave()
         await exportAllPages({ pages: allPages, crops, mode })
     }, [getPagesForSave, crops, mode])
+
     return (
         <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -79,7 +123,7 @@ function CanvasToolbar() {
                         Page {currentPage}/{pageCount}
                     </span>
                 )}
-                {persistence.hasUnsavedChanges && (
+                {hasUnsavedChanges && (
                     <span className="text-xs text-yellow-500" title="Unsaved changes">
                         •
                     </span>
@@ -93,100 +137,78 @@ function CanvasToolbar() {
                         <button
                             onClick={undo}
                             disabled={!canUndo()}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canUndo()
-                                ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
-                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
-                                }`}
+                            className="text-xs px-2 py-1.5 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Undo (Ctrl+Z)"
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                             </svg>
                         </button>
                         <button
                             onClick={redo}
                             disabled={!canRedo()}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canRedo()
-                                ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
-                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
-                                }`}
+                            className="text-xs px-2 py-1.5 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Redo (Ctrl+Y)"
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
                             </svg>
                         </button>
                     </>
                 )}
 
+                {/* Clear button */}
                 {mode === 'freeform' && itemCount > 0 && (
                     <button
                         onClick={clearItems}
-                        className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="text-xs px-3 py-1.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-red-500/20 hover:text-red-400"
+                        title="Clear all items"
                     >
                         Clear
                     </button>
                 )}
 
+                {/* Edit canvas size toggle - freeform mode only */}
                 {mode === 'freeform' && (
                     <button
                         onClick={() => setEditingCanvasSize(!editingCanvasSize)}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${editingCanvasSize
+                        className={`text-xs px-3 py-1.5 rounded transition-colors ${editingCanvasSize
                             ? 'bg-[var(--accent-primary)] text-white'
-                            : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
+                            : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
                             }`}
+                        title="Toggle canvas resize mode"
                     >
-                        {editingCanvasSize ? '✓ Editing Size' : 'Edit Size'}
+                        Resize
                     </button>
                 )}
 
-                {/* Load Button - opens gallery */}
+                {/* Load button */}
                 <button
                     onClick={() => {
-                        persistence.fetchSavedCanvases()
+                        fetchSavedCanvases()
                         setShowGallery(true)
                     }}
-                    disabled={persistence.isLoading}
-                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] ${persistence.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
                     title="Load saved canvas"
                 >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {persistence.isLoading ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        )}
-                    </svg>
-                    {persistence.isLoading ? 'Loading...' : 'Load'}
+                    Load
                 </button>
 
+                {/* Save button */}
                 <button
-                    onClick={persistence.handleSave}
-                    disabled={persistence.isSaving}
-                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${persistence.canvasId
-                        ? 'bg-green-600 hover:bg-green-500 text-white'
-                        : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)]'
-                        } ${persistence.isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    title={persistence.canvasId ? `Saved as ${persistence.canvasId}` : 'Save to server (Ctrl+S)'}
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:opacity-90 disabled:opacity-50"
+                    title="Save canvas (Ctrl+S)"
                 >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {persistence.isSaving ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        )}
-                    </svg>
-                    {persistence.isSaving ? 'Saving...' : (persistence.canvasId ? 'Update' : 'Save')}
+                    {isSaving ? 'Saving...' : 'Save'}
                 </button>
 
+                {/* Export button */}
                 <button
                     onClick={handleExport}
-                    className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
-                    title="Export current page"
+                    className="text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                    title="Export current page as PNG"
                 >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -212,15 +234,15 @@ function CanvasToolbar() {
                 )}
             </div>
 
-            {/* Canvas Gallery Modal - rendered here since toolbar owns persistence */}
+            {/* Canvas Gallery Modal */}
             <CanvasGallery
                 isOpen={showGallery}
                 onClose={() => setShowGallery(false)}
-                canvases={persistence.savedCanvases}
-                currentCanvasId={persistence.canvasId}
-                onLoadCanvas={persistence.handleLoadCanvas}
-                onDeleteCanvas={persistence.handleDeleteCanvas}
-                isLoading={persistence.isLoading}
+                canvases={savedCanvases}
+                currentCanvasId={canvasId}
+                onLoadCanvas={handleLoadCanvas}
+                onDeleteCanvas={handleDeleteCanvas}
+                isLoading={isLoading}
             />
         </div>
     )

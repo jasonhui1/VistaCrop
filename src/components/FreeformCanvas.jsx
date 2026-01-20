@@ -3,7 +3,7 @@ import { FILTERS } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
-import { useComposerStore, useCropsStore } from '../stores'
+import { useCanvasStore, useUIStore, usePersistenceStore, useCropsStore } from '../stores'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 
 // ============================================================================
@@ -572,37 +572,56 @@ const PlacedItem = memo(function PlacedItem({
 // Self-contained component that subscribes directly to stores
 // ============================================================================
 function FreeformCanvas() {
-    // === STORE SUBSCRIPTIONS ===
+    // === CROPS STORE ===
     const crops = useCropsStore((s) => s.crops)
-    const placedItems = useComposerStore((s) => s.placedItems)
-    const selectedItemId = useComposerStore((s) => s.selectedItemId)
-    const setSelectedItemId = useComposerStore((s) => s.setSelectedItemId)
-    const editingCanvasSize = useComposerStore((s) => s.editingCanvasSize)
-    const getComposition = useComposerStore((s) => s.getComposition)
 
-    // Item actions from store
-    const updateItem = useComposerStore((s) => s.updateItem)
-    const updateItemSilent = useComposerStore((s) => s.updateItemSilent)
-    const deleteItem = useComposerStore((s) => s.deleteItem)
-    const handleDragEnd = useComposerStore((s) => s.handleDragEnd)
-    const dropCropToFreeform = useComposerStore((s) => s.dropCropToFreeform)
-    const handleUpdatePageSize = useComposerStore((s) => s.handleUpdatePageSize)
-    const undo = useComposerStore((s) => s.undo)
-    const redo = useComposerStore((s) => s.redo)
-    const nudgeSelectedItem = useComposerStore((s) => s.nudgeSelectedItem)
-    const mode = useComposerStore((s) => s.mode)
+    // === CANVAS STORE ===
+    const placedItems = useCanvasStore((s) => s.placedItems)
+    const updateItem = useCanvasStore((s) => s.updateItem)
+    const updateItemSilent = useCanvasStore((s) => s.updateItemSilent)
+    const deleteItem = useCanvasStore((s) => s.deleteItem)
+    const handleDragEnd = useCanvasStore((s) => s.handleDragEnd)
+    const dropCropToFreeform = useCanvasStore((s) => s.dropCropToFreeform)
+    const handleUpdatePageSize = useCanvasStore((s) => s.handleUpdatePageSize)
+    const undo = useCanvasStore((s) => s.undo)
+    const redo = useCanvasStore((s) => s.redo)
+    const nudgeItem = useCanvasStore((s) => s.nudgeItem)
+    const mode = useCanvasStore((s) => s.mode)
+    const getPagesForSave = useCanvasStore((s) => s.getPagesForSave)
 
-    // Derived state
-    const composition = getComposition()
+    // Direct subscriptions to current page properties (avoids getComposition)
+    const currentPage = useCanvasStore((s) => s.pages[s.currentPageIndex] || s.pages[0])
+    const pageWidth = currentPage?.pageWidth || 800
+    const pageHeight = currentPage?.pageHeight || 1200
+    const backgroundColor = currentPage?.backgroundColor || '#ffffff'
+
+    // === UI STORE ===
+    const selectedItemId = useUIStore((s) => s.selectedItemId)
+    const setSelectedItemId = useUIStore((s) => s.setSelectedItemId)
+    const editingCanvasSize = useUIStore((s) => s.editingCanvasSize)
+
+    // === PERSISTENCE STORE ===
+    const saveCanvas = usePersistenceStore((s) => s.saveCanvas)
 
     // === KEYBOARD SHORTCUTS ===
-    // Note: Save (Ctrl+S) is handled by CanvasToolbar which owns persistence
+    const handleSave = useCallback(() => {
+        const getCanvasData = () => ({
+            pages: getPagesForSave(),
+            mode,
+            composition: { pageWidth, pageHeight, backgroundColor },
+            placedItems,
+            crops
+        })
+        saveCanvas(getCanvasData)
+    }, [getPagesForSave, mode, pageWidth, pageHeight, backgroundColor, placedItems, crops, saveCanvas])
+
     useKeyboardShortcuts({
         enabled: mode === 'freeform',
         onDelete: () => selectedItemId && deleteItem(selectedItemId),
         onUndo: undo,
         onRedo: redo,
-        onNudge: ({ dx, dy }) => nudgeSelectedItem(dx, dy)
+        onSave: handleSave,
+        onNudge: ({ dx, dy }) => nudgeItem(selectedItemId, dx, dy)
     })
 
     const canvasRef = useRef(null)
@@ -656,15 +675,15 @@ function FreeformCanvas() {
         const cropId = e.dataTransfer.getData('application/crop-id')
         if (cropId && canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect()
-            const x = ((e.clientX - rect.left) / rect.width) * composition.pageWidth
-            const y = ((e.clientY - rect.top) / rect.height) * composition.pageHeight
+            const x = ((e.clientX - rect.left) / rect.width) * pageWidth
+            const y = ((e.clientY - rect.top) / rect.height) * pageHeight
             // Find crop and drop it
             const crop = crops.find(c => c.id === parseInt(cropId, 10))
             if (crop) {
-                dropCropToFreeform(crop, x, y, composition.pageWidth, composition.pageHeight)
+                dropCropToFreeform(crop, x, y, pageWidth, pageHeight)
             }
         }
-    }, [crops, dropCropToFreeform, composition.pageWidth, composition.pageHeight])
+    }, [crops, dropCropToFreeform, pageWidth, pageHeight])
 
     // ========================================================================
     // Item Interaction Handlers
@@ -768,8 +787,8 @@ function FreeformCanvas() {
         if (!dragState || !canvasRef.current) return
 
         const rect = canvasRef.current.getBoundingClientRect()
-        const deltaX = ((e.clientX - dragState.startX) / rect.width) * composition.pageWidth
-        const deltaY = ((e.clientY - dragState.startY) / rect.height) * composition.pageHeight
+        const deltaX = ((e.clientX - dragState.startX) / rect.width) * pageWidth
+        const deltaY = ((e.clientY - dragState.startY) / rect.height) * pageHeight
 
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
@@ -828,8 +847,8 @@ function FreeformCanvas() {
             // Scale from screen pixels to original image pixels based on crop size
             const item = placedItems.find(i => i.id === dragState.itemId)
             if (!item) return
-            const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
-            const itemDisplayHeight = (item.height / composition.pageHeight) * rect.height
+            const itemDisplayWidth = (item.width / pageWidth) * rect.width
+            const itemDisplayHeight = (item.height / pageHeight) * rect.height
             const scaleToOriginalX = crop.width / itemDisplayWidth
             const scaleToOriginalY = crop.height / itemDisplayHeight
 
@@ -848,8 +867,8 @@ function FreeformCanvas() {
         // Handle move
         if (dragState.type === 'move') {
             setLocalItemUpdates({
-                x: Math.max(0, Math.min(composition.pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
-                y: Math.max(0, Math.min(composition.pageHeight - dragState.startItem.height, dragState.startItem.y + deltaY))
+                x: Math.max(0, Math.min(pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
+                y: Math.max(0, Math.min(pageHeight - dragState.startItem.height, dragState.startItem.y + deltaY))
             })
             return
         }
@@ -863,7 +882,7 @@ function FreeformCanvas() {
             const aspectRatio = crop.width / crop.height
             const updates = calculateResizeUpdates(
                 corner, deltaX, deltaY, dragState.startItem,
-                aspectRatio, composition.pageWidth, composition.pageHeight
+                aspectRatio, pageWidth, pageHeight
             )
             setLocalItemUpdates(updates)
             return
@@ -877,8 +896,8 @@ function FreeformCanvas() {
             const currentPoints = item.customPoints ||
                 (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
 
-            const itemWidthPx = (item.width / composition.pageWidth) * rect.width
-            const itemHeightPx = (item.height / composition.pageHeight) * rect.height
+            const itemWidthPx = (item.width / pageWidth) * rect.width
+            const itemHeightPx = (item.height / pageHeight) * rect.height
             const deltaPctX = ((e.clientX - dragState.startX) / itemWidthPx) * 100
             const deltaPctY = ((e.clientY - dragState.startY) / itemHeightPx) * 100
 
@@ -896,7 +915,7 @@ function FreeformCanvas() {
             // Update start pos for next delta calculation
             setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, crops, placedItems, pageWidth, pageHeight])
 
     // ========================================================================
     // Mouse Up Handler - Commits LOCAL state to STORE
@@ -940,10 +959,10 @@ function FreeformCanvas() {
             edge,
             startX: e.clientX,
             startY: e.clientY,
-            startWidth: composition.pageWidth,
-            startHeight: composition.pageHeight
+            startWidth: pageWidth,
+            startHeight: pageHeight
         })
-    }, [composition.pageWidth, composition.pageHeight])
+    }, [pageWidth, pageHeight])
 
     const handleCanvasResizeMove = useCallback((e) => {
         if (!canvasResizeState || !canvasRef.current) return
@@ -987,18 +1006,18 @@ function FreeformCanvas() {
     // Styles
     // ========================================================================
     const containerStyle = useMemo(() => ({
-        aspectRatio: composition.pageWidth / composition.pageHeight,
+        aspectRatio: pageWidth / pageHeight,
         height: '100%',
         width: 'auto',
         maxWidth: '100%',
-        backgroundColor: composition.backgroundColor,
+        backgroundColor: backgroundColor,
         position: 'relative',
         borderRadius: '8px',
         overflow: 'hidden',
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         border: dragOverCanvas ? '2px dashed var(--accent-primary)' : '2px solid transparent',
         cursor: dragState ? (dragState.type === 'move' ? 'grabbing' : 'nwse-resize') : 'default'
-    }), [composition.pageWidth, composition.pageHeight, composition.backgroundColor, dragOverCanvas, dragState])
+    }), [pageWidth, pageHeight, backgroundColor, dragOverCanvas, dragState])
 
     const wrapperStyle = {
         position: 'relative',

@@ -1,21 +1,20 @@
 import { memo, useState, useCallback } from 'react'
-import { useComposerStore } from '../../stores'
-import { useCanvasPersistence } from '../../hooks/useCanvasPersistence'
+import { useCanvasStore } from '../../stores'
 
 /**
  * PageStrip - Collapsible horizontal page navigation strip with thumbnails
  * Allows adding, deleting, duplicating pages with context menu
- * Now uses Zustand stores directly
+ * Uses useCanvasStore for page management
  */
 function PageStrip() {
-    // Get state and actions from store
-    const pages = useComposerStore((s) => s.pages)
-    const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
-    const placedItems = useComposerStore((s) => s.placedItems)
-    const selectPage = useComposerStore((s) => s.selectPage)
-    const addPage = useComposerStore((s) => s.addPage)
-    const deletePage = useComposerStore((s) => s.deletePage)
-    const duplicatePage = useComposerStore((s) => s.duplicatePage)
+    // === CANVAS STORE ===
+    const pages = useCanvasStore((s) => s.pages)
+    const currentPageIndex = useCanvasStore((s) => s.currentPageIndex)
+    const placedItems = useCanvasStore((s) => s.placedItems)
+    const selectPage = useCanvasStore((s) => s.selectPage)
+    const addPage = useCanvasStore((s) => s.addPage)
+    const deletePage = useCanvasStore((s) => s.deletePage)
+    const duplicatePage = useCanvasStore((s) => s.duplicatePage)
 
     // Merge current page's placedItems for accurate display
     const displayPages = pages.map((p, i) =>
@@ -151,9 +150,9 @@ function PageStrip() {
  * Self-contained component that subscribes to store
  */
 export function PageNavigationArrows() {
-    const pages = useComposerStore((s) => s.pages)
-    const currentPageIndex = useComposerStore((s) => s.currentPageIndex)
-    const selectPage = useComposerStore((s) => s.selectPage)
+    const pages = useCanvasStore((s) => s.pages)
+    const currentPageIndex = useCanvasStore((s) => s.currentPageIndex)
+    const selectPage = useCanvasStore((s) => s.selectPage)
 
     const pageCount = pages.length
     if (pageCount <= 1) return null

@@ -2,7 +2,7 @@ import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
 import { LeftSidebar, RightSidebar, CanvasToolbar, PageStrip, PanelControls } from './composer'
 import { PageNavigationArrows } from './composer/PageStrip'
-import { useComposerStore } from '../stores'
+import { useCanvasStore } from '../stores'
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
@@ -12,7 +12,7 @@ import { useComposerStore } from '../stores'
  */
 function ComposerView() {
     // Only mode needed for layout decisions
-    const mode = useComposerStore((s) => s.mode)
+    const mode = useCanvasStore((s) => s.mode)
 
     return (
         <div className="glass-card flex-1 flex overflow-hidden">

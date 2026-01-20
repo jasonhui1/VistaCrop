@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
-import { useComposerStore, useCropsStore } from '../stores'
+import { useCanvasStore, useUIStore, useCropsStore } from '../stores'
 import { getLayout, calculatePanelPositions } from '../utils/panelLayouts'
 
 /**
@@ -8,12 +8,16 @@ import { getLayout, calculatePanelPositions } from '../utils/panelLayouts'
  * Self-contained component that subscribes directly to stores
  */
 function PageCanvas({ previewMode = false }) {
-    // === STORE SUBSCRIPTIONS ===
+    // === CROPS STORE ===
     const crops = useCropsStore((s) => s.crops)
-    const getComposition = useComposerStore((s) => s.getComposition)
-    const selectedPanelIndex = useComposerStore((s) => s.selectedPanelIndex)
-    const setSelectedPanelIndex = useComposerStore((s) => s.setSelectedPanelIndex)
-    const dropCropToPanel = useComposerStore((s) => s.dropCropToPanel)
+
+    // === CANVAS STORE ===
+    const getComposition = useCanvasStore((s) => s.getComposition)
+    const dropCropToPanel = useCanvasStore((s) => s.dropCropToPanel)
+
+    // === UI STORE ===
+    const selectedPanelIndex = useUIStore((s) => s.selectedPanelIndex)
+    const setSelectedPanelIndex = useUIStore((s) => s.setSelectedPanelIndex)
 
     // Derived state
     const composition = getComposition()
