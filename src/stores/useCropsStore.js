@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { saveCrops, loadAllCrops, updateCrop, deleteCrop, uploadImage, getImage } from '../utils/api'
+import { saveCrops, loadAllCrops, updateCrop, deleteCrop, uploadImage, getImageUrl, getCropImageUrl } from '../utils/api'
 
 /**
  * Crops store - manages crop data and associated image state
@@ -21,17 +21,11 @@ export const useCropsStore = create((set, get) => ({
                 // Get the imageId from the first crop
                 const firstCropImageId = allCrops[0].imageId
                 if (firstCropImageId) {
-                    set({ imageId: firstCropImageId })
-
-                    // Fetch the original image from the server
-                    try {
-                        const imageData = await getImage(firstCropImageId)
-                        if (imageData && imageData.data) {
-                            set({ uploadedImage: imageData.data })
-                        }
-                    } catch (imgError) {
-                        console.error('Failed to load image:', imgError)
-                    }
+                    // Use direct URL instead of fetching base64
+                    set({
+                        imageId: firstCropImageId,
+                        uploadedImage: getImageUrl(firstCropImageId)
+                    })
                 }
                 console.log(`Loaded ${allCrops.length} crops from database`)
             }
@@ -43,6 +37,8 @@ export const useCropsStore = create((set, get) => ({
     // Handle image upload
     handleImageUpload: async (imageDataUrl) => {
         const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+        // Temporarily set the base64 for immediate preview while upload happens
         set({
             imageId: newImageId,
             uploadedImage: imageDataUrl,
@@ -52,6 +48,8 @@ export const useCropsStore = create((set, get) => ({
         // Upload the image to the server
         try {
             await uploadImage(newImageId, imageDataUrl)
+            // After upload, switch to streaming URL (no more base64 in memory)
+            set({ uploadedImage: getImageUrl(newImageId) })
             console.log(`Uploaded image: ${newImageId}`)
         } catch (error) {
             console.error('Failed to upload image:', error)
@@ -65,7 +63,7 @@ export const useCropsStore = create((set, get) => ({
         const newCrop = {
             id: Date.now(),
             imageId: imageId,
-            imageData: cropData.imageData,
+            imageData: cropData.imageData, // Temporary base64 for immediate display
             x: cropData.x,
             y: cropData.y,
             width: cropData.width,
@@ -88,6 +86,18 @@ export const useCropsStore = create((set, get) => ({
                 // Get all crops for this imageId (including the new one)
                 const cropsForImage = updatedCrops.filter(c => c.imageId === imageId)
                 await saveCrops(imageId, cropsForImage)
+
+                // After save, update the crop to use streaming URL instead of base64
+                const savedCrop = {
+                    ...newCrop,
+                    imageData: undefined, // Clear base64
+                    imageDataUrl: getCropImageUrl(imageId, newCrop.id) // Use streaming URL
+                }
+                set({
+                    crops: crops.map(c => c.id === newCrop.id ? savedCrop : c).concat([savedCrop])
+                        .filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i) // Dedupe
+                })
+
                 console.log(`Saved crop to image: ${imageId}`)
             } catch (error) {
                 console.error('Failed to save crop:', error)
@@ -140,6 +150,7 @@ export const useCropsStore = create((set, get) => ({
     // Set crops directly (for external updates)
     setCrops: (crops) => set({ crops }),
 
-    // Set the active image (for viewing an existing image on canvas without clearing crops)
-    setActiveImage: (imageId, imageData) => set({ imageId, uploadedImage: imageData }),
+    // Set the active image (for viewing an existing image on canvas)
+    // Uses URL directly for efficiency
+    setActiveImage: (imageId, imageUrl) => set({ imageId, uploadedImage: imageUrl }),
 }))

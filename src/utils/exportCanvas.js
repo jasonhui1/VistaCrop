@@ -4,7 +4,7 @@
  */
 import { FILTERS } from './filters'
 import { drawShapePath } from './frameShapes'
-import { getImage } from './api'
+import { getImageUrl } from './api'
 
 /**
  * Export canvas in panel mode
@@ -22,7 +22,8 @@ async function exportPanelMode(ctx, composition, panels, crops) {
         await new Promise((resolve, reject) => {
             img.onload = resolve
             img.onerror = reject
-            img.src = crop.imageData
+            // Use streaming URL or fall back to imageData
+            img.src = crop.imageDataUrl || crop.imageData
         })
 
         ctx.save()
@@ -97,15 +98,13 @@ async function drawRotatedItem(ctx, item, crop, x, y, width, height, scale = 1) 
     const rotation = item.rotation ?? crop.rotation ?? 0
 
     try {
-        const originalImageData = await getImage(crop.imageId)
-        if (!originalImageData?.data) throw new Error('No original image data')
-
+        // Use streaming URL directly - browser loads the image
         const origImg = new Image()
         origImg.crossOrigin = 'anonymous'
         await new Promise((resolve, reject) => {
             origImg.onload = resolve
             origImg.onerror = reject
-            origImg.src = originalImageData.data
+            origImg.src = getImageUrl(crop.imageId)
         })
 
         const scaleX = crop.width > 0 ? width / crop.width : 1
@@ -146,7 +145,7 @@ async function drawRotatedItem(ctx, item, crop, x, y, width, height, scale = 1) 
         await new Promise((resolve, reject) => {
             img.onload = resolve
             img.onerror = reject
-            img.src = crop.imageData
+            img.src = crop.imageDataUrl || crop.imageData
         })
         ctx.drawImage(img, x, y, width, height)
     }
@@ -161,7 +160,8 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
     await new Promise((resolve, reject) => {
         img.onload = resolve
         img.onerror = reject
-        img.src = crop.imageData
+        // Use streaming URL or fall back to imageData
+        img.src = crop.imageDataUrl || crop.imageData
     })
 
     const imgAspect = img.width / img.height

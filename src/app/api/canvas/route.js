@@ -1,17 +1,16 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
-import { loadThumbnail } from '@/lib/thumbnailDb';
 
 export async function GET() {
     const db = readDb();
     const canvases = db.canvases || [];
 
-    // Load thumbnail data for each canvas
+    // Return thumbnail URL for streaming instead of base64 data
     const canvasesWithThumbnails = canvases.map(canvas => {
         if (canvas.thumbnailPath) {
             return {
                 ...canvas,
-                thumbnail: loadThumbnail(canvas.thumbnailPath)
+                thumbnail: `/api/canvas/${canvas.id}/thumbnail`
             };
         }
         return canvas;

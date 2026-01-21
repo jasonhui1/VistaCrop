@@ -139,7 +139,7 @@ function PageCanvas({ previewMode = false }) {
                                 }}
                             >
                                 <img
-                                    src={crop.imageData}
+                                    src={crop.imageDataUrl || crop.imageData}
                                     alt=""
                                     style={{
                                         width: '100%',

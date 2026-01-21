@@ -237,7 +237,7 @@ const RotatableImage = memo(function RotatableImage({
             ) : (
                 /* Normal view - just the cropped image */
                 <img
-                    src={crop.imageData}
+                    src={crop.imageDataUrl || crop.imageData}
                     alt=""
                     style={{
                         width: '100%',

@@ -435,7 +435,7 @@ function RightSidebar() {
                                                             >
                                                                 <div className="aspect-square bg-[var(--bg-tertiary)] relative overflow-hidden">
                                                                     <img
-                                                                        src={crop.imageData}
+                                                                        src={crop.imageDataUrl || crop.imageData}
                                                                         alt=""
                                                                         className="w-full h-full object-cover"
                                                                         style={{

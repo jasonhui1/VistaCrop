@@ -93,6 +93,17 @@ export async function deleteCrop(imageId, cropId) {
     return response.json();
 }
 
+/**
+ * Get the direct URL for a crop preview image file (more efficient than base64)
+ * Use this with <img src="..."> for direct browser loading
+ * @param {string} imageId - The ID of the parent image
+ * @param {string} cropId - The ID of the crop
+ * @returns {string} URL to the crop image file
+ */
+export function getCropImageUrl(imageId, cropId) {
+    return `${API_BASE_URL}/images/${imageId}/crops/${cropId}/file`;
+}
+
 // ============================================================================
 // IMAGES API
 // ============================================================================
@@ -204,6 +215,16 @@ export async function deleteCanvas(canvasId) {
         throw await createApiError(response, 'Failed to delete canvas');
     }
     return response.json();
+}
+
+/**
+ * Get the direct URL for a canvas thumbnail image file (more efficient than base64)
+ * Use this with <img src="..."> for direct browser loading
+ * @param {string} canvasId - The ID of the canvas
+ * @returns {string} URL to the thumbnail image file
+ */
+export function getThumbnailUrl(canvasId) {
+    return `${API_BASE_URL}/canvas/${canvasId}/thumbnail`;
 }
 
 // ============================================================================

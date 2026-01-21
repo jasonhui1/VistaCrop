@@ -1,21 +1,21 @@
 import { NextResponse } from 'next/server';
 import { readDb, writeDb } from '@/lib/db';
 import { getImageMeta, saveImage } from '@/lib/imageDb';
-import { saveCropPreview, loadCropPreview } from '@/lib/cropDb';
+import { saveCropPreview } from '@/lib/cropDb';
 
 export async function GET(request, { params }) {
     const { imageId } = await params;
     const db = readDb();
 
-    // Return crops linked to this imageId, loading imageData from files
+    // Return crops linked to this imageId with URL to streaming endpoint
     const crops = db.crops
         .filter(c => c.imageId === imageId)
         .map(crop => {
-            let imageData = null;
-            if (crop.imageDataPath) {
-                imageData = loadCropPreview(crop.imageDataPath);
-            }
-            return { ...crop, imageData };
+            // Build the URL to the streaming file endpoint
+            const imageDataUrl = crop.imageDataPath
+                ? `/api/images/${imageId}/crops/${crop.id}/file`
+                : null;
+            return { ...crop, imageDataUrl };
         });
 
     return NextResponse.json({ crops });
