@@ -335,7 +335,10 @@ function FreeformCanvas() {
             const item = placedItems.find(i => i.id === dragState.itemId)
             if (!item) return
 
-            const currentPoints = item.customPoints ||
+            // Use the accumulated points from localItemUpdates (set on mouse down and updated on each move)
+            // This prevents the corner from snapping back to the original position
+            const currentPoints = localItemUpdates?.customPoints ||
+                item.customPoints ||
                 (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
 
             const itemWidthPx = (item.width / pageWidth) * rect.width
@@ -357,7 +360,7 @@ function FreeformCanvas() {
             // Update start pos for next delta calculation
             setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, crops, placedItems, pageWidth, pageHeight])
+    }, [dragState, crops, placedItems, pageWidth, pageHeight, localItemUpdates])
 
     // ========================================================================
     // Mouse Up Handler - Commits LOCAL state to STORE
