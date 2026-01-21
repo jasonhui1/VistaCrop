@@ -1,5 +1,5 @@
 import PageCanvas from './PageCanvas'
-import FreeformCanvas from './FreeformCanvas'
+import FreeformCanvas from './freeform'
 import { LeftSidebar, RightSidebar, CanvasToolbar, PageStrip, PanelControls } from './composer'
 import { PageNavigationArrows } from './composer/PageStrip'
 import { useCanvasStore } from '../stores'
