@@ -195,6 +195,7 @@ async function exportFreeformMode(ctx, placedItems, crops, scale = 1) {
         if (!crop) continue
 
         const rotation = item.rotation ?? crop.rotation ?? 0
+        const frameRotation = item.frameRotation ?? 0
         // Scale all coordinates for thumbnail mode
         const x = item.x * scale
         const y = item.y * scale
@@ -203,6 +204,15 @@ async function exportFreeformMode(ctx, placedItems, crops, scale = 1) {
         const shapeId = item.frameShape || 'rectangle'
 
         ctx.save()
+
+        // Apply frame rotation (rotates entire item around its center)
+        if (frameRotation !== 0) {
+            const centerX = x + width / 2
+            const centerY = y + height / 2
+            ctx.translate(centerX, centerY)
+            ctx.rotate((frameRotation * Math.PI) / 180)
+            ctx.translate(-centerX, -centerY)
+        }
 
         // Apply polygon clipping for the frame shape
         drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints)
@@ -217,12 +227,21 @@ async function exportFreeformMode(ctx, placedItems, crops, scale = 1) {
 
         ctx.restore()
 
-        // Draw border on top (scale border width too)
+        // Draw border on top (scale border width too, and apply frame rotation)
+        ctx.save()
+        if (frameRotation !== 0) {
+            const centerX = x + width / 2
+            const centerY = y + height / 2
+            ctx.translate(centerX, centerY)
+            ctx.rotate((frameRotation * Math.PI) / 180)
+            ctx.translate(-centerX, -centerY)
+        }
         const scaledItem = scale !== 1 ? {
             ...item,
             borderWidth: (item.borderWidth ?? 3) * scale
         } : item
         drawItemBorder(ctx, scaledItem, shapeId, x, y, width, height)
+        ctx.restore()
     }
 }
 
