@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { getImage } from '../utils/api'
+import { getImageUrl } from '../utils/api'
 
 // Constants for display calculations
 const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavailable
@@ -59,25 +59,13 @@ const RotatableImage = memo(function RotatableImage({
         return () => resizeObserver.disconnect()
     }, [])
 
-    // Lazy load original image when rotation is applied
+    // Lazy load original image when rotation is applied - use direct URL for efficiency
     useEffect(() => {
-        if (currentRotation !== 0 && !originalImage && !isLoadingOriginal && crop.imageId) {
-            const loadImage = async () => {
-                setIsLoadingOriginal(true)
-                try {
-                    const imageData = await getImage(crop.imageId)
-                    if (imageData && imageData.data) {
-                        setOriginalImage(imageData.data)
-                    }
-                } catch (error) {
-                    console.error('Failed to lazy-load original image for rotation:', error)
-                } finally {
-                    setIsLoadingOriginal(false)
-                }
-            }
-            loadImage()
+        if (currentRotation !== 0 && !originalImage && crop.imageId) {
+            // Use URL directly - browser handles caching
+            setOriginalImage(getImageUrl(crop.imageId))
         }
-    }, [currentRotation, originalImage, isLoadingOriginal, crop.imageId])
+    }, [currentRotation, originalImage, crop.imageId])
 
     // Calculate rotation display data (pixel-based)
     // When hideRotationOverlay is true, we still need the data to render the rotated image correctly
@@ -117,25 +105,12 @@ const RotatableImage = memo(function RotatableImage({
     // Determine if we need to show the original image (rotation or panning with offset)
     const showOriginalImage = (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0) && originalImage
 
-    // For panning preview, also load original image
+    // For panning preview, also load original image using direct URL
     useEffect(() => {
-        if ((cropOffsetX !== 0 || cropOffsetY !== 0) && !originalImage && !isLoadingOriginal && crop.imageId) {
-            const loadImage = async () => {
-                setIsLoadingOriginal(true)
-                try {
-                    const imageData = await getImage(crop.imageId)
-                    if (imageData && imageData.data) {
-                        setOriginalImage(imageData.data)
-                    }
-                } catch (error) {
-                    console.error('Failed to lazy-load original image for panning:', error)
-                } finally {
-                    setIsLoadingOriginal(false)
-                }
-            }
-            loadImage()
+        if ((cropOffsetX !== 0 || cropOffsetY !== 0) && !originalImage && crop.imageId) {
+            setOriginalImage(getImageUrl(crop.imageId))
         }
-    }, [cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
+    }, [cropOffsetX, cropOffsetY, originalImage, crop.imageId])
 
     // Corner handle style (reusable)
     const cornerHandleStyle = {

@@ -2,7 +2,7 @@ import { memo, useCallback, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import RotatableImage from './RotatableImage'
 import { FILTERS } from '../utils/filters'
-import { getImage } from '../utils/api'
+import { getImageUrl } from '../utils/api'
 import { useCropsStore } from '../stores'
 
 // Constants for rotation
@@ -133,22 +133,12 @@ function CropCard({ crop, onUpdate, onDelete }) {
         onUpdate({ rotation: 0 })
     }
 
-    // Fetch and show the original image
-    const handleViewOriginal = async () => {
+    // View original image - use direct URL for efficiency (no base64 fetching)
+    const handleViewOriginal = () => {
         if (!crop.imageId) return
-
-        setLoadingOriginal(true)
-        try {
-            const imageData = await getImage(crop.imageId)
-            if (imageData && imageData.data) {
-                setOriginalImage(imageData.data)
-                setShowOriginal(true)
-            }
-        } catch (error) {
-            console.error('Failed to load original image:', error)
-        } finally {
-            setLoadingOriginal(false)
-        }
+        // Use URL directly - browser handles loading and caching
+        setOriginalImage(getImageUrl(crop.imageId))
+        setShowOriginal(true)
     }
 
     const handleCloseOriginal = () => {

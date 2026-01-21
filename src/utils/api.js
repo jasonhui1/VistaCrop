@@ -224,9 +224,20 @@ export async function listImages() {
 }
 
 /**
- * Get a stored image by ID
+ * Get the direct URL for an image file (more efficient than base64)
+ * Use this with <img src="..."> for direct browser loading
+ * @param {string} imageId - The ID of the image
+ * @returns {string} URL to the image file
+ */
+export function getImageUrl(imageId) {
+    return `${API_BASE_URL}/images/${imageId}/file`;
+}
+
+/**
+ * Get a stored image by ID (returns base64 - use getImageUrl for efficiency)
  * @param {string} imageId - The ID of the image
  * @returns {Promise<Object|null>} The image data or null if not found
+ * @deprecated Prefer getImageUrl() for better performance
  */
 export async function getImage(imageId) {
     const response = await fetch(`${API_BASE_URL}/images/${imageId}`);
