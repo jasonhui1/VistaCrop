@@ -11,12 +11,12 @@ function SelectedItemControls() {
     // Get selected item ID from UI store
     const selectedItemId = useUIStore((s) => s.selectedItemId)
 
-    // Get item data and actions from canvas store
-    const getItemById = useCanvasStore((s) => s.getItemById)
+    // Subscribe to placedItems and derive the selected item - this ensures re-renders when item data changes
+    const selectedItem = useCanvasStore((s) =>
+        selectedItemId ? s.placedItems.find(item => item.id === selectedItemId) : null
+    )
     const updateItem = useCanvasStore((s) => s.updateItem)
     const deleteItem = useCanvasStore((s) => s.deleteItem)
-
-    const selectedItem = selectedItemId ? getItemById(selectedItemId) : null
 
     if (!selectedItem) {
         return (

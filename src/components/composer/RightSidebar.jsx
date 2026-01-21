@@ -46,9 +46,10 @@ function RightSidebar() {
     const mode = useCanvasStore((s) => s.mode)
     const getComposition = useCanvasStore((s) => s.getComposition)
     const addMultipleCrops = useCanvasStore((s) => s.addMultipleCrops)
-    const getItemById = useCanvasStore((s) => s.getItemById)
-
-    const selectedItem = selectedItemId ? getItemById(selectedItemId) : null
+    // Subscribe to placedItems and derive the selected item - this ensures re-renders when item data changes
+    const selectedItem = useCanvasStore((s) =>
+        selectedItemId ? s.placedItems.find(item => item.id === selectedItemId) : null
+    )
 
     // === LOCAL STATE ===
     const [searchQuery, setSearchQuery] = useState('')
