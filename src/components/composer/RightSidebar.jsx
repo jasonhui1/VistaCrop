@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback } from 'react'
+import { memo, useState, useMemo, useCallback, useEffect } from 'react'
 import SelectedItemControls from './SelectedItemControls'
 import { useCanvasStore, useUIStore, useCropsStore } from '../../stores'
 
@@ -57,6 +57,13 @@ function RightSidebar() {
     const [selectionMode, setSelectionMode] = useState(false)
     const [selectedCropIds, setSelectedCropIds] = useState(new Set())
     const [sidebarSize, setSidebarSize] = useState('S') // 'S', 'M', 'L'
+
+    // Auto-switch to 'selected' tab when an item is selected
+    useEffect(() => {
+        if (selectedItemId && mode === 'freeform') {
+            setActiveTab('selected')
+        }
+    }, [selectedItemId, mode, setActiveTab])
 
     // Width configuration based on size
     const sizeConfig = {

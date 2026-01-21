@@ -10,8 +10,19 @@ function CropCard({ crop, onUpdate, onDelete }) {
     const [tagInput, setTagInput] = useState('')
     const [isRotating, setIsRotating] = useState(false)
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
+    const [deleteConfirm, setDeleteConfirm] = useState(false)
     const containerRef = useRef(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
+
+    const handleDeleteClick = (e) => {
+        e.stopPropagation()
+        if (deleteConfirm) {
+            onDelete()
+        } else {
+            setDeleteConfirm(true)
+            setTimeout(() => setDeleteConfirm(false), 3000)
+        }
+    }
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
@@ -116,7 +127,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
     }
 
     return (
-        <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-color)] transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
+        <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-color)] transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
             {/* Image container with rotation */}
             <div
                 ref={containerRef}
@@ -158,10 +169,13 @@ function CropCard({ crop, onUpdate, onDelete }) {
 
                 {/* Delete button */}
                 <button
-                    onClick={(e) => { e.stopPropagation(); onDelete() }}
-                    className="absolute top-3 left-3 w-9 h-9 bg-red-500/80 hover:bg-red-500 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10"
-                    aria-label="Delete crop"
-                    title="Delete crop"
+                    onClick={handleDeleteClick}
+                    className={`absolute top-3 right-3 w-9 h-9 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10 ${deleteConfirm
+                        ? 'bg-red-500 opacity-100'
+                        : 'bg-black/50 hover:bg-red-500 opacity-0 group-hover:opacity-100'
+                        }`}
+                    aria-label={deleteConfirm ? 'Click again to confirm' : 'Delete crop'}
+                    title={deleteConfirm ? 'Click again to confirm' : 'Delete crop'}
                 >
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

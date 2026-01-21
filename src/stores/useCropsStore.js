@@ -58,35 +58,9 @@ export const useCropsStore = create((set, get) => ({
         }
     },
 
-    // Helper to save crops to the server
-    saveToServer: async (cropsToSave) => {
-        const { imageId } = get()
-
-        // Group crops by their imageId
-        const cropsByImageId = {}
-        for (const crop of cropsToSave) {
-            const cropImageId = crop.imageId || imageId
-            if (!cropImageId) continue
-            if (!cropsByImageId[cropImageId]) {
-                cropsByImageId[cropImageId] = []
-            }
-            cropsByImageId[cropImageId].push(crop)
-        }
-
-        // Save each group to its respective imageId
-        try {
-            for (const [imgId, imgCrops] of Object.entries(cropsByImageId)) {
-                await saveCrops(imgId, imgCrops)
-                console.log(`Saved ${imgCrops.length} crops to image: ${imgId}`)
-            }
-        } catch (error) {
-            console.error('Failed to save crops:', error)
-        }
-    },
-
     // Add a new crop
     addCrop: async (cropData) => {
-        const { crops, imageId, saveToServer } = get()
+        const { crops, imageId } = get()
 
         const newCrop = {
             id: Date.now(),
@@ -108,8 +82,17 @@ export const useCropsStore = create((set, get) => ({
         const updatedCrops = [...crops, newCrop]
         set({ crops: updatedCrops })
 
-        // Save to server immediately
-        await saveToServer(updatedCrops)
+        // Save only the new crop to server (not all crops)
+        if (imageId) {
+            try {
+                // Get all crops for this imageId (including the new one)
+                const cropsForImage = updatedCrops.filter(c => c.imageId === imageId)
+                await saveCrops(imageId, cropsForImage)
+                console.log(`Saved crop to image: ${imageId}`)
+            } catch (error) {
+                console.error('Failed to save crop:', error)
+            }
+        }
     },
 
     // Update an existing crop

@@ -201,7 +201,7 @@ export function calculatePanelPositions(layout, pageWidth, pageHeight, margin = 
 /**
  * Create an empty composition state
  */
-export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_PORTRAIT') {
+export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_LANDSCAPE') {
     const layout = getLayout(layoutId)
     const page = PAGE_PRESETS[pagePreset]
 
@@ -213,7 +213,7 @@ export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_POR
         pageWidth: page.width,
         pageHeight: page.height,
         margin: 40,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#2d2d2d',
         // Array of { panelIndex, cropId, zoom, offsetX, offsetY }
         assignments: layout.panels.map((_, index) => ({
             panelIndex: index,
@@ -231,15 +231,15 @@ export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_POR
  * Create an empty page for multi-page compositions
  * Each page has independent dimensions and placed items
  */
-export function createEmptyPage(pageNumber = 1, pagePreset = 'A4_PORTRAIT') {
-    const preset = PAGE_PRESETS[pagePreset] || PAGE_PRESETS.A4_PORTRAIT
+export function createEmptyPage(pageNumber = 1, pagePreset = 'A4_LANDSCAPE') {
+    const preset = PAGE_PRESETS[pagePreset] || PAGE_PRESETS.A4_LANDSCAPE
     return {
         id: Date.now() + pageNumber,
         name: `Page ${pageNumber}`,
         pagePreset,
         pageWidth: preset.width,
         pageHeight: preset.height,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#2d2d2d',
         placedItems: [],
         createdAt: Date.now(),
         updatedAt: Date.now()
