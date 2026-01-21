@@ -1,16 +1,23 @@
 import { memo, useCallback, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import RotatableImage from './RotatableImage'
 import { FILTERS } from '../utils/filters'
+import { getImage } from '../utils/api'
+import { useCropsStore } from '../stores'
 
 // Constants for rotation
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
 const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
 
 function CropCard({ crop, onUpdate, onDelete }) {
+    const setActiveImage = useCropsStore((s) => s.setActiveImage)
     const [tagInput, setTagInput] = useState('')
     const [isRotating, setIsRotating] = useState(false)
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
     const [deleteConfirm, setDeleteConfirm] = useState(false)
+    const [showOriginal, setShowOriginal] = useState(false)
+    const [originalImage, setOriginalImage] = useState(null)
+    const [loadingOriginal, setLoadingOriginal] = useState(false)
     const containerRef = useRef(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
 
@@ -124,6 +131,35 @@ function CropCard({ crop, onUpdate, onDelete }) {
     const handleResetRotation = () => {
         setImageRotation(0)
         onUpdate({ rotation: 0 })
+    }
+
+    // Fetch and show the original image
+    const handleViewOriginal = async () => {
+        if (!crop.imageId) return
+
+        setLoadingOriginal(true)
+        try {
+            const imageData = await getImage(crop.imageId)
+            if (imageData && imageData.data) {
+                setOriginalImage(imageData.data)
+                setShowOriginal(true)
+            }
+        } catch (error) {
+            console.error('Failed to load original image:', error)
+        } finally {
+            setLoadingOriginal(false)
+        }
+    }
+
+    const handleCloseOriginal = () => {
+        setShowOriginal(false)
+    }
+
+    const handleLoadToCanvas = () => {
+        if (crop.imageId && originalImage) {
+            setActiveImage(crop.imageId, originalImage)
+            setShowOriginal(false)
+        }
     }
 
     return (
@@ -242,6 +278,32 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     />
                 </div>
 
+                {/* View Original Button */}
+                {crop.imageId && (
+                    <button
+                        onClick={handleViewOriginal}
+                        disabled={loadingOriginal}
+                        className="w-full py-2 px-3 text-sm font-medium rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-tertiary)]/80 text-[var(--text-secondary)] hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        {loadingOriginal ? (
+                            <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Loading...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                View Original Image
+                            </>
+                        )}
+                    </button>
+                )}
+
                 {/* Notes */}
                 <div className="space-y-3">
                     <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
@@ -259,6 +321,89 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     />
                 </div>
             </div>
+
+            {/* Original Image Modal - rendered via portal to escape backdrop-filter containing block */}
+            {showOriginal && originalImage && createPortal(
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+                    onClick={handleCloseOriginal}
+                >
+                    <div
+                        className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close button */}
+                        <button
+                            onClick={handleCloseOriginal}
+                            className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors"
+                        >
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+
+                        {/* Load to Canvas button */}
+                        <button
+                            onClick={handleLoadToCanvas}
+                            className="absolute top-4 left-4 z-10 w-10 h-10 bg-black/60 hover:bg-purple-500 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors"
+                            title="Load to Canvas"
+                        >
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+
+                        {/* Original image with crop highlight overlay */}
+                        <div className="relative">
+                            <img
+                                src={originalImage}
+                                alt="Original image"
+                                className="max-w-[90vw] max-h-[90vh] object-contain"
+                            />
+                            {/* Semi-transparent overlay with cutout for crop area */}
+                            <svg
+                                className="absolute inset-0 w-full h-full pointer-events-none"
+                                viewBox={`0 0 ${crop.originalImageWidth || 1000} ${crop.originalImageHeight || 1000}`}
+                                preserveAspectRatio="xMidYMid meet"
+                            >
+                                {/* Dark overlay with a transparent hole for the crop */}
+                                <defs>
+                                    <mask id={`crop-mask-${crop.id}`}>
+                                        <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                                        <rect
+                                            x={crop.x}
+                                            y={crop.y}
+                                            width={crop.width}
+                                            height={crop.height}
+                                            fill="black"
+                                        />
+                                    </mask>
+                                </defs>
+                                <rect
+                                    x="0"
+                                    y="0"
+                                    width="100%"
+                                    height="100%"
+                                    fill="rgba(0,0,0,0.6)"
+                                    mask={`url(#crop-mask-${crop.id})`}
+                                />
+                                {/* Crop border highlight */}
+                                <rect
+                                    x={crop.x}
+                                    y={crop.y}
+                                    width={crop.width}
+                                    height={crop.height}
+                                    fill="none"
+                                    stroke="#a855f7"
+                                    strokeWidth="3"
+                                    strokeDasharray="8 4"
+                                />
+                            </svg>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     )
 }

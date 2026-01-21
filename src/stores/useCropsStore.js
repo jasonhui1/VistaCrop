@@ -139,4 +139,7 @@ export const useCropsStore = create((set, get) => ({
 
     // Set crops directly (for external updates)
     setCrops: (crops) => set({ crops }),
+
+    // Set the active image (for viewing an existing image on canvas without clearing crops)
+    setActiveImage: (imageId, imageData) => set({ imageId, uploadedImage: imageData }),
 }))
