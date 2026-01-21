@@ -67,7 +67,7 @@ function FreeformCanvas() {
     })
 
     const canvasRef = useRef(null)
-    const justFinishedDragRef = useRef(false)
+    const skipClickDeselectRef = useRef(false)
     const [dragState, setDragState] = useState(null)
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
     const [canvasResizeState, setCanvasResizeState] = useState(null)
@@ -392,9 +392,9 @@ function FreeformCanvas() {
         handleDragEnd?.()
 
         // Mark that we just finished a drag - this prevents the canvas click from deselecting
-        // Only set this if an actual drag occurred (localItemUpdates was populated)
-        if (localItemUpdates) {
-            justFinishedDragRef.current = true
+        // Only set this for resize operations (scaling), not for move/rotate
+        if (localItemUpdates && dragState.type?.startsWith('resize-')) {
+            skipClickDeselectRef.current = true
         }
 
         setDragState(null)
@@ -510,9 +510,9 @@ function FreeformCanvas() {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                     onClick={() => {
-                        // Skip deselection if we just finished a drag operation
-                        if (justFinishedDragRef.current) {
-                            justFinishedDragRef.current = false
+                        // Skip deselection if we just finished a resize operation
+                        if (skipClickDeselectRef.current) {
+                            skipClickDeselectRef.current = false
                             return
                         }
                         setSelectedItemId(null)
