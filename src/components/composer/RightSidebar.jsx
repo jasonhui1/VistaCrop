@@ -1,4 +1,4 @@
-import { memo, useState, useMemo, useCallback, useEffect } from 'react'
+import { memo, useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import SelectedItemControls from './SelectedItemControls'
 import { useCanvasStore, useUIStore, useCropsStore } from '../../stores'
 
@@ -25,6 +25,11 @@ function getDateGroup(timestamp) {
 }
 
 const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+
+// Min and max widths for draggable sidebar
+const MIN_SIDEBAR_WIDTH = 150
+const MAX_SIDEBAR_WIDTH = 500
+const DEFAULT_SIDEBAR_WIDTH = 192 // Equivalent to w-48
 
 /**
  * Right sidebar component for Composer view
@@ -56,7 +61,10 @@ function RightSidebar() {
     const [selectedTags, setSelectedTags] = useState(new Set())
     const [selectionMode, setSelectionMode] = useState(false)
     const [selectedCropIds, setSelectedCropIds] = useState(new Set())
-    const [sidebarSize, setSidebarSize] = useState('S') // 'S', 'M', 'L'
+    const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+    const [isDragging, setIsDragging] = useState(false)
+    const dragStartX = useRef(0)
+    const dragStartWidth = useRef(0)
 
     // Auto-switch to 'selected' tab when an item is selected
     useEffect(() => {
@@ -65,13 +73,43 @@ function RightSidebar() {
         }
     }, [selectedItemId, mode, setActiveTab])
 
-    // Width configuration based on size
-    const sizeConfig = {
-        S: { width: 'w-48', columns: 1, thumbClass: 'aspect-[4/3]' },
-        M: { width: 'w-72', columns: 2, thumbClass: 'aspect-square' },
-        L: { width: 'w-96', columns: 3, thumbClass: 'aspect-square' }
+    // Handle drag resize
+    useEffect(() => {
+        if (!isDragging) return
+
+        const handleMouseMove = (e) => {
+            // Dragging left increases width (since sidebar is on the right)
+            const deltaX = dragStartX.current - e.clientX
+            const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, dragStartWidth.current + deltaX))
+            setSidebarWidth(newWidth)
+        }
+
+        const handleMouseUp = () => {
+            setIsDragging(false)
+        }
+
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+        }
+    }, [isDragging])
+
+    const handleDragStart = (e) => {
+        e.preventDefault()
+        dragStartX.current = e.clientX
+        dragStartWidth.current = sidebarWidth
+        setIsDragging(true)
     }
-    const currentConfig = sizeConfig[sidebarSize]
+
+    // Calculate columns based on width (responsive to drag)
+    const columns = useMemo(() => {
+        if (sidebarWidth < 220) return 1
+        if (sidebarWidth < 340) return 2
+        return 3
+    }, [sidebarWidth])
 
     // Collect all unique tags from all crops
     const allTags = useMemo(() => {
@@ -187,8 +225,19 @@ function RightSidebar() {
     const hasActiveFilters = searchQuery || selectedTags.size > 0
 
     return (
-        <div className={`${isOpen ? currentConfig.width : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
-            {/* Sidebar Toggle + Size Controls */}
+        <div
+            className="border-l border-[var(--border-color)] overflow-y-auto flex flex-col relative"
+            style={{ width: isOpen ? `${sidebarWidth}px` : '48px', transition: isDragging ? 'none' : 'width 0.2s' }}
+        >
+            {/* Drag handle for resizing */}
+            {isOpen && (
+                <div
+                    onMouseDown={handleDragStart}
+                    className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-purple-500/50 transition-colors z-10 ${isDragging ? 'bg-purple-500' : ''}`}
+                    title="Drag to resize"
+                />
+            )}
+            {/* Sidebar Toggle */}
             <div className="flex items-center justify-between border-b border-[var(--border-color)]">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
@@ -200,21 +249,7 @@ function RightSidebar() {
                     </svg>
                 </button>
                 {isOpen && (
-                    <div className="flex items-center gap-0.5 pr-2">
-                        {['S', 'M', 'L'].map(size => (
-                            <button
-                                key={size}
-                                onClick={() => setSidebarSize(size)}
-                                className={`w-6 h-6 text-[10px] font-medium rounded transition-all ${sidebarSize === size
-                                    ? 'bg-purple-500 text-white'
-                                    : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-tertiary)]'
-                                    }`}
-                                title={`${size === 'S' ? 'Small' : size === 'M' ? 'Medium' : 'Large'} width`}
-                            >
-                                {size}
-                            </button>
-                        ))}
-                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] pr-2">{Math.round(sidebarWidth)}px</span>
                 )}
             </div>
 
@@ -383,7 +418,7 @@ function RightSidebar() {
                                                     {/* Crops in this group - responsive grid */}
                                                     <div
                                                         className="grid gap-2"
-                                                        style={{ gridTemplateColumns: `repeat(${currentConfig.columns}, 1fr)` }}
+                                                        style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
                                                     >
                                                         {groupCrops.map((crop) => (
                                                             <div
@@ -398,7 +433,7 @@ function RightSidebar() {
                                                                     : 'border-[var(--border-color)] cursor-grab active:cursor-grabbing hover:border-[var(--accent-primary)]'
                                                                     }`}
                                                             >
-                                                                <div className={`${currentConfig.thumbClass} bg-[var(--bg-tertiary)] relative overflow-hidden`}>
+                                                                <div className="aspect-square bg-[var(--bg-tertiary)] relative overflow-hidden">
                                                                     <img
                                                                         src={crop.imageData}
                                                                         alt=""
