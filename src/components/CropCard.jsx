@@ -9,7 +9,7 @@ import { useCropsStore } from '../stores'
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
 const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
 
-function CropCard({ crop, onUpdate, onDelete }) {
+function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
     const setActiveImage = useCropsStore((s) => s.setActiveImage)
     const [tagInput, setTagInput] = useState('')
     const [isRotating, setIsRotating] = useState(false)
@@ -152,7 +152,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
     }
 
     return (
-        <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-color)] transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
+        <div className="group bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-transparent transition-all duration-300">
             {/* Image container with rotation */}
             <div
                 ref={containerRef}
@@ -173,17 +173,19 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     isRotating={isRotating}
                     filterCss={getFilterStyle(crop.filter)}
                     containerInset={SELECTION_BOX_INSET}
+                    hideRotationOverlay={!isRotating}
+                    showCornerHandles={isRotating}
                 />
 
-                {/* Rotation angle badge */}
+                {/* Rotation angle badge - hidden by default, shown on hover */}
                 {imageRotation !== 0 && (
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full pointer-events-none z-10">
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full pointer-events-none z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         {Math.round(imageRotation)}°
                     </div>
                 )}
 
                 {/* Source rotation indicator - shows if crop was taken at an angle */}
-                {crop.sourceRotation && crop.sourceRotation !== 0 && (
+                {crop.sourceRotation != null && crop.sourceRotation !== 0 && (
                     <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white flex items-center gap-1 z-10">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -207,11 +209,11 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     </svg>
                 </button>
 
-                {/* Reset rotation button (when rotated) */}
+                {/* Reset rotation button (when rotated) - hidden by default, shown on hover */}
                 {imageRotation !== 0 && (
                     <button
                         onClick={(e) => { e.stopPropagation(); handleResetRotation() }}
-                        className="absolute bottom-3 right-3 w-9 h-9 bg-purple-500/80 hover:bg-purple-500 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10"
+                        className="absolute bottom-3 right-3 w-9 h-9 bg-purple-500/80 hover:bg-purple-500 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10 opacity-0 group-hover:opacity-100"
                         title="Reset rotation"
                     >
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,83 +222,85 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     </button>
                 )}
 
-                {/* Rotation hint */}
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white/70 pointer-events-none">
+                {/* Rotation hint - hidden by default, shown on hover */}
+                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white/70 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     Drag edge to rotate
                 </div>
             </div>
 
-            {/* Controls */}
-            <div className="p-5 space-y-5">
-                {/* Tags */}
-                <div className="space-y-3">
-                    <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                        </svg>
-                        Tags
-                    </label>
+            {/* Controls - hidden when hideInfo is true */}
+            {!hideInfo && (
+                <div className="p-5 space-y-5">
+                    {/* Tags */}
+                    <div className="space-y-3">
+                        <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            Tags
+                        </label>
 
-                    {/* Tag chips */}
-                    {crop.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {crop.tags.map((tag, index) => (
-                                <span key={index} className="tag-chip">
-                                    {tag}
-                                    <button
-                                        onClick={() => handleRemoveTag(index)}
-                                        className="hover:text-white transition-colors p-0"
-                                        aria-label={`Remove tag ${tag}`}
-                                    >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
+                        {/* Tag chips */}
+                        {crop.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {crop.tags.map((tag, index) => (
+                                    <span key={index} className="tag-chip">
+                                        {tag}
+                                        <button
+                                            onClick={() => handleRemoveTag(index)}
+                                            className="hover:text-white transition-colors p-0"
+                                            aria-label={`Remove tag ${tag}`}
+                                        >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Tag input */}
+                        <input
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={handleTagKeyDown}
+                            placeholder="Add tag and press Enter"
+                        />
+                    </div>
+
+                    {/* View Original Button */}
+                    {crop.imageId && (
+                        <button
+                            onClick={handleViewOriginal}
+                            className="w-full py-2 px-3 text-sm font-medium rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-tertiary)]/80 text-[var(--text-secondary)] hover:text-white transition-all flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            View Original Image
+                        </button>
                     )}
 
-                    {/* Tag input */}
-                    <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={handleTagKeyDown}
-                        placeholder="Add tag and press Enter"
-                    />
+                    {/* Notes */}
+                    <div className="space-y-3">
+                        <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Notes
+                        </label>
+                        <textarea
+                            value={crop.notes}
+                            onChange={handleNotesChange}
+                            placeholder="Add observations about this detail..."
+                            rows={3}
+                            className="resize-none"
+                        />
+                    </div>
                 </div>
-
-                {/* View Original Button */}
-                {crop.imageId && (
-                    <button
-                        onClick={handleViewOriginal}
-                        className="w-full py-2 px-3 text-sm font-medium rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-tertiary)]/80 text-[var(--text-secondary)] hover:text-white transition-all flex items-center justify-center gap-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        View Original Image
-                    </button>
-                )}
-
-                {/* Notes */}
-                <div className="space-y-3">
-                    <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Notes
-                    </label>
-                    <textarea
-                        value={crop.notes}
-                        onChange={handleNotesChange}
-                        placeholder="Add observations about this detail..."
-                        rows={3}
-                        className="resize-none"
-                    />
-                </div>
-            </div>
+            )}
 
             {/* Original Image Modal - rendered via portal to escape backdrop-filter containing block */}
             {showOriginal && originalImage && createPortal(
