@@ -184,9 +184,9 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
                     </div>
                 )}
 
-                {/* Source rotation indicator - shows if crop was taken at an angle */}
+                {/* Source rotation indicator - shows if crop was taken at an angle, hidden by default */}
                 {crop.sourceRotation != null && crop.sourceRotation !== 0 && (
-                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white flex items-center gap-1 z-10">
+                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import CropCard from './CropCard'
 import { useCropsStore } from '../stores'
 
@@ -25,6 +25,16 @@ function getDateGroup(timestamp) {
     return 'Older'
 }
 
+// Fisher-Yates shuffle algorithm
+function shuffleArray(array) {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+            ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+}
+
 const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
 
 const COLUMN_OPTIONS = [1, 2, 3, 4, 5, 6]
@@ -39,6 +49,9 @@ function GalleryView() {
     const [selectedTags, setSelectedTags] = useState(new Set())
     const [hideInfo, setHideInfo] = useState(false)
     const [columnCount, setColumnCount] = useState(3)
+    const [shuffleMode, setShuffleMode] = useState(false)
+    const [shuffleSeed, setShuffleSeed] = useState(0) // Used to trigger re-shuffle
+    const [masonryLayout, setMasonryLayout] = useState(false)
 
     // Collect all unique tags from all crops
     const allTags = useMemo(() => {
@@ -74,8 +87,14 @@ function GalleryView() {
         })
     }, [crops, searchQuery, selectedTags])
 
-    // Group filtered crops by date
+    // Group filtered crops by date (or shuffle if shuffleMode is enabled)
     const groupedCrops = useMemo(() => {
+        // In shuffle mode, return a single flat group with shuffled crops
+        if (shuffleMode) {
+            const shuffledCrops = shuffleArray(filteredCrops)
+            return [['Shuffled', shuffledCrops]]
+        }
+
         const groups = {}
 
         // Sort by newest first, then group
@@ -93,7 +112,7 @@ function GalleryView() {
         return DATE_GROUP_ORDER
             .filter(group => groups[group]?.length > 0)
             .map(group => [group, groups[group]])
-    }, [filteredCrops])
+    }, [filteredCrops, shuffleMode, shuffleSeed])
 
     const toggleTag = (tag) => {
         setSelectedTags(prev => {
@@ -177,12 +196,67 @@ function GalleryView() {
 
                     {/* Display Options */}
                     <div className="flex items-center gap-3">
+                        {/* Shuffle Toggle */}
+                        <div className="flex items-center">
+                            <button
+                                onClick={() => {
+                                    if (!shuffleMode) {
+                                        setShuffleMode(true)
+                                        setShuffleSeed(s => s + 1) // Initial shuffle
+                                    } else {
+                                        setShuffleMode(false)
+                                    }
+                                }}
+                                className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all ${shuffleMode
+                                    ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded-r-none'
+                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
+                                    }`}
+                                title={shuffleMode ? 'Disable shuffle' : 'Show in random order'}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Shuffle
+                            </button>
+                            {/* Re-shuffle button (only visible when shuffle is active) */}
+                            {shuffleMode && (
+                                <button
+                                    onClick={() => setShuffleSeed(s => s + 1)}
+                                    className="px-2 py-1.5 text-sm rounded-lg rounded-l-none bg-pink-500/20 text-pink-400 border border-pink-500/30 border-l-0 hover:bg-pink-500/30 transition-all"
+                                    title="Re-shuffle order"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Masonry Layout Toggle */}
+                        <button
+                            onClick={() => setMasonryLayout(!masonryLayout)}
+                            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all ${masonryLayout
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
+                                }`}
+                            title={masonryLayout ? 'Standard grid' : 'Masonry layout'}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {masonryLayout ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                                )}
+                            </svg>
+                            Masonry
+                        </button>
+
                         {/* Hide Info Toggle */}
                         <button
                             onClick={() => setHideInfo(!hideInfo)}
                             className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all ${hideInfo
-                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
+                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                 }`}
                             title={hideInfo ? 'Show info' : 'Hide info'}
                         >
@@ -206,8 +280,8 @@ function GalleryView() {
                                     key={num}
                                     onClick={() => setColumnCount(num)}
                                     className={`w-7 h-7 text-xs font-medium rounded transition-all ${columnCount === num
-                                            ? 'bg-purple-500 text-white'
-                                            : 'text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-secondary)]'
+                                        ? 'bg-purple-500 text-white'
+                                        : 'text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-secondary)]'
                                         }`}
                                     title={`${num} column${num > 1 ? 's' : ''}`}
                                 >
@@ -258,33 +332,55 @@ function GalleryView() {
                 <div className="flex flex-col gap-6">
                     {groupedCrops.map(([groupName, groupCrops]) => (
                         <div key={groupName}>
-                            {/* Date Group Header */}
-                            <div className="flex items-center gap-3 mb-4">
-                                <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                                    {groupName}
-                                </h3>
-                                <div className="flex-1 h-px bg-[var(--border-color)]"></div>
-                                <span className="text-xs text-[var(--text-muted)]">
-                                    {groupCrops.length} {groupCrops.length === 1 ? 'crop' : 'crops'}
-                                </span>
-                            </div>
-                            {/* Crops in this group */}
-                            <div
-                                className="grid gap-6"
-                                style={{
-                                    gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`
-                                }}
-                            >
-                                {groupCrops.map(crop => (
-                                    <CropCard
-                                        key={crop.id}
-                                        crop={crop}
-                                        onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
-                                        onDelete={() => onDeleteCrop(crop.id)}
-                                        hideInfo={hideInfo}
-                                    />
-                                ))}
-                            </div>
+                            {/* Date Group Header - hidden in shuffle mode */}
+                            {!shuffleMode && (
+                                <div className="flex items-center gap-3 mb-4">
+                                    <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                        {groupName}
+                                    </h3>
+                                    <div className="flex-1 h-px bg-[var(--border-color)]"></div>
+                                    <span className="text-xs text-[var(--text-muted)]">
+                                        {groupCrops.length} {groupCrops.length === 1 ? 'crop' : 'crops'}
+                                    </span>
+                                </div>
+                            )}
+                            {/* Crops in this group - standard grid or masonry layout */}
+                            {masonryLayout ? (
+                                <div
+                                    style={{
+                                        columnCount: columnCount,
+                                        columnGap: '1.5rem'
+                                    }}
+                                >
+                                    {groupCrops.map(crop => (
+                                        <div key={crop.id} style={{ breakInside: 'avoid', marginBottom: '1.5rem' }}>
+                                            <CropCard
+                                                crop={crop}
+                                                onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
+                                                onDelete={() => onDeleteCrop(crop.id)}
+                                                hideInfo={hideInfo}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div
+                                    className="grid gap-6"
+                                    style={{
+                                        gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`
+                                    }}
+                                >
+                                    {groupCrops.map(crop => (
+                                        <CropCard
+                                            key={crop.id}
+                                            crop={crop}
+                                            onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
+                                            onDelete={() => onDeleteCrop(crop.id)}
+                                            hideInfo={hideInfo}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
