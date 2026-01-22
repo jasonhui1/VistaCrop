@@ -340,13 +340,13 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
                     onClick={handleCloseOriginal}
                 >
                     <div
-                        className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl"
+                        className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl group"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close button */}
                         <button
                             onClick={handleCloseOriginal}
-                            className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors"
+                            className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
                         >
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -356,7 +356,7 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
                         {/* Load to Canvas button */}
                         <button
                             onClick={handleLoadToCanvas}
-                            className="absolute top-4 left-4 z-10 w-10 h-10 bg-black/60 hover:bg-purple-500 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors"
+                            className="absolute top-4 left-4 z-10 w-10 h-10 bg-black/60 hover:bg-purple-500 backdrop-blur-sm rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
                             title="Load to Canvas"
                         >
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
