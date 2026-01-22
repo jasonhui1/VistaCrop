@@ -93,11 +93,23 @@ function GalleryView() {
         })
     }, [crops, searchQuery, selectedTags, starFilter])
 
+    // Memoize the shuffled order based on crop IDs only (not other crop properties)
+    // This prevents reshuffling when editing rotation, stars, etc.
+    const shuffledCropIds = useMemo(() => {
+        const ids = filteredCrops.map(c => c.id)
+        return shuffleArray(ids)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filteredCrops.map(c => c.id).join(','), shuffleSeed])
+
     // Group filtered crops by date (or shuffle if shuffleMode is enabled)
     const groupedCrops = useMemo(() => {
         // In shuffle mode, return a single flat group with shuffled crops
         if (shuffleMode) {
-            const shuffledCrops = shuffleArray(filteredCrops)
+            // Map shuffled IDs back to current crop objects
+            const cropMap = new Map(filteredCrops.map(c => [c.id, c]))
+            const shuffledCrops = shuffledCropIds
+                .filter(id => cropMap.has(id))
+                .map(id => cropMap.get(id))
             return [['Shuffled', shuffledCrops]]
         }
 
@@ -118,7 +130,7 @@ function GalleryView() {
         return DATE_GROUP_ORDER
             .filter(group => groups[group]?.length > 0)
             .map(group => [group, groups[group]])
-    }, [filteredCrops, shuffleMode, shuffleSeed])
+    }, [filteredCrops, shuffleMode, shuffledCropIds])
 
     const toggleTag = (tag) => {
         setSelectedTags(prev => {
