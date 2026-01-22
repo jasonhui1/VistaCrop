@@ -19,6 +19,7 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
     const [originalImage, setOriginalImage] = useState(null)
     const containerRef = useRef(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
+    const isDraggingRef = useRef(false) // Track if dragging happened to prevent click
 
     const handleDeleteClick = (e) => {
         e.stopPropagation()
@@ -90,6 +91,7 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
                 startAngle: angleToMouse
             }
             setIsRotating(true)
+            isDraggingRef.current = true // Mark that dragging started
             e.preventDefault()
         }
     }
@@ -156,7 +158,7 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
             {/* Image container with rotation */}
             <div
                 ref={containerRef}
-                className={`relative w-full overflow-hidden bg-[var(--bg-tertiary)] ${isRotating ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`relative w-full overflow-hidden bg-[var(--bg-tertiary)] ${isRotating ? 'cursor-grabbing' : 'cursor-pointer'}`}
                 style={{
                     // Use aspect-ratio to maintain height based on crop dimensions
                     aspectRatio: `${crop.width} / ${crop.height}`
@@ -165,6 +167,14 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
+                onClick={(e) => {
+                    // Only view original if not rotating and no rotation happened
+                    if (!isDraggingRef.current && crop.imageId) {
+                        handleViewOriginal()
+                    }
+                    // Reset the flag after click
+                    isDraggingRef.current = false
+                }}
             >
                 {/* Rotatable image with lazy loading */}
                 <RotatableImage
@@ -231,6 +241,40 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
             {/* Controls - hidden when hideInfo is true */}
             {!hideInfo && (
                 <div className="p-5 space-y-5">
+                    {/* Stars Rating */}
+                    <div className="flex items-center gap-1">
+                        {[1, 2, 3].map((star) => (
+                            <button
+                                key={star}
+                                onClick={() => {
+                                    const newStars = (crop.stars || 0) === star ? 0 : star
+                                    onUpdate({ stars: newStars })
+                                }}
+                                className="w-8 h-8 flex items-center justify-center hover:scale-110 transition-transform rounded-lg hover:bg-[var(--bg-tertiary)]"
+                                title={`${star} star${star > 1 ? 's' : ''}`}
+                            >
+                                <svg
+                                    className={`w-6 h-6 ${star <= (crop.stars || 0)
+                                        ? 'text-yellow-400 fill-yellow-400'
+                                        : 'text-[var(--text-muted)] fill-transparent'
+                                        }`}
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
+                            </button>
+                        ))}
+                        {(crop.stars || 0) > 0 && (
+                            <button
+                                onClick={() => onUpdate({ stars: 0 })}
+                                className="ml-2 text-xs text-[var(--text-muted)] hover:text-white transition-colors"
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
+
                     {/* Tags */}
                     <div className="space-y-3">
                         <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
@@ -269,19 +313,6 @@ function CropCard({ crop, onUpdate, onDelete, hideInfo = false }) {
                             placeholder="Add tag and press Enter"
                         />
                     </div>
-
-                    {/* View Original Button */}
-                    {crop.imageId && (
-                        <button
-                            onClick={handleViewOriginal}
-                            className="w-full py-2 px-3 text-sm font-medium rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-tertiary)]/80 text-[var(--text-secondary)] hover:text-white transition-all flex items-center justify-center gap-2"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            View Original Image
-                        </button>
-                    )}
 
                     {/* Notes */}
                     <div className="space-y-3">

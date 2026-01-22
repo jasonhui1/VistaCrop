@@ -52,6 +52,7 @@ function GalleryView() {
     const [shuffleMode, setShuffleMode] = useState(false)
     const [shuffleSeed, setShuffleSeed] = useState(0) // Used to trigger re-shuffle
     const [masonryLayout, setMasonryLayout] = useState(false)
+    const [starFilter, setStarFilter] = useState(0) // 0 = all, 1-3 = minimum stars
 
     // Collect all unique tags from all crops
     const allTags = useMemo(() => {
@@ -62,7 +63,7 @@ function GalleryView() {
         return Array.from(tagSet).sort()
     }, [crops])
 
-    // Filter crops based on search query and selected tags
+    // Filter crops based on search query, selected tags, and star rating
     const filteredCrops = useMemo(() => {
         return crops.filter(crop => {
             // Search filter: match notes or tags
@@ -83,9 +84,14 @@ function GalleryView() {
                 if (!hasSelectedTag) return false
             }
 
+            // Star filter: crop must have at least the minimum stars
+            if (starFilter > 0) {
+                if ((crop.stars || 0) < starFilter) return false
+            }
+
             return true
         })
-    }, [crops, searchQuery, selectedTags])
+    }, [crops, searchQuery, selectedTags, starFilter])
 
     // Group filtered crops by date (or shuffle if shuffleMode is enabled)
     const groupedCrops = useMemo(() => {
@@ -129,9 +135,10 @@ function GalleryView() {
     const clearFilters = () => {
         setSearchQuery('')
         setSelectedTags(new Set())
+        setStarFilter(0)
     }
 
-    const hasActiveFilters = searchQuery || selectedTags.size > 0
+    const hasActiveFilters = searchQuery || selectedTags.size > 0 || starFilter > 0
 
     if (crops.length === 0) {
         return (
@@ -310,6 +317,44 @@ function GalleryView() {
                         ))}
                     </div>
                 )}
+
+                {/* Star Filter */}
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Favourites:</span>
+                    <div className="flex items-center gap-1 bg-[var(--bg-tertiary)] rounded-lg p-1">
+                        <button
+                            onClick={() => setStarFilter(0)}
+                            className={`px-2 py-1 text-xs rounded transition-all ${starFilter === 0
+                                ? 'bg-yellow-500/20 text-yellow-400'
+                                : 'text-[var(--text-secondary)] hover:text-white'
+                                }`}
+                            title="Show all"
+                        >
+                            All
+                        </button>
+                        {[1, 2, 3].map(stars => (
+                            <button
+                                key={stars}
+                                onClick={() => setStarFilter(starFilter === stars ? 0 : stars)}
+                                className={`flex items-center gap-0.5 px-2 py-1 text-xs rounded transition-all ${starFilter === stars
+                                    ? 'bg-yellow-500/20 text-yellow-400'
+                                    : 'text-[var(--text-secondary)] hover:text-white'
+                                    }`}
+                                title={`${stars}+ star${stars > 1 ? 's' : ''}`}
+                            >
+                                {[...Array(stars)].map((_, i) => (
+                                    <svg
+                                        key={i}
+                                        className="w-3.5 h-3.5 fill-current"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                    </svg>
+                                ))}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Crops Grid with Date Groups */}
@@ -347,13 +392,11 @@ function GalleryView() {
                             {/* Crops in this group - standard grid or masonry layout */}
                             {masonryLayout ? (
                                 <div
-                                    style={{
-                                        columnCount: columnCount,
-                                        columnGap: '1.5rem'
-                                    }}
+                                    className="gap-6"
+                                    style={{ columnCount: columnCount, columnGap: '1.5rem' }}
                                 >
                                     {groupCrops.map(crop => (
-                                        <div key={crop.id} style={{ breakInside: 'avoid', marginBottom: '1.5rem' }}>
+                                        <div key={crop.id} className="break-inside-avoid mb-6">
                                             <CropCard
                                                 crop={crop}
                                                 onUpdate={(updates) => onUpdateCrop(crop.id, updates)}
