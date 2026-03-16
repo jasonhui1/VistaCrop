@@ -100,7 +100,11 @@ function CanvasToolbar({
 
                 {mode === 'freeform' && itemCount > 0 && (
                     <button
-                        onClick={onClear}
+                        onClick={() => {
+                            if (window.confirm('Are you sure you want to clear the canvas?')) {
+                                onClear()
+                            }
+                        }}
                         className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
                     >
                         Clear
