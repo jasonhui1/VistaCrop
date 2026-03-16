@@ -76,6 +76,7 @@ function CanvasToolbar({
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
+                            aria-label="Undo (Ctrl+Z)"
                             title="Undo (Ctrl+Z)"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,6 +90,7 @@ function CanvasToolbar({
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
+                            aria-label="Redo (Ctrl+Y)"
                             title="Redo (Ctrl+Y)"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,6 +173,7 @@ function CanvasToolbar({
                                                 ? 'bg-red-500 text-white'
                                                 : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10'
                                                 }`}
+                                            aria-label={deleteConfirmId === canvas.id ? 'Click again to confirm' : 'Delete canvas'}
                                             title={deleteConfirmId === canvas.id ? 'Click again to confirm' : 'Delete canvas'}
                                         >
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
