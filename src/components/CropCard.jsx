@@ -173,6 +173,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     <button
                         onClick={(e) => { e.stopPropagation(); handleResetRotation() }}
                         className="absolute bottom-3 right-3 w-9 h-9 bg-purple-500/80 hover:bg-purple-500 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10"
+                        aria-label="Reset rotation"
                         title="Reset rotation"
                     >
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
