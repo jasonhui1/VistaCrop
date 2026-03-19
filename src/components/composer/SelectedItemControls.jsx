@@ -56,7 +56,8 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                         onClick={() => onUpdateItem(selectedItem.id, { phoneColor: c })}
                                         className="w-5 h-5 rounded-full border border-[var(--border-color)]"
                                         style={{ backgroundColor: c }}
-                                        title={c}
+                                        title={`Set color to ${c}`}
+                                        aria-label={`Set color to ${c}`}
                                     />
                                 ))}
                             </div>
@@ -101,6 +102,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                 }`}
                             title={shape.name}
+                            aria-label={`Shape ${shape.name}`}
                         >
                             {shape.icon}
                         </button>
@@ -122,6 +124,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                     }`}
                                 title={shape.name}
+                                aria-label={`Shape ${shape.name}`}
                             >
                                 {shape.icon}
                             </button>
@@ -184,6 +187,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 onClick={() => onUpdateItem(selectedItem.id, { customPoints: null, editingCorners: false })}
                                 className="px-2 py-1.5 text-xs rounded bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-red-400 transition-colors"
                                 title="Reset to preset shape"
+                                aria-label="Reset to preset shape"
                             >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -212,6 +216,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                 }`}
                             title={style.title}
+                            aria-label={`Border style ${style.title}`}
                         >
                             {style.label}
                         </button>
@@ -261,6 +266,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                             onClick={() => onUpdateItem(selectedItem.id, { frameRotation: 0 })}
                             className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
                             title="Reset frame rotation"
+                            aria-label="Reset frame rotation"
                         >
                             Reset
                         </button>
@@ -291,6 +297,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                             onClick={() => onUpdateItem(selectedItem.id, { cropOffsetX: 0, cropOffsetY: 0 })}
                             className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
                             title="Reset crop position"
+                            aria-label="Reset crop position"
                         >
                             Reset
                         </button>
