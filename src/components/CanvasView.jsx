@@ -352,6 +352,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                                 : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-white'
                                 }`}
                             title={filter.name}
+                            aria-label={`Apply ${filter.name} filter`}
                         >
                             {/* Color preview dot */}
                             <div className={`w-3 h-3 rounded-full ${filter.vibe} shadow-inner`}></div>
