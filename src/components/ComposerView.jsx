@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
 import { LeftSidebar, RightSidebar, CanvasToolbar } from './composer'
@@ -353,4 +353,4 @@ function ComposerView({ crops }) {
     )
 }
 
-export default ComposerView
+export default memo(ComposerView)

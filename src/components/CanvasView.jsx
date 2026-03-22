@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
 
 function CanvasView({ image, onAddCrop, onImageUpload }) {
@@ -488,4 +488,4 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
     )
 }
 
-export default CanvasView
+export default memo(CanvasView)
