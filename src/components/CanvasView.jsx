@@ -347,17 +347,19 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                         <button
                             key={filter.id}
                             onClick={(e) => { e.stopPropagation(); setActiveFilter(filter); }}
-                            className={`group relative w-10 h-10 rounded-xl transition-all duration-200 flex items-center justify-center ${activeFilter.id === filter.id
+                            className={`group relative w-10 h-10 rounded-xl transition-all duration-200 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${activeFilter.id === filter.id
                                 ? 'bg-white text-black shadow-lg scale-110'
                                 : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-white'
                                 }`}
                             title={filter.name}
+                            aria-label={`Apply ${filter.name} filter`}
+                            aria-pressed={activeFilter.id === filter.id}
                         >
                             {/* Color preview dot */}
-                            <div className={`w-3 h-3 rounded-full ${filter.vibe} shadow-inner`}></div>
+                            <div className={`w-3 h-3 rounded-full ${filter.vibe} shadow-inner`} aria-hidden="true"></div>
 
                             {/* Tooltip */}
-                            <div className="absolute right-full mr-3 px-3 py-1.5 bg-black/80 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm">
+                            <div className="absolute right-full mr-3 px-3 py-1.5 bg-black/80 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm" aria-hidden="true">
                                 {filter.name}
                             </div>
                         </button>
