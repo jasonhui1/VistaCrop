@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import CropCard from './CropCard'
 
 function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
@@ -39,4 +40,4 @@ function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
     )
 }
 
-export default GalleryView
+export default memo(GalleryView)

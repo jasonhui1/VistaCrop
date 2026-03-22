@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { memo, useRef } from 'react'
 
 function ImageUploader({ onImageUpload }) {
     const fileInputRef = useRef(null)
@@ -37,4 +37,4 @@ function ImageUploader({ onImageUpload }) {
     )
 }
 
-export default ImageUploader
+export default memo(ImageUploader)
