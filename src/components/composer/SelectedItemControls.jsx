@@ -57,6 +57,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                         className="w-5 h-5 rounded-full border border-[var(--border-color)]"
                                         style={{ backgroundColor: c }}
                                         title={c}
+                                        aria-label={`Select color ${c}`}
                                     />
                                 ))}
                             </div>
@@ -184,6 +185,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 onClick={() => onUpdateItem(selectedItem.id, { customPoints: null, editingCorners: false })}
                                 className="px-2 py-1.5 text-xs rounded bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-red-400 transition-colors"
                                 title="Reset to preset shape"
+                                aria-label="Reset to preset shape"
                             >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
