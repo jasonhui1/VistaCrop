@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { FILTERS, FILTERS_MAP } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
@@ -608,14 +608,17 @@ function FreeformCanvas({
     // ========================================================================
     // Utility Functions
     // ========================================================================
+    // Memoize crops for O(1) lookup
+    const cropsMap = useMemo(() => new Map(crops.map(c => [c.id, c])), [crops])
+
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = FILTERS_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 
     const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
+        return cropsMap.get(cropId)
+    }, [cropsMap])
 
     // ========================================================================
     // Drag & Drop Handlers (for dropping new crops)
@@ -685,7 +688,7 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => c.id === item.cropId)
+                const crop = cropsMap.get(item.cropId)
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -697,7 +700,7 @@ function FreeformCanvas({
         } else {
             setDragState(baseDragState)
         }
-    }, [onSelectItem, crops])
+    }, [onSelectItem, cropsMap])
 
     const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
         e.stopPropagation()
@@ -727,7 +730,7 @@ function FreeformCanvas({
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
             const { centerX, centerY, startAngle, startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = cropsMap.get(startItem.cropId)
             const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
@@ -758,7 +761,7 @@ function FreeformCanvas({
         // Handle crop panning (Ctrl+drag to shift crop position within original image)
         if (dragState.type === 'crop-pan') {
             const { startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = cropsMap.get(startItem.cropId)
             if (!crop) return
 
             // Calculate delta in original image pixel space
@@ -798,7 +801,7 @@ function FreeformCanvas({
         // Handle resize
         if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
-            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            const crop = cropsMap.get(dragState.startItem.cropId)
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
@@ -836,7 +839,7 @@ function FreeformCanvas({
             updateFn(dragState.itemId, { customPoints: newPoints })
             setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, onUpdateItem, onUpdateItemSilent, cropsMap, placedItems, composition.pageWidth, composition.pageHeight])
 
     // ========================================================================
     // Mouse Up Handler
