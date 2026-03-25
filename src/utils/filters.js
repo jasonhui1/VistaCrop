@@ -63,3 +63,9 @@ export const FILTERS = [
         vibe: 'bg-cyan-200'
     }
 ]
+
+// Precomputed map for O(1) lookups
+export const FILTER_MAP = FILTERS.reduce((acc, filter) => {
+    acc[filter.id] = filter
+    return acc
+}, {})
