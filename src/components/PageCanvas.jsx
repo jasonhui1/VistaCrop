@@ -16,10 +16,22 @@ function PageCanvas({
     const canvasRef = useRef(null)
     const [dragOverPanel, setDragOverPanel] = useState(null)
 
+    const filterMap = useMemo(() => {
+        const map = new Map()
+        FILTERS.forEach(f => map.set(f.id, f))
+        return map
+    }, [])
+
+    const cropsMap = useMemo(() => {
+        const map = new Map()
+        crops.forEach(c => map.set(c.id, c))
+        return map
+    }, [crops])
+
     // Find crop by ID
     const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
+        return cropsMap.get(cropId)
+    }, [cropsMap])
 
     // Handle drag over panel
     const handleDragOver = useCallback((e, panelIndex) => {
@@ -49,9 +61,9 @@ function PageCanvas({
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = filterMap.get(filterName)
         return filter ? filter.css : 'none'
-    }, [])
+    }, [filterMap])
 
     // Calculate scale to fit page in container
     const containerStyle = useMemo(() => {
