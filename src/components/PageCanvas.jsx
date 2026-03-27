@@ -1,6 +1,9 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { FILTERS } from '../utils/filters'
 
+const FILTER_MAP = new Map()
+FILTERS.forEach(f => FILTER_MAP.set(f.id, f))
+
 /**
  * PageCanvas - Renders the composition with assigned crops in panels
  */
@@ -16,10 +19,17 @@ function PageCanvas({
     const canvasRef = useRef(null)
     const [dragOverPanel, setDragOverPanel] = useState(null)
 
+    // Precompute Maps for O(1) lookups during render
+    const cropMap = useMemo(() => {
+        const map = new Map()
+        crops.forEach(c => map.set(c.id, c))
+        return map
+    }, [crops])
+
     // Find crop by ID
     const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
+        return cropMap.get(cropId)
+    }, [cropMap])
 
     // Handle drag over panel
     const handleDragOver = useCallback((e, panelIndex) => {
@@ -49,7 +59,7 @@ function PageCanvas({
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = FILTER_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 

@@ -565,6 +565,12 @@ const PlacedItem = memo(function PlacedItem({
 })
 
 // ============================================================================
+// Precomputed Static Maps
+// ============================================================================
+const FILTER_MAP = new Map()
+FILTERS.forEach(f => FILTER_MAP.set(f.id, f))
+
+// ============================================================================
 // Main FreeformCanvas Component
 // ============================================================================
 function FreeformCanvas({
@@ -608,14 +614,21 @@ function FreeformCanvas({
     // ========================================================================
     // Utility Functions
     // ========================================================================
+    // Precompute Maps for O(1) lookups during high-frequency events and renders
+    const cropMap = useMemo(() => {
+        const map = new Map()
+        crops.forEach(c => map.set(c.id, c))
+        return map
+    }, [crops])
+
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = FILTER_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 
     const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
+        return cropMap.get(cropId)
+    }, [cropMap])
 
     // ========================================================================
     // Drag & Drop Handlers (for dropping new crops)
@@ -685,7 +698,7 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => c.id === item.cropId)
+                const crop = cropMap.get(item.cropId)
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -697,7 +710,7 @@ function FreeformCanvas({
         } else {
             setDragState(baseDragState)
         }
-    }, [onSelectItem, crops])
+    }, [onSelectItem, cropMap])
 
     const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
         e.stopPropagation()
@@ -727,7 +740,7 @@ function FreeformCanvas({
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
             const { centerX, centerY, startAngle, startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = cropMap.get(startItem.cropId)
             const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
@@ -758,7 +771,7 @@ function FreeformCanvas({
         // Handle crop panning (Ctrl+drag to shift crop position within original image)
         if (dragState.type === 'crop-pan') {
             const { startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = cropMap.get(startItem.cropId)
             if (!crop) return
 
             // Calculate delta in original image pixel space
@@ -798,7 +811,7 @@ function FreeformCanvas({
         // Handle resize
         if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
-            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            const crop = cropMap.get(dragState.startItem.cropId)
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
@@ -836,7 +849,7 @@ function FreeformCanvas({
             updateFn(dragState.itemId, { customPoints: newPoints })
             setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, onUpdateItem, onUpdateItemSilent, cropMap, placedItems, composition.pageWidth, composition.pageHeight])
 
     // ========================================================================
     // Mouse Up Handler

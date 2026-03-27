@@ -1,0 +1,3 @@
+## 2024-03-27 - [Performance bottleneck] Avoid Array.find() in heavily rendered canvas views
+**Learning:** In heavily rendered components (like canvas views), `Array.find()` lookups inside render loops or high-frequency event handlers (like dragging) can cause O(N*M) performance bottlenecks. This becomes increasingly problematic as the number of items or complexity grows.
+**Action:** Use precomputed O(1) Maps (e.g., via `useMemo` for props or static maps for constants) instead to prevent these performance bottlenecks and optimize rendering.
