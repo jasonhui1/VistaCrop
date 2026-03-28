@@ -1,0 +1,3 @@
+## 2024-05-24 - Precompute Filter Lookups
+**Learning:** React components inside heavy rendering paths (like FreeformCanvas and its items) used `Array.find()` directly inside event handlers or closures on a constant array (`FILTERS`). While the array is small, `find()` operates in $O(N)$ and occurs within rendering paths or high-frequency callbacks (like mouse moves / canvas updates), resulting in continuous minor overheads.
+**Action:** When filtering or finding by an identifier from static constants (e.g. `FILTERS`), precompute a $O(1)$ lookup Map outside the component to guarantee the most efficient lookup, particularly in repetitive or heavily-rendered contexts.
