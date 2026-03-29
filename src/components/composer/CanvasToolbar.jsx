@@ -72,11 +72,12 @@ function CanvasToolbar({
                         <button
                             onClick={onUndo}
                             disabled={!canUndo}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canUndo
+                            className={`text-xs px-2 py-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none ${canUndo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
                             title="Undo (Ctrl+Z)"
+                            aria-label="Undo"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -85,11 +86,12 @@ function CanvasToolbar({
                         <button
                             onClick={onRedo}
                             disabled={!canRedo}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canRedo
+                            className={`text-xs px-2 py-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none ${canRedo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
                             title="Redo (Ctrl+Y)"
+                            aria-label="Redo"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
@@ -101,7 +103,7 @@ function CanvasToolbar({
                 {mode === 'freeform' && itemCount > 0 && (
                     <button
                         onClick={onClear}
-                        className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors focus-visible:ring-2 focus-visible:outline-none"
                     >
                         Clear
                     </button>
@@ -110,7 +112,7 @@ function CanvasToolbar({
                 {mode === 'freeform' && (
                     <button
                         onClick={onToggleEditCanvasSize}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${editingCanvasSize
+                        className={`text-xs px-2 py-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none ${editingCanvasSize
                             ? 'bg-[var(--accent-primary)] text-white'
                             : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                             }`}
@@ -127,8 +129,10 @@ function CanvasToolbar({
                             onToggleLoadMenu()
                         }}
                         disabled={isLoading}
-                        className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] focus-visible:ring-2 focus-visible:outline-none ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Load saved canvas"
+                        aria-expanded={showLoadMenu}
+                        aria-haspopup="true"
                     >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {isLoading ? (
@@ -187,7 +191,7 @@ function CanvasToolbar({
                 <button
                     onClick={onSave}
                     disabled={isSaving}
-                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${canvasId
+                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:outline-none ${canvasId
                         ? 'bg-green-600 hover:bg-green-500 text-white'
                         : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)]'
                         } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -207,7 +211,7 @@ function CanvasToolbar({
 
                 <button
                     onClick={onExport}
-                    className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:outline-none"
                 >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
