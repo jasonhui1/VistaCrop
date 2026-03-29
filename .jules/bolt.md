@@ -1,0 +1,3 @@
+## 2024-05-14 - Replace O(N) array lookups with O(1) Maps in render loops
+**Learning:** Found an O(N) bottleneck in `FreeformCanvas.jsx` where `crops.find()` and `FILTERS.find()` were called repeatedly inside the component body and event handlers like `handleMouseMove` which trigger rapidly. Also, inside `placedItems.map` these calls result in O(N*M) performance bottlenecks where N is placedItems count and M is crops/FILTERS count.
+**Action:** Use precomputed O(1) Maps for constants like `FILTERS` outside the component, and use `useMemo` to create maps for dynamic props like `crops` and `placedItems` to achieve O(1) lookup in render loops and high-frequency event handlers.
