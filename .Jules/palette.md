@@ -1,0 +1,3 @@
+## 2024-03-05 - Accessible Sidebar Toggles
+**Learning:** Found an accessibility pattern where icon-only sidebar toggle buttons lacked `aria-label`, `aria-expanded` and clear keyboard focus states. This is a common pattern in the composer views (`LeftSidebar`, `RightSidebar`) and potentially others.
+**Action:** When creating or modifying icon-only action buttons or toggles (especially toggles that change layout), always ensure an `aria-label` is present, use `aria-expanded` to communicate toggle state to screen readers, mark decorative inner icons with `aria-hidden="true"`, and provide clear keyboard focus feedback using `focus-visible:ring-2 focus-visible:outline-none`.
