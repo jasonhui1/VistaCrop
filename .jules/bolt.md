@@ -1,0 +1,3 @@
+## 2024-05-18 - Optimized O(N*M) lookup bottlenecks in canvas renders
+**Learning:** In heavily rendered components like `PageCanvas` and `FreeformCanvas`, calling `Array.find()` (e.g., `FILTERS.find` and `crops.find`) inside `.map()` loops or frequent event handlers like `onMouseMove` creates an O(N*M) performance bottleneck, especially when N (number of available items) and M (number of rendered/dragged elements) grow.
+**Action:** Always precompute static data into Maps for O(1) lookups outside the component (e.g., `FILTER_MAP`) or compute them once via `useMemo` at the top level component (e.g., `cropsMap` in `ComposerView`) and pass them down as props, instead of executing inline `.find()` searches.

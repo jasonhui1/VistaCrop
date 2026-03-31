@@ -65,6 +65,13 @@ function ComposerView({ crops }) {
     })
 
     // === DERIVED STATE ===
+    const cropsMap = useMemo(() => {
+        return crops.reduce((acc, crop) => {
+            acc[crop.id] = crop
+            return acc
+        }, {})
+    }, [crops])
+
     const currentLayout = useMemo(() => getLayout(composition.layoutId), [composition.layoutId])
 
     const panels = useMemo(() =>
@@ -284,6 +291,7 @@ function ComposerView({ crops }) {
                             composition={composition}
                             panels={panels}
                             crops={crops}
+                            cropsMap={cropsMap}
                             selectedPanelIndex={selectedPanelIndex}
                             onSelectPanel={setSelectedPanelIndex}
                             onDropCrop={handleDropCropToPanel}
@@ -292,6 +300,7 @@ function ComposerView({ crops }) {
                         <FreeformCanvas
                             composition={composition}
                             crops={crops}
+                            cropsMap={cropsMap}
                             placedItems={placedItems}
                             selectedItemId={selectedItemId}
                             onSelectItem={setSelectedItemId}

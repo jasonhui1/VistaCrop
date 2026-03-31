@@ -570,6 +570,7 @@ const PlacedItem = memo(function PlacedItem({
 function FreeformCanvas({
     composition,
     crops,
+    cropsMap,
     placedItems,
     selectedItemId,
     onSelectItem,
@@ -612,10 +613,6 @@ function FreeformCanvas({
         const filter = FILTERS.find(f => f.id === filterName)
         return filter ? filter.css : 'none'
     }, [])
-
-    const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
 
     // ========================================================================
     // Drag & Drop Handlers (for dropping new crops)
@@ -685,7 +682,7 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => c.id === item.cropId)
+                const crop = cropsMap[item.cropId]
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -727,7 +724,7 @@ function FreeformCanvas({
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
             const { centerX, centerY, startAngle, startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = cropsMap[startItem.cropId]
             const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
@@ -758,7 +755,7 @@ function FreeformCanvas({
         // Handle crop panning (Ctrl+drag to shift crop position within original image)
         if (dragState.type === 'crop-pan') {
             const { startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = cropsMap[startItem.cropId]
             if (!crop) return
 
             // Calculate delta in original image pixel space
@@ -798,7 +795,7 @@ function FreeformCanvas({
         // Handle resize
         if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
-            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            const crop = cropsMap[dragState.startItem.cropId]
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
@@ -979,7 +976,7 @@ function FreeformCanvas({
                 >
                     {/* Render placed items */}
                     {placedItems.map((item) => {
-                        const crop = getCropById(item.cropId)
+                        const crop = cropsMap[item.cropId]
                         if (!crop) return null
 
                         const isSelected = selectedItemId === item.id
