@@ -8,6 +8,7 @@ function PageCanvas({
     composition,
     panels,
     crops,
+    cropsMap,
     selectedPanelIndex,
     onSelectPanel,
     onDropCrop,
@@ -15,11 +16,6 @@ function PageCanvas({
 }) {
     const canvasRef = useRef(null)
     const [dragOverPanel, setDragOverPanel] = useState(null)
-
-    // Find crop by ID
-    const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
 
     // Handle drag over panel
     const handleDragOver = useCallback((e, panelIndex) => {
@@ -76,7 +72,7 @@ function PageCanvas({
         >
             {panels.map((panel, index) => {
                 const assignment = composition.assignments[index]
-                const crop = assignment?.cropId ? getCropById(assignment.cropId) : null
+                const crop = assignment?.cropId ? cropsMap[assignment.cropId] : null
                 const isSelected = selectedPanelIndex === index
                 const isDragOver = dragOverPanel === index
 
