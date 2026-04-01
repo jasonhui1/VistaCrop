@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { getFilterCss } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
@@ -608,11 +608,6 @@ function FreeformCanvas({
     // ========================================================================
     // Utility Functions
     // ========================================================================
-    const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.css : 'none'
-    }, [])
-
     const getCropById = useCallback((cropId) => {
         return crops.find(c => c.id === cropId)
     }, [crops])
@@ -1004,7 +999,7 @@ function FreeformCanvas({
                                 currentFrameRotation={currentFrameRotation}
                                 currentCropOffset={currentCropOffset}
                                 composition={composition}
-                                filterCss={getFilterStyle(crop.filter)}
+                                filterCss={getFilterCss(crop.filter)}
                                 onMouseDown={handleItemMouseDown}
                                 onCornerMouseDown={handleCornerMouseDown}
                             />

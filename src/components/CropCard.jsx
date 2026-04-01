@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import RotatableImage from './RotatableImage'
-import { FILTERS } from '../utils/filters'
+import { getFilterCss } from '../utils/filters'
 
 // Constants for rotation
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
@@ -12,12 +12,6 @@ function CropCard({ crop, onUpdate, onDelete }) {
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
     const containerRef = useRef(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
-
-    // Get CSS filter string from filter name
-    const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.css : 'none'
-    }, [])
 
     const handleTagKeyDown = (e) => {
         if (e.key === 'Enter' && tagInput.trim()) {
@@ -135,7 +129,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     crop={crop}
                     currentRotation={imageRotation}
                     isRotating={isRotating}
-                    filterCss={getFilterStyle(crop.filter)}
+                    filterCss={getFilterCss(crop.filter)}
                     containerInset={SELECTION_BOX_INSET}
                 />
 

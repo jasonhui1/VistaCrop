@@ -63,3 +63,15 @@ export const FILTERS = [
         vibe: 'bg-cyan-200'
     }
 ]
+
+// Precomputed Map for O(1) filter lookups to improve performance during frequent renders
+export const FILTER_MAP = new Map(FILTERS.map(f => [f.id, f.css || f.filter]))
+
+/**
+ * Get CSS filter string from filter ID efficiently
+ * @param {string} filterId - The ID of the filter
+ * @returns {string} CSS filter string
+ */
+export function getFilterCss(filterId) {
+    return FILTER_MAP.get(filterId) || 'none'
+}
