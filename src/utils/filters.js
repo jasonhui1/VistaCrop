@@ -63,3 +63,6 @@ export const FILTERS = [
         vibe: 'bg-cyan-200'
     }
 ]
+
+// O(1) map for quick filter string lookup without array iteration
+export const FILTER_CSS_MAP = Object.fromEntries(FILTERS.map(f => [f.id, { css: f.filter, filter: f.filter }]))

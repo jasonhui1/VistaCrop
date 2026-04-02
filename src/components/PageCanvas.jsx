@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { FILTER_CSS_MAP } from '../utils/filters'
 
 /**
  * PageCanvas - Renders the composition with assigned crops in panels
@@ -49,8 +49,7 @@ function PageCanvas({
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.css : 'none'
+        return FILTER_CSS_MAP[filterName]?.css || 'none'
     }, [])
 
     // Calculate scale to fit page in container
