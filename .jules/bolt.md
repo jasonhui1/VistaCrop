@@ -1,0 +1,3 @@
+## 2025-02-28 - Caching O(N) array lookups in drag states requires dependency array updates
+**Learning:** When optimizing high-frequency events like `mousemove` by caching `Array.find()` results (e.g., `crops.find`) into a `dragState` initialized during `mousedown`, the `mousedown` handler (`useCallback`) must include the source array (`crops`) in its dependency array. If omitted, the handler forms a stale closure over the initial state, causing the drag functionality to fail silently when new items are added dynamically.
+**Action:** When caching object references from an array into a React state object via a memoized callback, always ensure the array is explicitly listed in the `useCallback` dependency array.
