@@ -22,10 +22,12 @@ function LeftSidebar({
             {/* Sidebar Toggle */}
             <button
                 onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)]"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-label={isOpen ? 'Collapse left sidebar' : 'Expand left sidebar'}
+                aria-expanded={isOpen}
             >
-                <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                 </svg>
             </button>

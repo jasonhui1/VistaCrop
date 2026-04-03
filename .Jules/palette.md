@@ -1,0 +1,3 @@
+## 2024-03-24 - Accessibility pattern for icon-only sidebar toggles
+**Learning:** Icon-only toggle buttons (like those used for expanding/collapsing sidebars) require a specific combination of attributes for full accessibility: `aria-label` (for context), `aria-expanded` (for state), and `aria-hidden="true"` on the purely visual SVG children. Focus rings must also be explicitly styled using Tailwind's `focus-visible` utilities combined with the app's custom CSS variables (e.g., `focus-visible:ring-[var(--accent-primary)]`) to match the design system.
+**Action:** When implementing or reviewing new icon-only toggle buttons in this codebase, always apply this complete accessibility pattern rather than just a basic `aria-label`.
