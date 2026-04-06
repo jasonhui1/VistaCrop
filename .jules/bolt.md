@@ -1,0 +1,3 @@
+## 2024-03-24 - Drag Event Property Caching
+**Learning:** `handleMouseMove` is triggered on every pixel during dragging operations on `FreeformCanvas`. Performing `O(N)` loop lookups using `crops.find()` or `placedItems.find()` directly inside this event handler degrades performance for complex compositions.
+**Action:** Extract the `find()` lookups and cache the result into the drag state object (`baseDragState`) during the `onMouseDown` drag initialization event, then reference the cached value during the `handleMouseMove` tick. Ensure the original list is added to the `useCallback` dependency array for the `onMouseDown` handler.
