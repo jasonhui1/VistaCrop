@@ -1,0 +1,3 @@
+## 2024-04-09 - Accessible Sidebar Toggles
+**Learning:** Icon-only sidebar toggles in the Composer view (`LeftSidebar.jsx` and `RightSidebar.jsx`) were missing semantic accessibility features. Adding `aria-label` and `aria-expanded` attributes, alongside explicit visual focus indicators (`focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]`) dramatically improves both screen reader compatibility and keyboard navigation.
+**Action:** When creating or reviewing icon-only buttons, especially toggles that change layout state, ensure `aria-label` explains the action, `aria-expanded` communicates the state, and `focus-visible` styles use the theme's custom variables (like `var(--accent-primary)`) to maintain design system consistency.
