@@ -1,0 +1,3 @@
+## 2024-04-11 - Composer Sidebar Toggles Accessibility
+**Learning:** Icon-only sidebar toggle buttons in Composer component (`LeftSidebar.jsx`, `RightSidebar.jsx`) lacked screen reader context and visual indicators for keyboard navigation, requiring specific combinations of aria attributes (`aria-label`, `aria-expanded`, `aria-hidden`) and custom CSS-variable-aware focus classes to align with the design system.
+**Action:** When creating accessible icon-only toggles, always include `aria-label`, bind `aria-expanded` to state, hide internal SVGs with `aria-hidden="true"`, and use design-system-aligned Tailwind focus utilities (e.g., `focus-visible:ring-[var(--accent-primary)] focus-visible:outline-none`).
