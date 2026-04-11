@@ -1,0 +1,3 @@
+## 2024-05-24 - Cache O(N) Lookups in Drag State
+**Learning:** During high-frequency events like `handleMouseMove` (used for dragging, resizing, panning), executing `Array.find()` lookups on `crops` and `placedItems` causes unnecessary O(N) computations per frame, which degrades rendering performance.
+**Action:** Extract O(N) lookups out of `mousemove` and cache the references (e.g. the specific `crop`) inside the `dragState` object when initializing the drag event in `mousedown`. For values that change incrementally (like custom points), calculate them as absolute deltas from the `startItem` state instead of updating them relative to the current state.
