@@ -1,0 +1,3 @@
+## $(date +%Y-%m-%d) - Accessible icon-only toggles
+**Learning:** Icon-only toggles (like sidebar collapse/expand) frequently lack critical accessibility structure. It's not enough to just add `title`; they require dynamic `aria-label`, explicit `aria-expanded` state tracking, and hidden SVGs with `aria-hidden="true"`.
+**Action:** When auditing or implementing sidebar/menu toggles, enforce the triplet: `aria-label` for intent, `aria-expanded` for state, and `aria-hidden` on child SVGs. Ensure visible focus rings using standard project variables like `focus-visible:ring-[var(--accent-primary)]`.
