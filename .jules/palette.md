@@ -1,0 +1,3 @@
+## 2024-04-14 - Accessible Icon Buttons in Composer
+**Learning:** Icon-only sidebar toggles in the Composer view lacked semantic labels (`aria-label`), state tracking (`aria-expanded`), and keyboard focus indicators, making them completely inaccessible to screen readers and keyboard users.
+**Action:** When working with existing custom design systems (like the `var(--accent-primary)` variables here), always add `focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--color)]` to interactive elements to ensure clear visual focus states without relying on custom CSS. Apply `aria-hidden="true"` to nested visual SVGs to prevent redundant screen reader announcements.
