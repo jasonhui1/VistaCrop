@@ -1,0 +1,3 @@
+## 2024-04-14 - Optimize High-Frequency Drag Events in Canvas
+**Learning:** Updating React state (`dragState`) inside high-frequency event handlers like `mousemove` coupled with O(N) array lookups (e.g., `crops.find` and `placedItems.find`) creates severe performance bottlenecks on every frame. Updating relative custom polygon states also requires looking up the current updating state.
+**Action:** Pre-calculate and cache static start data (e.g., `startCrop` and `startItem`) in the initial interaction event (like `mousedown`) into the `dragState`. Inside the high-frequency event handler, use these cached values to calculate absolute deltas, avoiding O(N) lookups, and ensure source arrays are removed from the hook dependency arrays to prevent stale closures.
