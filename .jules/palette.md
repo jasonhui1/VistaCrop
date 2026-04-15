@@ -1,0 +1,3 @@
+## 2024-05-17 - Icon-Only Button Accessibility
+**Learning:** Icon-only buttons used for layout toggling (like the Left/Right Sidebar collapse buttons in the Composer view) often miss critical ARIA attributes and focus styles when migrating from simple visual prototypes to more robust components.
+**Action:** When adding or reviewing icon-only interactive elements in this codebase, explicitly ensure the inclusion of `aria-label`, state tracking (like `aria-expanded`), `aria-hidden="true"` on the internal visual SVG, and visible keyboard focus rings using the standard custom CSS variables (`focus-visible:ring-[var(--accent-primary)]`).
