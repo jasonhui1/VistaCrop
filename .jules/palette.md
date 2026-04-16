@@ -1,0 +1,3 @@
+## 2024-04-16 - Accessible Icon Toggles
+**Learning:** Icon-only toggles (like sidebar expand/collapse) frequently lack screen reader context and keyboard visibility. Combining `aria-label`, `aria-expanded`, `aria-hidden="true"` on inner SVGs, and `focus-visible` Tailwind classes creates a complete, robust pattern.
+**Action:** Always verify that purely visual elements inside interactive buttons are explicitly hidden from screen readers using `aria-hidden`, and that stateful toggles correctly manage the `aria-expanded` attribute. Ensure focus rings are clearly visible using design system colors.
