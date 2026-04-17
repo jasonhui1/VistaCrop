@@ -1,0 +1,3 @@
+## 2024-05-14 - Accessible Icon-Only Toggles in Sidebars
+**Learning:** The application uses icon-only buttons for toggling sidebars, which previously lacked ARIA labels, expanded state tracking, hidden SVG decorators, and visible focus rings. Relying only on the `title` attribute is insufficient for full accessibility.
+**Action:** Implemented a standard pattern for icon-only toggles: add `aria-label` for screen readers, `aria-expanded` to indicate state, `aria-hidden="true"` to the decorative SVG, and Tailwind utility classes `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]` to ensure keyboard focus visibility.
