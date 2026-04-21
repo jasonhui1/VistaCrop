@@ -1,0 +1,3 @@
+## 2026-04-21 - Accessible Icon-Only Toggles
+**Learning:** Found multiple instances of icon-only sidebar toggles lacking screen reader announcements and visible keyboard focus. The `rotate-180` transform convention on SVG icons for state indication is purely visual.
+**Action:** Applied a consistent pattern for accessible toggles: add `aria-label` (with dynamic text for open/closed if applicable, or static if acting as a generic toggle), `aria-expanded`, `aria-hidden="true"` on the inner SVG, and Tailwind's `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]` to ensure keyboard users have clear visual focus paths using existing custom CSS variables.
