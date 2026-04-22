@@ -22,10 +22,12 @@ function RightSidebar({
             {/* Sidebar Toggle */}
             <button
                 onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-expanded={isOpen}
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:outline-none"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-                <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
             </button>
