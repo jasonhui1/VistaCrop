@@ -72,26 +72,28 @@ function CanvasToolbar({
                         <button
                             onClick={onUndo}
                             disabled={!canUndo}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canUndo
+                            className={`text-xs px-2 py-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)] ${canUndo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
                             title="Undo (Ctrl+Z)"
+                            aria-label="Undo"
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                             </svg>
                         </button>
                         <button
                             onClick={onRedo}
                             disabled={!canRedo}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canRedo
+                            className={`text-xs px-2 py-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)] ${canRedo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
                             title="Redo (Ctrl+Y)"
+                            aria-label="Redo"
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
                             </svg>
                         </button>
@@ -101,7 +103,8 @@ function CanvasToolbar({
                 {mode === 'freeform' && itemCount > 0 && (
                     <button
                         onClick={onClear}
-                        className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="text-xs px-2 py-1 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)]"
+                        aria-label="Clear canvas"
                     >
                         Clear
                     </button>
@@ -110,10 +113,12 @@ function CanvasToolbar({
                 {mode === 'freeform' && (
                     <button
                         onClick={onToggleEditCanvasSize}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${editingCanvasSize
+                        className={`text-xs px-2 py-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)] ${editingCanvasSize
                             ? 'bg-[var(--accent-primary)] text-white'
                             : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                             }`}
+                        aria-pressed={editingCanvasSize}
+                        aria-label="Toggle editing canvas size"
                     >
                         {editingCanvasSize ? '✓ Editing Size' : 'Edit Size'}
                     </button>
@@ -127,10 +132,12 @@ function CanvasToolbar({
                             onToggleLoadMenu()
                         }}
                         disabled={isLoading}
-                        className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Load saved canvas"
+                        aria-expanded={showLoadMenu}
+                        aria-label="Load saved canvas"
                     >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg aria-hidden="true" className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {isLoading ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -167,13 +174,14 @@ function CanvasToolbar({
                                         </button>
                                         <button
                                             onClick={(e) => handleDeleteClick(e, canvas.id)}
-                                            className={`ml-2 p-1 rounded transition-colors ${deleteConfirmId === canvas.id
+                                            className={`ml-2 p-1 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-red-500 ${deleteConfirmId === canvas.id
                                                 ? 'bg-red-500 text-white'
                                                 : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10'
                                                 }`}
                                             title={deleteConfirmId === canvas.id ? 'Click again to confirm' : 'Delete canvas'}
+                                            aria-label={deleteConfirmId === canvas.id ? 'Confirm delete canvas' : 'Delete canvas'}
                                         >
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg aria-hidden="true" className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
@@ -187,13 +195,14 @@ function CanvasToolbar({
                 <button
                     onClick={onSave}
                     disabled={isSaving}
-                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${canvasId
+                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)] ${canvasId
                         ? 'bg-green-600 hover:bg-green-500 text-white'
                         : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)]'
                         } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={canvasId ? `Saved as ${canvasId}` : 'Save to server (Ctrl+S)'}
+                    aria-label={canvasId ? `Update saved canvas ${canvasId}` : 'Save canvas'}
                 >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {isSaving ? (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -207,9 +216,10 @@ function CanvasToolbar({
 
                 <button
                     onClick={onExport}
-                    className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1"
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-secondary)] transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)]"
+                    aria-label="Export canvas"
                 >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
