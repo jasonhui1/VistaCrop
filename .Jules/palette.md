@@ -1,0 +1,3 @@
+## 2026-04-23 - Accessible Icon-Only Toggle Buttons
+**Learning:** When using icon-only toggle buttons in this design system (like sidebar toggles), they require several attributes to be fully accessible: `aria-label` for screen readers, `aria-expanded` to indicate state, `aria-hidden="true"` on the inner SVG to hide it from assistive tech, and explicit focus states (e.g. `focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-[var(--accent-primary)]`) for keyboard users. Tooltips via the `title` attribute are not sufficient for a11y.
+**Action:** Always include this full suite of attributes (`aria-label`, `aria-expanded`, `aria-hidden`, and focus-visible classes) whenever creating or modifying icon-only functional buttons.
