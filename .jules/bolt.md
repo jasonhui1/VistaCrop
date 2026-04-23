@@ -1,0 +1,4 @@
+## 2025-02-12 - Optimizing Drag Events
+
+**Learning:** During high-frequency drag events (like `handleMouseMove`), accessing frequently changing data via `Array.find()` (e.g., `crops.find` and `placedItems.find`) or performing continuous React state updates to recalculate offsets (like updating `setDragState`'s `startX`/`startY`) triggers expensive N-lookups and subsequent component re-renders.
+**Action:** When working on complex interaction components, extract initialization lookups into the setup handler (e.g., `mousedown`) and cache them in the dragging state object. Calculate changing values incrementally as absolute deltas from an initial snapshot instead of making state/data relative queries on every animation frame. Ensure unused state dependencies are removed to prevent unnecessary recreation of callbacks.
