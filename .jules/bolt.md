@@ -1,0 +1,3 @@
+## 2026-04-24 - High-Frequency Drag Renders
+**Learning:** During custom point dragging on the canvas, calling a React state setter (like `setDragState`) in the mouse move handler causes full component re-renders on every frame. Additionally, doing O(N) lookups in `handleMouseMove` and keeping the arrays in dependencies causes unnecessary re-creations of the callback.
+**Action:** Always compute incrementally changing values as absolute deltas from the original `startItem` state, avoiding the need to update standard drag state. Cache O(N) array lookups in the drag state object during `mousedown` and remove the arrays from the high-frequency handler's dependency array.
