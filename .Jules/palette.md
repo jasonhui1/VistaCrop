@@ -1,0 +1,3 @@
+## 2026-04-24 - Sidebar Toggle Accessibility
+**Learning:** Icon-only toggle buttons in the sidebar components (`LeftSidebar.jsx`, `RightSidebar.jsx`) were missing crucial accessibility attributes: `aria-label`, `aria-expanded`, `aria-hidden` on the inner SVG, and keyboard focus outlines. This pattern is common in utility-first CSS frameworks where focus states are sometimes omitted by default.
+**Action:** When creating or reviewing icon-only interactive elements, always ensure they have descriptive `aria-label`s, appropriate ARIA state attributes (like `aria-expanded` or `aria-pressed`), `aria-hidden="true"` on purely decorative child elements like SVGs, and visible focus states using utility classes like `focus-visible:ring-2 focus-visible:outline-none`.
