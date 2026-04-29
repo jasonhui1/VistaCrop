@@ -656,13 +656,16 @@ function FreeformCanvas({
         // Check if Ctrl is held for crop panning (only during move)
         const actualType = (type === 'move' && e.ctrlKey) ? 'crop-pan' : type
 
+        const crop = crops.find(c => c.id === item.cropId)
+
         // Base drag state
         const baseDragState = {
             type: actualType,
             itemId: item.id,
             startX: e.clientX,
             startY: e.clientY,
-            startItem: { ...item }
+            startItem: { ...item },
+            startCrop: crop
         }
 
         // For crop-pan, initialize offset from item
@@ -685,7 +688,6 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => c.id === item.cropId)
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -703,19 +705,27 @@ function FreeformCanvas({
         e.stopPropagation()
         e.preventDefault()
 
+        const crop = crops.find(c => c.id === item.cropId)
+
         setDragState({
             type: 'corner',
             itemId: item.id,
             cornerIndex,
             startX: e.clientX,
             startY: e.clientY,
-            startItem: { ...item }
+            startItem: { ...item },
+            startCrop: crop
         })
-    }, [])
+    }, [crops])
 
     // ========================================================================
     // Mouse Move Handler - Handles all drag operations
     // ========================================================================
+    // Optimization (Bolt): We use `startItem` and `startCrop` cached in the `dragState` object
+    // to perform absolute delta calculations instead of relative calculations. This prevents
+    // the need to read `placedItems` and `crops` from the React state during `onMouseMove`,
+    // removing `O(N)` lookups and allowing us to eliminate these dependencies from `useCallback`.
+    // Consequently, `handleMouseMove` is not recreated on every `onUpdateItemSilent` call.
     const handleMouseMove = useCallback((e) => {
         if (!dragState || !canvasRef.current) return
 
@@ -726,9 +736,8 @@ function FreeformCanvas({
 
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
-            const { centerX, centerY, startAngle, startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
-            const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
+            const { centerX, centerY, startAngle, startItem, startCrop } = dragState
+            const initialAngle = startItem.rotation ?? startCrop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
 
@@ -757,9 +766,8 @@ function FreeformCanvas({
 
         // Handle crop panning (Ctrl+drag to shift crop position within original image)
         if (dragState.type === 'crop-pan') {
-            const { startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
-            if (!crop) return
+            const { startItem, startCrop } = dragState
+            if (!startCrop) return
 
             // Calculate delta in original image pixel space
             // The movement in screen pixels needs to be converted to original image pixels
@@ -768,12 +776,10 @@ function FreeformCanvas({
 
             // Scale from screen pixels to original image pixels based on crop size
             // The item's display size represents the crop's width/height
-            const item = placedItems.find(i => i.id === dragState.itemId)
-            if (!item) return
-            const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
-            const itemDisplayHeight = (item.height / composition.pageHeight) * rect.height
-            const scaleToOriginalX = crop.width / itemDisplayWidth
-            const scaleToOriginalY = crop.height / itemDisplayHeight
+            const itemDisplayWidth = (startItem.width / composition.pageWidth) * rect.width
+            const itemDisplayHeight = (startItem.height / composition.pageHeight) * rect.height
+            const scaleToOriginalX = startCrop.width / itemDisplayWidth
+            const scaleToOriginalY = startCrop.height / itemDisplayHeight
 
             const initialOffsetX = startItem.cropOffsetX ?? 0
             const initialOffsetY = startItem.cropOffsetY ?? 0
@@ -798,7 +804,7 @@ function FreeformCanvas({
         // Handle resize
         if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
-            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            const crop = dragState.startCrop
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
@@ -812,8 +818,7 @@ function FreeformCanvas({
 
         // Handle corner dragging (custom polygon points)
         if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
-            const item = placedItems.find(i => i.id === dragState.itemId)
-            if (!item) return
+            const item = dragState.startItem
 
             const currentPoints = item.customPoints ||
                 (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
@@ -834,9 +839,8 @@ function FreeformCanvas({
             })
 
             updateFn(dragState.itemId, { customPoints: newPoints })
-            setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, onUpdateItem, onUpdateItemSilent, composition.pageWidth, composition.pageHeight])
 
     // ========================================================================
     // Mouse Up Handler
