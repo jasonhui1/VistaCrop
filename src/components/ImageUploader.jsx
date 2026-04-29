@@ -25,7 +25,7 @@ function ImageUploader({ onImageUpload }) {
             />
             <button
                 onClick={() => fileInputRef.current?.click()}
-                className="btn btn-primary"
+                className="btn btn-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]"
                 aria-label="Upload artwork image"
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
