@@ -72,6 +72,7 @@ function CanvasToolbar({
                         <button
                             onClick={onUndo}
                             disabled={!canUndo}
+                            aria-label="Undo"
                             className={`text-xs px-2 py-1 rounded transition-colors ${canUndo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
@@ -85,6 +86,7 @@ function CanvasToolbar({
                         <button
                             onClick={onRedo}
                             disabled={!canRedo}
+                            aria-label="Redo"
                             className={`text-xs px-2 py-1 rounded transition-colors ${canRedo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
@@ -167,6 +169,7 @@ function CanvasToolbar({
                                         </button>
                                         <button
                                             onClick={(e) => handleDeleteClick(e, canvas.id)}
+                                            aria-label={deleteConfirmId === canvas.id ? 'Click again to confirm' : 'Delete canvas'}
                                             className={`ml-2 p-1 rounded transition-colors ${deleteConfirmId === canvas.id
                                                 ? 'bg-red-500 text-white'
                                                 : 'text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10'
