@@ -1,0 +1,3 @@
+## 2024-06-12 - O(N) Array Lookups in High-Frequency Event Handlers
+**Learning:** Performing O(N) array lookups (e.g., `crops.find(c => c.id === ...)`) inside a high-frequency `mousemove` handler creates continuous performance overhead. While `Map` conversions offer O(1) lookups, if the lookup doesn't change during the drag operation, the entire lookup can be done *once* during the `mousedown` event and cached in the `dragState` object.
+**Action:** Before converting arrays to Maps for performance, check if the data being looked up is static for the duration of the high-frequency event. If so, compute it during initialization and cache it in the state/ref used by the handler to completely remove the lookup from the hot path.
