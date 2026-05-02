@@ -1,0 +1,3 @@
+## 2024-05-02 - Absolute Delta Tracking for High-Frequency Drags
+**Learning:** For continuous UI drag operations (like dragging polygon corners), updating component state with relative deltas on every `mousemove` event triggers a full React re-render per frame. This is computationally expensive, especially when recalculating large data arrays.
+**Action:** Use an absolute delta from the initial drag start state instead of continuously updating state (removing `setDragState`). This calculates new positions without triggering intermediate state changes, ensuring smooth performance and eliminating unnecessary re-renders. Additionally, cache `O(N)` lookups into the drag state object initialized `mousedown` to avoid repeated scans during the high-frequency event handler.
