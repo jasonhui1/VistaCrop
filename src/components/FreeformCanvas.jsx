@@ -656,13 +656,16 @@ function FreeformCanvas({
         // Check if Ctrl is held for crop panning (only during move)
         const actualType = (type === 'move' && e.ctrlKey) ? 'crop-pan' : type
 
+        const crop = crops.find(c => c.id === item.cropId)
+
         // Base drag state
         const baseDragState = {
             type: actualType,
             itemId: item.id,
             startX: e.clientX,
             startY: e.clientY,
-            startItem: { ...item }
+            startItem: { ...item },
+            crop
         }
 
         // For crop-pan, initialize offset from item
@@ -685,7 +688,6 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => c.id === item.cropId)
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -703,15 +705,18 @@ function FreeformCanvas({
         e.stopPropagation()
         e.preventDefault()
 
+        const crop = crops.find(c => c.id === item.cropId)
+
         setDragState({
             type: 'corner',
             itemId: item.id,
             cornerIndex,
             startX: e.clientX,
             startY: e.clientY,
-            startItem: { ...item }
+            startItem: { ...item },
+            crop
         })
-    }, [])
+    }, [crops])
 
     // ========================================================================
     // Mouse Move Handler - Handles all drag operations
@@ -726,8 +731,7 @@ function FreeformCanvas({
 
         // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
-            const { centerX, centerY, startAngle, startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const { centerX, centerY, startAngle, startItem, crop } = dragState
             const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
@@ -757,8 +761,7 @@ function FreeformCanvas({
 
         // Handle crop panning (Ctrl+drag to shift crop position within original image)
         if (dragState.type === 'crop-pan') {
-            const { startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const { startItem, crop } = dragState
             if (!crop) return
 
             // Calculate delta in original image pixel space
@@ -768,8 +771,7 @@ function FreeformCanvas({
 
             // Scale from screen pixels to original image pixels based on crop size
             // The item's display size represents the crop's width/height
-            const item = placedItems.find(i => i.id === dragState.itemId)
-            if (!item) return
+            const item = startItem
             const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
             const itemDisplayHeight = (item.height / composition.pageHeight) * rect.height
             const scaleToOriginalX = crop.width / itemDisplayWidth
@@ -798,7 +800,7 @@ function FreeformCanvas({
         // Handle resize
         if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1]
-            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            const crop = dragState.crop
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
@@ -812,10 +814,12 @@ function FreeformCanvas({
 
         // Handle corner dragging (custom polygon points)
         if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
-            const item = placedItems.find(i => i.id === dragState.itemId)
-            if (!item) return
+            const item = dragState.startItem
 
-            const currentPoints = item.customPoints ||
+            // ⚡ Bolt Optimization: Use absolute delta from start position
+            // instead of continuously updating state and using relative changes.
+            // This prevents continuous React re-renders on every frame.
+            const initialPoints = item.customPoints ||
                 (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
 
             const itemWidthPx = (item.width / composition.pageWidth) * rect.width
@@ -823,7 +827,7 @@ function FreeformCanvas({
             const deltaPctX = ((e.clientX - dragState.startX) / itemWidthPx) * 100
             const deltaPctY = ((e.clientY - dragState.startY) / itemHeightPx) * 100
 
-            const newPoints = currentPoints.map((point, idx) => {
+            const newPoints = initialPoints.map((point, idx) => {
                 if (idx === dragState.cornerIndex) {
                     return [
                         Math.max(0, Math.min(100, point[0] + deltaPctX)),
@@ -834,9 +838,8 @@ function FreeformCanvas({
             })
 
             updateFn(dragState.itemId, { customPoints: newPoints })
-            setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
         }
-    }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
+    }, [dragState, onUpdateItem, onUpdateItemSilent, composition.pageWidth, composition.pageHeight])
 
     // ========================================================================
     // Mouse Up Handler
