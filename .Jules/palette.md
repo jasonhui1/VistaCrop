@@ -1,0 +1,3 @@
+## 2024-05-02 - Composer Icon Buttons Missing ARIA and Focus States
+**Learning:** Custom icon buttons (like side-panel toggles and toolbar undo/redo/delete actions) were missing proper `aria-label`s, rendering them inscrutable to screen readers. Additionally, due to the CSS reset applied in the project, default keyboard focus styles were stripped, making it impossible to navigate these elements via keyboard.
+**Action:** Always ensure that icon-only `<button>` elements include a descriptive `aria-label`. To restore keyboard accessibility, explicit inline utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]`) must be applied to these interactive elements.
