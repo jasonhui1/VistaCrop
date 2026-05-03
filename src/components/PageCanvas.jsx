@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { FILTERS, FILTER_MAP } from '../utils/filters'
 
 /**
  * PageCanvas - Renders the composition with assigned crops in panels
@@ -49,7 +49,8 @@ function PageCanvas({
 
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        // Performance optimization: O(1) Map lookup instead of O(N) Array.find for frequent renders
+        const filter = FILTER_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 

@@ -63,3 +63,6 @@ export const FILTERS = [
         vibe: 'bg-cyan-200'
     }
 ]
+
+// O(1) lookup map for high-frequency filtering operations (e.g. rendering, exporting)
+export const FILTER_MAP = new Map(FILTERS.map(f => [f.id, f]))
