@@ -1,0 +1,3 @@
+## 2024-05-03 - Accessible Sidebar Toggles & Tabs
+**Learning:** When applying Tailwind focus rings (`focus-visible:ring-2`) to flex items or tightly packed interactive elements like tabs, the focus rings are often clipped by adjacent elements. Also, the project defines custom CSS variables (e.g., `var(--accent-primary)`) in `src/index.css` that should be used for focus rings instead of default Tailwind colors to maintain design consistency.
+**Action:** Always include `z-10 relative` when adding focus rings to tightly grouped elements to ensure the outline is fully visible. Use project-specific CSS variables (e.g., `focus-visible:ring-[var(--accent-primary)]`) for focus colors.

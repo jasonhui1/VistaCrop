@@ -22,8 +22,10 @@ function LeftSidebar({
             {/* Sidebar Toggle */}
             <button
                 onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] z-10 relative"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-label={isOpen ? 'Collapse left sidebar' : 'Expand left sidebar'}
+                aria-expanded={isOpen}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -40,19 +42,21 @@ function LeftSidebar({
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
                                 onClick={() => onModeChange('freeform')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
+                                aria-pressed={mode === 'freeform'}
                             >
                                 Freeform
                             </button>
                             <button
                                 onClick={() => onModeChange('panels')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
+                                aria-pressed={mode === 'panels'}
                             >
                                 Panels
                             </button>
