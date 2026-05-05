@@ -22,8 +22,9 @@ function LeftSidebar({
             {/* Sidebar Toggle */}
             <button
                 onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-label={isOpen ? 'Collapse left sidebar' : 'Expand left sidebar'}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -40,7 +41,7 @@ function LeftSidebar({
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
                                 onClick={() => onModeChange('freeform')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10 ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -49,7 +50,7 @@ function LeftSidebar({
                             </button>
                             <button
                                 onClick={() => onModeChange('panels')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10 ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -70,7 +71,7 @@ function LeftSidebar({
                                     <button
                                         key={layout.id}
                                         onClick={() => onLayoutChange(layout.id)}
-                                        className={`layout-thumbnail p-2 rounded-lg border transition-all ${composition.layoutId === layout.id
+                                        className={`layout-thumbnail p-2 rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10 ${composition.layoutId === layout.id
                                             ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
                                             : 'border-[var(--border-color)] hover:border-[var(--accent-secondary)] bg-[var(--bg-tertiary)]'
                                             }`}
@@ -113,7 +114,8 @@ function LeftSidebar({
                         <select
                             value={composition.pagePreset}
                             onChange={(e) => onPagePresetChange(e.target.value)}
-                            className="w-full text-sm"
+                            className="w-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10"
+                            aria-label="Page Size"
                         >
                             {Object.entries(PAGE_PRESETS).map(([key, preset]) => (
                                 <option key={key} value={key}>{preset.label}</option>
@@ -131,13 +133,15 @@ function LeftSidebar({
                                 type="color"
                                 value={composition.backgroundColor}
                                 onChange={(e) => onCompositionChange({ backgroundColor: e.target.value })}
-                                className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
+                                className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10"
+                                aria-label="Background Color (Picker)"
                             />
                             <input
                                 type="text"
                                 value={composition.backgroundColor}
                                 onChange={(e) => onCompositionChange({ backgroundColor: e.target.value })}
-                                className="flex-1 text-xs"
+                                className="flex-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative z-10"
+                                aria-label="Background Color (Hex)"
                             />
                         </div>
                     </div>
