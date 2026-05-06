@@ -1,0 +1,3 @@
+## 2024-05-18 - High-frequency drag event optimization
+**Learning:** Performing O(N) array lookups (e.g. `crops.find` or `placedItems.find`) and continuous state updates (`setDragState`) during high-frequency event handlers like `onMouseMove` causes excessive re-renders and slows down drag interactions.
+**Action:** Cache initial values and related object lookups in the drag state during the initialization event (`onMouseDown`). Calculate incrementally changing values as absolute deltas from the initial cached state, which removes the need for continuous state updates and O(N) lookups inside the high-frequency handler. Also remove unused arrays from the handler`s dependency array to avoid unnecessary function re-creation.
