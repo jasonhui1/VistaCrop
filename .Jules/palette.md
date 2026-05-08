@@ -1,0 +1,3 @@
+## 2026-05-08 - Interactive elements miss focus outlines due to CSS reset
+**Learning:** The custom CSS reset strips default focus outlines from button elements (`button { outline: none; }` equivalent). As a result, many custom interactive elements like toggle buttons and tabs lack keyboard accessibility indicators by default.
+**Action:** Always explicitly apply Tailwind `focus-visible` utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]`) inline to interactive elements, and include `relative focus-visible:z-10` for tightly packed or flex items to ensure the focus ring is not clipped.
