@@ -40,7 +40,7 @@ function LeftSidebar({
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
                                 onClick={() => onModeChange('freeform')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -49,7 +49,7 @@ function LeftSidebar({
                             </button>
                             <button
                                 onClick={() => onModeChange('panels')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}

@@ -36,7 +36,7 @@ function RightSidebar({
                     <div className="flex border-b border-[var(--border-color)]">
                         <button
                             onClick={() => onTabChange('crops')}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === 'crops'
+                            className={`flex-1 py-2 text-xs font-medium transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${activeTab === 'crops'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 }`}
@@ -45,7 +45,7 @@ function RightSidebar({
                         </button>
                         <button
                             onClick={() => onTabChange('selected')}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors relative ${activeTab === 'selected'
+                            className={`flex-1 py-2 text-xs font-medium transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${activeTab === 'selected'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 }`}
