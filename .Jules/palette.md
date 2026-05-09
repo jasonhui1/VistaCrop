@@ -1,0 +1,3 @@
+## 2026-05-09 - Focus Rings and Custom CSS Variables
+**Learning:** The project relies on a custom CSS reset in `src/index.css` that strips default focus outlines from `<button>` elements, requiring explicitly applied Tailwind `focus-visible` utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]`) using the project's custom CSS variable `var(--accent-primary)` for proper keyboard accessibility.
+**Action:** When adding or fixing accessibility for interactive elements, ensure focus states are explicitly handled inline using the project's custom color variables instead of relying on default browser styling or standard Tailwind colors.
