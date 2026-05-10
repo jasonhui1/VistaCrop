@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { FILTERS, FILTER_MAP } from '../utils/filters'
 
 /**
  * PageCanvas - Renders the composition with assigned crops in panels
@@ -48,8 +48,9 @@ function PageCanvas({
     }, [onDropCrop])
 
     // Get CSS filter string from filter name
+    // ⚡ Bolt: Using Map.get(id) for O(1) filter lookups instead of O(n) Array.find
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = FILTER_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 

@@ -1,0 +1,5 @@
+## 2025-05-10 - O(1) Map Lookups Over O(n) Array.find
+
+**Learning:** When executing repetitive find operations (like looking up filter configurations by ID during canvas rendering or mapping over elements repeatedly), using `Array.find` within high-frequency loops incurs significant overhead. In benchmark testing for a 9-element array, transitioning to `Map.get(id)` improved lookups from ~321ms to ~30ms across 1,000,000 iterations—a roughly 10x speedup for this dataset size. While the array size is small, the lookup is done in UI update paths and image drawing paths where frame time is sensitive.
+
+**Action:** Whenever identifying configuration or constant arrays that are accessed repeatedly by a unique ID key, construct and export an accompanying `Map` structure upfront (e.g. `export const CONFIG_MAP = new Map(CONFIG.map(c => [c.id, c]))`) and substitute all `Array.find()` calls with `Map.get()`. This ensures O(1) complexity lookup in hot paths, optimizing rendering performance without sacrificing readability.

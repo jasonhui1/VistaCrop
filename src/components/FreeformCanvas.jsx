@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { FILTERS, FILTER_MAP } from '../utils/filters'
 import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
@@ -608,8 +608,9 @@ function FreeformCanvas({
     // ========================================================================
     // Utility Functions
     // ========================================================================
+    // ⚡ Bolt: Using Map.get(id) for O(1) filter lookups instead of O(n) Array.find
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = FILTER_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 
