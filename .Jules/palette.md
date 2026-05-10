@@ -1,0 +1,3 @@
+## 2025-05-10 - Sidebar Toggle Button Focus Accessibility
+**Learning:** Icon-only buttons may not receive default focus rings due to global CSS resets (e.g., `button` styling in `src/index.css`), which harms keyboard navigation accessibility.
+**Action:** When creating or modifying interactive elements (especially icon-only buttons), always use inline explicit Tailwind focus-visible classes (`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative focus-visible:z-10`) to enforce a visual focus state, and add corresponding ARIA attributes (`aria-label`, `aria-expanded`).
