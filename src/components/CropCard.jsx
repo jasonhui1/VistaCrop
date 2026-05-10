@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import RotatableImage from './RotatableImage'
-import { FILTERS } from '../utils/filters'
+import { FILTERS, FILTER_MAP } from '../utils/filters'
 
 // Constants for rotation
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
@@ -14,8 +14,9 @@ function CropCard({ crop, onUpdate, onDelete }) {
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
 
     // Get CSS filter string from filter name
+    // ⚡ Bolt: Using Map.get(id) for O(1) filter lookups instead of O(n) Array.find
     const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
+        const filter = FILTER_MAP.get(filterName)
         return filter ? filter.css : 'none'
     }, [])
 

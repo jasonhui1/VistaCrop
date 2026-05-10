@@ -2,7 +2,7 @@
  * Export utility for ComposerView canvas
  * Handles rendering placed items and panels to a downloadable PNG
  */
-import { FILTERS } from './filters'
+import { FILTERS, FILTER_MAP } from './filters'
 import { drawShapePath } from './frameShapes'
 import { getImage } from './api'
 
@@ -26,7 +26,8 @@ async function exportPanelMode(ctx, composition, panels, crops) {
         })
 
         ctx.save()
-        ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+        // ⚡ Bolt: Using Map.get(id) for O(1) filter lookups instead of O(n) Array.find
+        ctx.filter = FILTER_MAP.get(crop.filter)?.css || 'none'
         ctx.beginPath()
         ctx.rect(panel.x, panel.y, panel.width, panel.height)
         ctx.clip()
@@ -124,7 +125,8 @@ async function drawRotatedItem(ctx, item, crop, x, y, width, height) {
         const cropCenterY = (cropY + cropH / 2) * scaleY
 
         ctx.save()
-        ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+        // ⚡ Bolt: Using Map.get(id) for O(1) filter lookups instead of O(n) Array.find
+        ctx.filter = FILTER_MAP.get(crop.filter)?.css || 'none'
 
         const itemCenterX = x + width / 2
         const itemCenterY = y + height / 2
@@ -181,7 +183,8 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
     }
 
     ctx.save()
-    ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+    // ⚡ Bolt: Using Map.get(id) for O(1) filter lookups instead of O(n) Array.find
+    ctx.filter = FILTER_MAP.get(crop.filter)?.css || 'none'
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
     ctx.restore()
 }
