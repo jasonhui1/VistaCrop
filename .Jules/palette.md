@@ -1,0 +1,3 @@
+## 2024-05-11 - Focus Outlines in Custom CSS Resets
+**Learning:** The project's custom CSS reset strips default browser focus outlines from button elements. Without explicit focus styles, interactive elements lose their keyboard accessibility. Furthermore, applying focus rings to flex items or tightly packed interactive elements can cause the ring to be clipped by adjacent elements.
+**Action:** When adding Tailwind focus rings (`focus-visible:ring-2`) to interactive elements, always explicitly declare them to override the reset. For tightly packed or flex items, include `relative focus-visible:z-10` to ensure the focus ring is fully visible without altering the normal stacking context.
