@@ -72,10 +72,11 @@ function CanvasToolbar({
                         <button
                             onClick={onUndo}
                             disabled={!canUndo}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canUndo
+                            className={`text-xs px-2 py-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${canUndo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
+                            aria-label="Undo"
                             title="Undo (Ctrl+Z)"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,10 +86,11 @@ function CanvasToolbar({
                         <button
                             onClick={onRedo}
                             disabled={!canRedo}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${canRedo
+                            className={`text-xs px-2 py-1 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${canRedo
                                 ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
                                 }`}
+                            aria-label="Redo"
                             title="Redo (Ctrl+Y)"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,10 +129,10 @@ function CanvasToolbar({
                             onToggleLoadMenu()
                         }}
                         disabled={isLoading}
-                        className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Load saved canvas"
                     >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {isLoading ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -187,13 +189,13 @@ function CanvasToolbar({
                 <button
                     onClick={onSave}
                     disabled={isSaving}
-                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${canvasId
+                    className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${canvasId
                         ? 'bg-green-600 hover:bg-green-500 text-white'
                         : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)]'
                         } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={canvasId ? `Saved as ${canvasId}` : 'Save to server (Ctrl+S)'}
                 >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`w-3 h-3 ${isSaving ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {isSaving ? (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
