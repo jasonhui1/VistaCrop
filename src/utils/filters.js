@@ -63,3 +63,5 @@ export const FILTERS = [
         vibe: 'bg-cyan-200'
     }
 ]
+
+export const FILTER_MAP = new Map(FILTERS.map(f => [f.id, f]));
