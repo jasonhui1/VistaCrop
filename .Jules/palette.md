@@ -1,0 +1,3 @@
+## 2024-05-13 - Explicit Focus Outlines Required Due to CSS Reset
+**Learning:** The custom CSS reset in `src/index.css` strips default focus outlines from `<button>` elements (`button { outline: none; }` or similar). Because of this, native keyboard accessibility is broken by default for newly added or unstyled interactive elements.
+**Action:** Always explicitly apply Tailwind `focus-visible` utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2`) inline to interactive elements. Furthermore, when elements are tightly packed or have explicit clipping/flex settings, ensure `relative focus-visible:z-10` is added so the focus ring isn't clipped by adjacent elements.
