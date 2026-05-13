@@ -2,7 +2,7 @@
  * Export utility for ComposerView canvas
  * Handles rendering placed items and panels to a downloadable PNG
  */
-import { FILTERS } from './filters'
+import { FILTERS, FILTER_MAP } from './filters'
 import { drawShapePath } from './frameShapes'
 import { getImage } from './api'
 
@@ -10,11 +10,13 @@ import { getImage } from './api'
  * Export canvas in panel mode
  */
 async function exportPanelMode(ctx, composition, panels, crops) {
+    // Optimization: Pre-construct map for O(1) lookups in the loop
+    const cropsMap = new Map(crops.map(c => [c.id, c]))
     for (const panel of panels) {
         const assignment = composition.assignments[panel.index]
         if (!assignment?.cropId) continue
 
-        const crop = crops.find(c => c.id === assignment.cropId)
+        const crop = cropsMap.get(assignment.cropId)
         if (!crop) continue
 
         const img = new Image()
@@ -26,7 +28,8 @@ async function exportPanelMode(ctx, composition, panels, crops) {
         })
 
         ctx.save()
-        ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+        // Optimization: O(1) filter lookup instead of O(N) find
+        ctx.filter = FILTER_MAP.get(crop.filter)?.css || 'none'
         ctx.beginPath()
         ctx.rect(panel.x, panel.y, panel.width, panel.height)
         ctx.clip()
@@ -124,7 +127,8 @@ async function drawRotatedItem(ctx, item, crop, x, y, width, height) {
         const cropCenterY = (cropY + cropH / 2) * scaleY
 
         ctx.save()
-        ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+        // Optimization: O(1) filter lookup instead of O(N) find
+        ctx.filter = FILTER_MAP.get(crop.filter)?.css || 'none'
 
         const itemCenterX = x + width / 2
         const itemCenterY = y + height / 2
@@ -181,7 +185,8 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
     }
 
     ctx.save()
-    ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+    // Optimization: O(1) filter lookup instead of O(N) find
+    ctx.filter = FILTER_MAP.get(crop.filter)?.css || 'none'
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
     ctx.restore()
 }
@@ -190,8 +195,10 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
  * Export canvas in freeform mode
  */
 async function exportFreeformMode(ctx, placedItems, crops) {
+    // Optimization: Pre-construct map for O(1) lookups in the loop
+    const cropsMap = new Map(crops.map(c => [c.id, c]))
     for (const item of placedItems) {
-        const crop = crops.find(c => c.id === item.cropId)
+        const crop = cropsMap.get(item.cropId)
         if (!crop) continue
 
         const rotation = item.rotation ?? crop.rotation ?? 0
