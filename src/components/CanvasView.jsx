@@ -347,11 +347,13 @@ function CanvasView({ image, onAddCrop, onImageUpload }) {
                         <button
                             key={filter.id}
                             onClick={(e) => { e.stopPropagation(); setActiveFilter(filter); }}
-                            className={`group relative w-10 h-10 rounded-xl transition-all duration-200 flex items-center justify-center ${activeFilter.id === filter.id
+                            className={`group relative w-10 h-10 rounded-xl transition-all duration-200 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:z-10 ${activeFilter.id === filter.id
                                 ? 'bg-white text-black shadow-lg scale-110'
                                 : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-white'
                                 }`}
                             title={filter.name}
+                            aria-label={filter.name}
+                            aria-pressed={activeFilter.id === filter.id}
                         >
                             {/* Color preview dot */}
                             <div className={`w-3 h-3 rounded-full ${filter.vibe} shadow-inner`}></div>
