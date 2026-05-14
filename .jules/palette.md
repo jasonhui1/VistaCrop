@@ -1,0 +1,3 @@
+## 2025-02-18 - Improve View Toggle Buttons Keyboard Accessibility
+**Learning:** For custom interactive toggle groups composed of buttons, relying solely on CSS background colors to convey active state is insufficient for screen reader users. Furthermore, when using Tailwind to add focus rings (`focus-visible:ring-2`) to flex items or tightly packed interactive elements, the ring is often clipped by adjacent elements.
+**Action:** Always add explicit `aria-pressed` attributes to custom toggle buttons to reflect their active state. When applying focus rings to tightly packed elements, include `relative focus-visible:z-10` to ensure the focus ring is fully visible and not clipped, without unnecessarily altering the normal stacking context.
