@@ -169,8 +169,9 @@ function App() {
         {/* View Toggle */}
         <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] rounded-xl p-1">
           <button
+            aria-pressed={view === 'canvas'}
             onClick={() => setView('canvas')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'canvas'
+            className={`relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'canvas'
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
               : 'text-[var(--text-secondary)] hover:text-white'
               }`}
@@ -183,8 +184,9 @@ function App() {
             </span>
           </button>
           <button
+            aria-pressed={view === 'gallery'}
             onClick={() => setView('gallery')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'gallery'
+            className={`relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'gallery'
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
               : 'text-[var(--text-secondary)] hover:text-white'
               }`}
@@ -202,8 +204,9 @@ function App() {
             </span>
           </button>
           <button
+            aria-pressed={view === 'composer'}
             onClick={() => setView('composer')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'composer'
+            className={`relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'composer'
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
               : 'text-[var(--text-secondary)] hover:text-white'
               }`}
