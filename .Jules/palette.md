@@ -1,0 +1,3 @@
+## 2024-05-16 - Accessibility of Sidebar and Tab Elements
+**Learning:** Found that custom layout selections and mode toggles within sidebars frequently lack explicit `aria-pressed` states and `focus-visible` styling (since default button outlines are removed globally). When interactive elements are packed tightly in Flex containers, `focus-visible:z-10` is necessary to prevent focus rings from being clipped by sibling elements.
+**Action:** When adding focus rings to tightly packed buttons or custom tab-like elements, always use `relative focus-visible:z-10` alongside `focus-visible:ring-2`. Also, explicitly add `aria-pressed` or `aria-selected` dynamically to reflect visual active states for screen readers.
