@@ -6,15 +6,18 @@ import { FILTERS } from './filters'
 import { drawShapePath } from './frameShapes'
 import { getImage } from './api'
 
+// Optimization: Convert FILTERS array to Map for O(1) lookups during export
+const filterMap = new Map(FILTERS.map(f => [f.id, f]));
+
 /**
  * Export canvas in panel mode
  */
-async function exportPanelMode(ctx, composition, panels, crops) {
+async function exportPanelMode(ctx, composition, panels, cropsMap) {
     for (const panel of panels) {
         const assignment = composition.assignments[panel.index]
         if (!assignment?.cropId) continue
 
-        const crop = crops.find(c => c.id === assignment.cropId)
+        const crop = cropsMap.get(assignment.cropId)
         if (!crop) continue
 
         const img = new Image()
@@ -26,7 +29,7 @@ async function exportPanelMode(ctx, composition, panels, crops) {
         })
 
         ctx.save()
-        ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+        ctx.filter = filterMap.get(crop.filter)?.css || 'none'
         ctx.beginPath()
         ctx.rect(panel.x, panel.y, panel.width, panel.height)
         ctx.clip()
@@ -124,7 +127,7 @@ async function drawRotatedItem(ctx, item, crop, x, y, width, height) {
         const cropCenterY = (cropY + cropH / 2) * scaleY
 
         ctx.save()
-        ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+        ctx.filter = filterMap.get(crop.filter)?.css || 'none'
 
         const itemCenterX = x + width / 2
         const itemCenterY = y + height / 2
@@ -181,7 +184,7 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
     }
 
     ctx.save()
-    ctx.filter = FILTERS.find(f => f.id === crop.filter)?.css || 'none'
+    ctx.filter = filterMap.get(crop.filter)?.css || 'none'
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
     ctx.restore()
 }
@@ -189,9 +192,9 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
 /**
  * Export canvas in freeform mode
  */
-async function exportFreeformMode(ctx, placedItems, crops) {
+async function exportFreeformMode(ctx, placedItems, cropsMap) {
     for (const item of placedItems) {
-        const crop = crops.find(c => c.id === item.cropId)
+        const crop = cropsMap.get(item.cropId)
         if (!crop) continue
 
         const rotation = item.rotation ?? crop.rotation ?? 0
@@ -231,10 +234,13 @@ export async function exportCanvas({ composition, panels, crops, mode, placedIte
     ctx.fillStyle = composition.backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+    // Optimization: Convert crops array to Map for O(1) lookups during high-frequency panel rendering
+    const cropsMap = new Map(crops.map(c => [c.id, c]))
+
     if (mode === 'panels') {
-        await exportPanelMode(ctx, composition, panels, crops)
+        await exportPanelMode(ctx, composition, panels, cropsMap)
     } else {
-        await exportFreeformMode(ctx, placedItems, crops)
+        await exportFreeformMode(ctx, placedItems, cropsMap)
     }
 
     // Trigger download
