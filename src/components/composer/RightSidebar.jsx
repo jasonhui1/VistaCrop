@@ -21,8 +21,10 @@ function RightSidebar({
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
             {/* Sidebar Toggle */}
             <button
+                aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-expanded={isOpen}
                 onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)]"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,8 +37,9 @@ function RightSidebar({
                     {/* Tab buttons */}
                     <div className="flex border-b border-[var(--border-color)]">
                         <button
+                            aria-pressed={activeTab === 'crops'}
                             onClick={() => onTabChange('crops')}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === 'crops'
+                            className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)] ${activeTab === 'crops'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 }`}
@@ -44,8 +47,9 @@ function RightSidebar({
                             Crops
                         </button>
                         <button
+                            aria-pressed={activeTab === 'selected'}
                             onClick={() => onTabChange('selected')}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors relative ${activeTab === 'selected'
+                            className={`flex-1 py-2 text-xs font-medium transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)] ${activeTab === 'selected'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 }`}

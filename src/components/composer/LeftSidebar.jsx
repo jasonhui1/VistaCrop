@@ -21,8 +21,10 @@ function LeftSidebar({
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-r border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
             {/* Sidebar Toggle */}
             <button
+                aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-expanded={isOpen}
                 onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)]"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,8 +41,9 @@ function LeftSidebar({
                         </h3>
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
+                                aria-pressed={mode === 'freeform'}
                                 onClick={() => onModeChange('freeform')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)] ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -48,8 +51,9 @@ function LeftSidebar({
                                 Freeform
                             </button>
                             <button
+                                aria-pressed={mode === 'panels'}
                                 onClick={() => onModeChange('panels')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
+                                className={`flex-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)] ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -69,8 +73,9 @@ function LeftSidebar({
                                 {allLayouts.map((layout) => (
                                     <button
                                         key={layout.id}
+                                        aria-pressed={composition.layoutId === layout.id}
                                         onClick={() => onLayoutChange(layout.id)}
-                                        className={`layout-thumbnail p-2 rounded-lg border transition-all ${composition.layoutId === layout.id
+                                        className={`layout-thumbnail p-2 rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${composition.layoutId === layout.id
                                             ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
                                             : 'border-[var(--border-color)] hover:border-[var(--accent-secondary)] bg-[var(--bg-tertiary)]'
                                             }`}

@@ -26,8 +26,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                 <label className="text-xs text-[var(--text-muted)] block mb-1">Phone Mockup</label>
                 <div className="flex items-center gap-2 mb-2">
                     <button
+                        aria-pressed={selectedItem.phoneMockup}
                         onClick={() => onUpdateItem(selectedItem.id, { phoneMockup: !selectedItem.phoneMockup })}
-                        className={`flex-1 py-1.5 text-xs rounded transition-all flex items-center justify-center gap-1.5 ${selectedItem.phoneMockup
+                        className={`flex-1 py-1.5 text-xs rounded transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${selectedItem.phoneMockup
                             ? 'bg-[var(--accent-primary)] text-white'
                             : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                             }`}
@@ -53,8 +54,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 {['#1a1a1a', '#ffffff', '#1e3a5f', '#3d1a1a', '#c0c0c0'].map(c => (
                                     <button
                                         key={c}
+                                        aria-pressed={selectedItem.phoneColor === c}
                                         onClick={() => onUpdateItem(selectedItem.id, { phoneColor: c })}
-                                        className="w-5 h-5 rounded-full border border-[var(--border-color)]"
+                                        className="w-5 h-5 rounded-full border border-[var(--border-color)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
                                         style={{ backgroundColor: c }}
                                         title={c}
                                     />
@@ -65,8 +67,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                             <label className="text-xs text-[var(--text-muted)] w-12">Style</label>
                             <div className="flex flex-1 gap-1">
                                 <button
+                                    aria-pressed={(selectedItem.phoneStyle || 'modern') === 'modern'}
                                     onClick={() => onUpdateItem(selectedItem.id, { phoneStyle: 'modern' })}
-                                    className={`flex-1 py-1 text-xs rounded transition-colors ${(selectedItem.phoneStyle || 'modern') === 'modern'
+                                    className={`flex-1 py-1 text-xs rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)] ${(selectedItem.phoneStyle || 'modern') === 'modern'
                                         ? 'bg-[var(--accent-primary)] text-white'
                                         : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-white'
                                         }`}
@@ -74,8 +77,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                     Modern
                                 </button>
                                 <button
+                                    aria-pressed={selectedItem.phoneStyle === 'classic'}
                                     onClick={() => onUpdateItem(selectedItem.id, { phoneStyle: 'classic' })}
-                                    className={`flex-1 py-1 text-xs rounded transition-colors ${selectedItem.phoneStyle === 'classic'
+                                    className={`flex-1 py-1 text-xs rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)] ${selectedItem.phoneStyle === 'classic'
                                         ? 'bg-[var(--accent-primary)] text-white'
                                         : 'bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-white'
                                         }`}
@@ -95,8 +99,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                     {getShapeList().slice(0, 12).map((shape) => (
                         <button
                             key={shape.id}
+                            aria-pressed={(selectedItem.frameShape || 'rectangle') === shape.id}
                             onClick={() => onUpdateItem(selectedItem.id, { frameShape: shape.id })}
-                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.frameShape || 'rectangle') === shape.id
+                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${(selectedItem.frameShape || 'rectangle') === shape.id
                                 ? 'bg-[var(--accent-primary)] text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                 }`}
@@ -116,8 +121,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         {getShapeList().slice(12).map((shape) => (
                             <button
                                 key={shape.id}
+                                aria-pressed={(selectedItem.frameShape || 'rectangle') === shape.id}
                                 onClick={() => onUpdateItem(selectedItem.id, { frameShape: shape.id })}
-                                className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.frameShape || 'rectangle') === shape.id
+                                className={`aspect-square rounded text-sm flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${(selectedItem.frameShape || 'rectangle') === shape.id
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                     }`}
@@ -158,8 +164,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         </div>
                         <div className="flex gap-1">
                             <button
+                                aria-pressed={selectedItem.editingCorners}
                                 onClick={() => onUpdateItem(selectedItem.id, { editingCorners: !selectedItem.editingCorners })}
-                                className={`flex-1 text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1 ${selectedItem.editingCorners
+                                className={`flex-1 text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${selectedItem.editingCorners
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -181,8 +188,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 )}
                             </button>
                             <button
+                                aria-label="Reset to preset shape"
                                 onClick={() => onUpdateItem(selectedItem.id, { customPoints: null, editingCorners: false })}
-                                className="px-2 py-1.5 text-xs rounded bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                                className="px-2 py-1.5 text-xs rounded bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
                                 title="Reset to preset shape"
                             >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,8 +214,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                     ].map((style) => (
                         <button
                             key={style.id}
+                            aria-pressed={(selectedItem.borderStyle || 'manga') === style.id}
                             onClick={() => onUpdateItem(selectedItem.id, { borderStyle: style.id })}
-                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.borderStyle || 'manga') === style.id
+                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] ${(selectedItem.borderStyle || 'manga') === style.id
                                 ? 'bg-[var(--accent-primary)] text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                 }`}
@@ -258,8 +267,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                     <label className="text-xs text-[var(--text-muted)]">Frame Rotation</label>
                     {(selectedItem.frameRotation ?? 0) !== 0 && (
                         <button
+                            aria-label="Reset frame rotation"
                             onClick={() => onUpdateItem(selectedItem.id, { frameRotation: 0 })}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
                             title="Reset frame rotation"
                         >
                             Reset
@@ -288,8 +298,9 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                     <div className="flex items-center justify-between mb-1">
                         <label className="text-xs text-[var(--text-muted)]">Crop Position</label>
                         <button
+                            aria-label="Reset crop position"
                             onClick={() => onUpdateItem(selectedItem.id, { cropOffsetX: 0, cropOffsetY: 0 })}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
                             title="Reset crop position"
                         >
                             Reset
@@ -322,7 +333,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
 
             <button
                 onClick={() => onDeleteItem(selectedItem.id)}
-                className="w-full text-xs py-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                className="w-full text-xs py-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
                 Delete Item
             </button>
