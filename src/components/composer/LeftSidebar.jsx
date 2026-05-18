@@ -40,7 +40,8 @@ function LeftSidebar({
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
                                 onClick={() => onModeChange('freeform')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
+                                aria-pressed={mode === 'freeform'}
+                                className={`relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -49,7 +50,8 @@ function LeftSidebar({
                             </button>
                             <button
                                 onClick={() => onModeChange('panels')}
-                                className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
+                                aria-pressed={mode === 'panels'}
+                                className={`relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
                                     }`}
@@ -70,6 +72,7 @@ function LeftSidebar({
                                     <button
                                         key={layout.id}
                                         onClick={() => onLayoutChange(layout.id)}
+                                        aria-pressed={composition.layoutId === layout.id}
                                         className={`layout-thumbnail p-2 rounded-lg border transition-all ${composition.layoutId === layout.id
                                             ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
                                             : 'border-[var(--border-color)] hover:border-[var(--accent-secondary)] bg-[var(--bg-tertiary)]'
