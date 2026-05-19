@@ -1,0 +1,3 @@
+## 2024-05-18 - A11y & Focus Improvements for Grid Items
+**Learning:** Icon grid elements (like frame shapes and border styles) used as toggles must have `aria-pressed` for screen readers. Furthermore, adding focus rings (`focus-visible:ring-2`) to tightly packed grid or flex items often results in the focus ring being clipped by adjacent elements.
+**Action:** Use `relative focus-visible:z-10` alongside focus ring utilities on tightly packed items to ensure the focus ring is fully visible and overlapping siblings correctly without unnecessarily altering the normal stacking context. Ensure `aria-pressed` is correctly synced with the element's active state.

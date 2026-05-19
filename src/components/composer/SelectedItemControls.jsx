@@ -96,7 +96,8 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         <button
                             key={shape.id}
                             onClick={() => onUpdateItem(selectedItem.id, { frameShape: shape.id })}
-                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.frameShape || 'rectangle') === shape.id
+                            aria-pressed={(selectedItem.frameShape || 'rectangle') === shape.id}
+                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative focus-visible:z-10 ${(selectedItem.frameShape || 'rectangle') === shape.id
                                 ? 'bg-[var(--accent-primary)] text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                 }`}
@@ -117,7 +118,8 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                             <button
                                 key={shape.id}
                                 onClick={() => onUpdateItem(selectedItem.id, { frameShape: shape.id })}
-                                className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.frameShape || 'rectangle') === shape.id
+                                aria-pressed={(selectedItem.frameShape || 'rectangle') === shape.id}
+                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative focus-visible:z-10 ${(selectedItem.frameShape || 'rectangle') === shape.id
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                     }`}
@@ -207,7 +209,8 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         <button
                             key={style.id}
                             onClick={() => onUpdateItem(selectedItem.id, { borderStyle: style.id })}
-                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.borderStyle || 'manga') === style.id
+                            aria-pressed={(selectedItem.borderStyle || 'manga') === style.id}
+                            className={`aspect-square rounded text-sm flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] relative focus-visible:z-10 ${(selectedItem.borderStyle || 'manga') === style.id
                                 ? 'bg-[var(--accent-primary)] text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
                                 }`}
