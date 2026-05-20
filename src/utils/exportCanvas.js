@@ -9,12 +9,12 @@ import { getImage } from './api'
 /**
  * Export canvas in panel mode
  */
-async function exportPanelMode(ctx, composition, panels, crops) {
+async function exportPanelMode(ctx, composition, panels, cropsMap) {
     for (const panel of panels) {
         const assignment = composition.assignments[panel.index]
         if (!assignment?.cropId) continue
 
-        const crop = crops.find(c => c.id === assignment.cropId)
+        const crop = cropsMap.get(assignment.cropId)
         if (!crop) continue
 
         const img = new Image()
@@ -189,9 +189,9 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
 /**
  * Export canvas in freeform mode
  */
-async function exportFreeformMode(ctx, placedItems, crops) {
+async function exportFreeformMode(ctx, placedItems, cropsMap) {
     for (const item of placedItems) {
-        const crop = crops.find(c => c.id === item.cropId)
+        const crop = cropsMap.get(item.cropId)
         if (!crop) continue
 
         const rotation = item.rotation ?? crop.rotation ?? 0
@@ -227,14 +227,17 @@ export async function exportCanvas({ composition, panels, crops, mode, placedIte
     canvas.height = composition.pageHeight
     const ctx = canvas.getContext('2d')
 
+    // Create Map for O(1) lookups
+    const cropsMap = new Map(crops.map(c => [c.id, c]))
+
     // Fill background
     ctx.fillStyle = composition.backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     if (mode === 'panels') {
-        await exportPanelMode(ctx, composition, panels, crops)
+        await exportPanelMode(ctx, composition, panels, cropsMap)
     } else {
-        await exportFreeformMode(ctx, placedItems, crops)
+        await exportFreeformMode(ctx, placedItems, cropsMap)
     }
 
     // Trigger download
