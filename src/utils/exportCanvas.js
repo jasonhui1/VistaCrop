@@ -10,11 +10,14 @@ import { getImage } from './api'
  * Export canvas in panel mode
  */
 async function exportPanelMode(ctx, composition, panels, crops) {
+    // ⚡ Bolt optimization: Pre-construct Map for O(1) lookups instead of O(n) Array.find
+    const cropsMap = new Map(crops.map(c => [c.id, c]))
+
     for (const panel of panels) {
         const assignment = composition.assignments[panel.index]
         if (!assignment?.cropId) continue
 
-        const crop = crops.find(c => c.id === assignment.cropId)
+        const crop = cropsMap.get(assignment.cropId)
         if (!crop) continue
 
         const img = new Image()
@@ -190,8 +193,11 @@ async function drawNonRotatedItem(ctx, crop, x, y, width, height) {
  * Export canvas in freeform mode
  */
 async function exportFreeformMode(ctx, placedItems, crops) {
+    // ⚡ Bolt optimization: Pre-construct Map for O(1) lookups instead of O(n) Array.find
+    const cropsMap = new Map(crops.map(c => [c.id, c]))
+
     for (const item of placedItems) {
-        const crop = crops.find(c => c.id === item.cropId)
+        const crop = cropsMap.get(item.cropId)
         if (!crop) continue
 
         const rotation = item.rotation ?? crop.rotation ?? 0
