@@ -1,0 +1,3 @@
+## 2025-05-26 - Missing ARIA attributes on custom interactive elements
+**Learning:** Custom interactive elements like sidebar toggles, mode selectors, and dropdown menus often rely solely on visual styling (e.g., color changes, icons) to indicate state. Without `aria-expanded` for toggles/dropdowns, `aria-pressed` for toggle buttons, and `aria-haspopup` for menus, screen reader users cannot perceive the current state or available interactions.
+**Action:** Always pair visual state indicators with appropriate ARIA state attributes (`aria-expanded`, `aria-pressed`, `aria-haspopup`, `aria-controls`) when building custom interactive components.

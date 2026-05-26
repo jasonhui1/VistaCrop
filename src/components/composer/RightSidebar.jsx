@@ -24,6 +24,7 @@ function RightSidebar({
                 onClick={onToggle}
                 className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-expanded={isOpen}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -33,9 +34,11 @@ function RightSidebar({
             {isOpen && (
                 <div className="overflow-y-auto flex-1 flex flex-col">
                     {/* Tab buttons */}
-                    <div className="flex border-b border-[var(--border-color)]">
+                    <div className="flex border-b border-[var(--border-color)]" role="tablist">
                         <button
                             onClick={() => onTabChange('crops')}
+                            role="tab"
+                            aria-selected={activeTab === 'crops'}
                             className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === 'crops'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
@@ -45,6 +48,8 @@ function RightSidebar({
                         </button>
                         <button
                             onClick={() => onTabChange('selected')}
+                            role="tab"
+                            aria-selected={activeTab === 'selected'}
                             className={`flex-1 py-2 text-xs font-medium transition-colors relative ${activeTab === 'selected'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'

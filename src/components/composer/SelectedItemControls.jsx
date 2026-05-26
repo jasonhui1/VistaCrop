@@ -159,6 +159,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         <div className="flex gap-1">
                             <button
                                 onClick={() => onUpdateItem(selectedItem.id, { editingCorners: !selectedItem.editingCorners })}
+                                aria-pressed={selectedItem.editingCorners}
                                 className={`flex-1 text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1 ${selectedItem.editingCorners
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-white'
@@ -207,6 +208,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         <button
                             key={style.id}
                             onClick={() => onUpdateItem(selectedItem.id, { borderStyle: style.id })}
+                            aria-pressed={(selectedItem.borderStyle || 'manga') === style.id}
                             className={`aspect-square rounded text-sm flex items-center justify-center transition-all ${(selectedItem.borderStyle || 'manga') === style.id
                                 ? 'bg-[var(--accent-primary)] text-white'
                                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:bg-[var(--bg-primary)]'
