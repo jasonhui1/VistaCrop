@@ -33,8 +33,12 @@ function RightSidebar({
             {isOpen && (
                 <div className="overflow-y-auto flex-1 flex flex-col">
                     {/* Tab buttons */}
-                    <div className="flex border-b border-[var(--border-color)]">
+                    <div className="flex border-b border-[var(--border-color)]" role="tablist" aria-label="Sidebar Sections">
                         <button
+                            role="tab"
+                            id="tab-crops"
+                            aria-selected={activeTab === 'crops'}
+                            aria-controls="panel-crops"
                             onClick={() => onTabChange('crops')}
                             className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === 'crops'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
@@ -44,6 +48,10 @@ function RightSidebar({
                             Crops
                         </button>
                         <button
+                            role="tab"
+                            id="tab-selected"
+                            aria-selected={activeTab === 'selected'}
+                            aria-controls="panel-selected"
                             onClick={() => onTabChange('selected')}
                             className={`flex-1 py-2 text-xs font-medium transition-colors relative ${activeTab === 'selected'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
@@ -61,6 +69,9 @@ function RightSidebar({
                     <div className="flex-1 overflow-hidden flex flex-col">
                         {/* Selected Item Controls */}
                         <div
+                            role="tabpanel"
+                            id="panel-selected"
+                            aria-labelledby="tab-selected"
                             className="p-3 flex-1 overflow-y-auto"
                             style={{ display: activeTab === 'selected' ? 'block' : 'none' }}
                         >
@@ -75,6 +86,9 @@ function RightSidebar({
 
                         {/* Crops List */}
                         <div
+                            role="tabpanel"
+                            id="panel-crops"
+                            aria-labelledby="tab-crops"
                             className="p-3 flex-1 overflow-y-auto"
                             style={{ display: activeTab === 'crops' ? 'block' : 'none' }}
                         >

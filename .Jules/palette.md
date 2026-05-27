@@ -1,0 +1,3 @@
+## 2024-05-27 - Sidebar Tab Navigation Accessibility
+**Learning:** When implementing accessibility for tabbed navigation components (e.g., `RightSidebar.jsx`), it is necessary to use `role="tablist"` on the container and `role="tab"` with `aria-selected={boolean}` on the items, rather than `aria-pressed`, to ensure correct semantic representation for screen readers. Connecting them with `aria-controls` to panels with `role="tabpanel"` and `aria-labelledby` completes the pattern.
+**Action:** Always use the `tablist`/`tab`/`tabpanel` ARIA pattern instead of `aria-pressed` or `button` semantics when creating tabbed interfaces that toggle content panes.
