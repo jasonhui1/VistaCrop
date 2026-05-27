@@ -16,10 +16,16 @@ function PageCanvas({
     const canvasRef = useRef(null)
     const [dragOverPanel, setDragOverPanel] = useState(null)
 
-    // Find crop by ID
+    // Memoize crops map for O(1) lookups during render loop
+    const cropsMap = useMemo(() => {
+        const map = new Map();
+        crops.forEach(c => map.set(c.id, c));
+        return map;
+    }, [crops]);
+
     const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
+        return cropsMap.get(cropId);
+    }, [cropsMap]);
 
     // Handle drag over panel
     const handleDragOver = useCallback((e, panelIndex) => {
