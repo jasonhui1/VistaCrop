@@ -24,6 +24,8 @@ function LeftSidebar({
                 onClick={onToggle}
                 className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-expanded={isOpen}
+                aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -40,6 +42,7 @@ function LeftSidebar({
                         <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
                                 onClick={() => onModeChange('freeform')}
+                                aria-pressed={mode === 'freeform'}
                                 className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
@@ -49,6 +52,7 @@ function LeftSidebar({
                             </button>
                             <button
                                 onClick={() => onModeChange('panels')}
+                                aria-pressed={mode === 'panels'}
                                 className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
                                     : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'

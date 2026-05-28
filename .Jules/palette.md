@@ -1,0 +1,3 @@
+## 2024-05-28 - Explicit WAI-ARIA tab semantics in sidebars
+**Learning:** In React apps where tabs are rendered conditionally or structurally separated (like LeftSidebar/RightSidebar), native HTML semantics are lost. Screen readers cannot infer the relationship between the tablist, tabs, and tabpanels without explicit WAI-ARIA roles (tablist, tab, tabpanel) and state attributes (aria-selected, aria-expanded, aria-pressed).
+**Action:** Always add explicit WAI-ARIA roles and states to custom interactive components, especially when conditionally rendering content or mimicking native HTML structures like tabs or toggle buttons.
