@@ -20,10 +20,10 @@ function RightSidebar({
     return (
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
             {/* Sidebar Toggle */}
-            <button
-                onClick={onToggle}
-                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
+            <button                 onClick={onToggle}
+                className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:outline-none"
                 title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
                 <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
