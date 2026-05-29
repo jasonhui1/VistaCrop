@@ -1,0 +1,3 @@
+## 2024-05-29 - Avoid Rebuilding Maps on Array Updates
+**Learning:** When trying to optimize array lookups (like `getCropById`) in a React component, memoizing an array into a `Map` using `useMemo` can actually degrade performance if the underlying array is updated frequently (e.g., during drag-and-drop operations). Building the map is O(N), so creating a new map on every array update negates the O(1) lookup benefit if lookups don't vastly outnumber updates per render cycle.
+**Action:** Only convert arrays to Maps for O(1) lookups if the array is static (like global constants) or if the map can be maintained incrementally alongside the array state. Avoid recomputing maps from dynamic arrays on every render.
