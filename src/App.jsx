@@ -167,8 +167,10 @@ function App() {
         </div>
 
         {/* View Toggle */}
-        <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] rounded-xl p-1">
+        <div role="tablist" aria-label="Views" className="flex items-center gap-2 bg-[var(--bg-tertiary)] rounded-xl p-1">
           <button
+            role="tab"
+            aria-selected={view === 'canvas'}
             onClick={() => setView('canvas')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'canvas'
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
@@ -183,6 +185,8 @@ function App() {
             </span>
           </button>
           <button
+            role="tab"
+            aria-selected={view === 'gallery'}
             onClick={() => setView('gallery')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'gallery'
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
@@ -202,6 +206,8 @@ function App() {
             </span>
           </button>
           <button
+            role="tab"
+            aria-selected={view === 'composer'}
             onClick={() => setView('composer')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${view === 'composer'
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'

@@ -37,8 +37,10 @@ function LeftSidebar({
                         <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                             Mode
                         </h3>
-                        <div className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
+                        <div role="tablist" aria-label="Mode" className="flex rounded-lg overflow-hidden border border-[var(--border-color)]">
                             <button
+                                role="tab"
+                                aria-selected={mode === 'freeform'}
                                 onClick={() => onModeChange('freeform')}
                                 className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'freeform'
                                     ? 'bg-[var(--accent-primary)] text-white'
@@ -48,6 +50,8 @@ function LeftSidebar({
                                 Freeform
                             </button>
                             <button
+                                role="tab"
+                                aria-selected={mode === 'panels'}
                                 onClick={() => onModeChange('panels')}
                                 className={`flex-1 py-2 text-xs font-medium transition-colors ${mode === 'panels'
                                     ? 'bg-[var(--accent-primary)] text-white'
