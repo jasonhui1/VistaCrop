@@ -1,0 +1,3 @@
+## 2024-03-24 - WAI-ARIA Tabs and Focus Rings in Sidebar
+**Learning:** When implementing WAI-ARIA tabs for custom sidebars, it's important to include `role="tablist"`, `role="tab"`, `aria-selected`, and `role="tabpanel"`. If arrow key navigation is not supported via JS, stick to basic button focus behaviors. Applying `focus-visible:ring-inset` and `focus-visible:z-10` is necessary for tightly packed flex elements to ensure the focus ring isn't clipped.
+**Action:** Always verify keyboard focus states and standard ARIA roles for custom tabbed interfaces to ensure proper screen reader and keyboard accessibility.
