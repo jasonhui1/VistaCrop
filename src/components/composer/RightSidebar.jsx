@@ -33,8 +33,10 @@ function RightSidebar({
             {isOpen && (
                 <div className="overflow-y-auto flex-1 flex flex-col">
                     {/* Tab buttons */}
-                    <div className="flex border-b border-[var(--border-color)]">
+                    <div role="tablist" aria-label="Sidebar Tabs" className="flex border-b border-[var(--border-color)]">
                         <button
+                            role="tab"
+                            aria-selected={activeTab === 'crops'}
                             onClick={() => onTabChange('crops')}
                             className={`flex-1 py-2 text-xs font-medium transition-colors ${activeTab === 'crops'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
@@ -44,6 +46,8 @@ function RightSidebar({
                             Crops
                         </button>
                         <button
+                            role="tab"
+                            aria-selected={activeTab === 'selected'}
                             onClick={() => onTabChange('selected')}
                             className={`flex-1 py-2 text-xs font-medium transition-colors relative ${activeTab === 'selected'
                                 ? 'text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]'
