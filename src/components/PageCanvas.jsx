@@ -17,9 +17,15 @@ function PageCanvas({
     const [dragOverPanel, setDragOverPanel] = useState(null)
 
     // Find crop by ID
-    const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
+    const cropsMap = useMemo(() => {
+        const map = new Map()
+        crops.forEach(c => map.set(c.id, c))
+        return map
     }, [crops])
+
+    const getCropById = useCallback((cropId) => {
+        return cropsMap.get(cropId)
+    }, [cropsMap])
 
     // Handle drag over panel
     const handleDragOver = useCallback((e, panelIndex) => {
