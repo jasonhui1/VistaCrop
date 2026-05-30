@@ -613,9 +613,15 @@ function FreeformCanvas({
         return filter ? filter.css : 'none'
     }, [])
 
-    const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
+    const cropsMap = useMemo(() => {
+        const map = new Map()
+        crops.forEach(c => map.set(c.id, c))
+        return map
     }, [crops])
+
+    const getCropById = useCallback((cropId) => {
+        return cropsMap.get(cropId)
+    }, [cropsMap])
 
     // ========================================================================
     // Drag & Drop Handlers (for dropping new crops)
