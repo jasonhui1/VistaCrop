@@ -277,13 +277,23 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
 };
 
 /**
+ * Helper to resolve polygon points for a shape or custom points fallback
+ */
+function resolvePoints(shapeId: string, customPoints: Point2D[] | null = null): Point2D[] {
+    if (customPoints && customPoints.length >= 3) {
+        return customPoints;
+    }
+    return FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
+}
+
+/**
  * Get clip-path CSS value for a shape or custom points
  * @param shapeId - The shape ID
  * @param customPoints - Optional custom points array [[x%, y%], ...]
  * @returns CSS clip-path polygon value
  */
 export function getClipPath(shapeId: string, customPoints: Point2D[] | null = null): string {
-    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
+    const points = resolvePoints(shapeId, customPoints);
 
     const pointsStr = points
         .map(([x, y]) => `${x}% ${y}%`)
@@ -305,7 +315,7 @@ export function getSvgPoints(
     height: number,
     customPoints: Point2D[] | null = null
 ): string {
-    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
+    const points = resolvePoints(shapeId, customPoints);
 
     return points
         .map(([xPct, yPct]) => `${(xPct / 100) * width},${(yPct / 100) * height}`)
@@ -331,7 +341,7 @@ export function drawShapePath(
     height: number,
     customPoints: Point2D[] | null = null
 ): void {
-    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
+    const points = resolvePoints(shapeId, customPoints);
 
     ctx.beginPath();
     points.forEach(([xPct, yPct], index) => {

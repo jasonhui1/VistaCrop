@@ -23,7 +23,8 @@ async function exportPanelMode(
     ctx: CanvasRenderingContext2D,
     composition: Composition,
     panels: Panel[],
-    crops: Crop[]
+    crops: Crop[],
+    _basePath: string
 ): Promise<void> {
     for (const panel of panels) {
         const assignment = composition.assignments[panel.index];
@@ -71,12 +72,9 @@ async function exportPanelMode(
 function drawItemBorder(
     ctx: CanvasRenderingContext2D,
     item: PlacedItem,
-    shapeId: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number
+    shapeId: string
 ): void {
+    const { x, y, width, height } = item;
     const borderStyle = item.borderStyle || 'manga';
     const borderColor = item.borderColor || '#000';
     const borderWidth = item.borderWidth ?? 3;
@@ -120,12 +118,9 @@ async function drawRotatedItem(
     ctx: CanvasRenderingContext2D,
     item: PlacedItem,
     crop: Crop,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    basePath: string = '/api'
+    basePath: string
 ): Promise<void> {
+    const { x, y, width, height } = item;
     const rotation = item.rotation ?? crop.rotation ?? 0;
 
     try {
@@ -237,7 +232,7 @@ async function exportFreeformMode(
     ctx: CanvasRenderingContext2D,
     placedItems: PlacedItem[],
     crops: Crop[],
-    basePath: string = '/api'
+    basePath: string
 ): Promise<void> {
     for (const item of placedItems) {
         const crop = crops.find(c => String(c.id) === String(item.cropId));
@@ -255,7 +250,7 @@ async function exportFreeformMode(
 
         // Draw the image (with or without rotation)
         if (rotation !== 0 && crop.imageId) {
-            await drawRotatedItem(ctx, item, crop, x, y, width, height, basePath);
+            await drawRotatedItem(ctx, item, crop, basePath);
         } else {
             await drawNonRotatedItem(ctx, crop, x, y, width, height);
         }
@@ -263,7 +258,7 @@ async function exportFreeformMode(
         ctx.restore();
 
         // Draw border on top
-        drawItemBorder(ctx, item, shapeId, x, y, width, height);
+        drawItemBorder(ctx, item, shapeId);
     }
 }
 
@@ -289,7 +284,7 @@ export async function exportCanvas({
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (mode === 'panels') {
-        await exportPanelMode(ctx, composition, panels, crops);
+        await exportPanelMode(ctx, composition, panels, crops, basePath);
     } else {
         await exportFreeformMode(ctx, placedItems, crops, basePath);
     }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { StorageAdapter, Composition, PlacedItem, SavedCanvas } from '../types.ts';
-import { createApiClient } from '../utils/api.ts';
+import { getStorageAdapter } from '../lib/storage/index.ts';
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DELAY = 30000;
@@ -14,7 +14,7 @@ export interface UseCanvasPersistenceOptions {
 }
 
 export interface UseCanvasPersistenceReturn {
-    canvasId: string | number | null;
+    canvasId: string | null;
     isSaving: boolean;
     isLoading: boolean;
     savedCanvases: SavedCanvas[];
@@ -24,7 +24,7 @@ export interface UseCanvasPersistenceReturn {
     fetchSavedCanvases: () => Promise<void>;
     handleSave: () => Promise<void>;
     handleLoadCanvas: (selectedCanvasId: string) => Promise<void>;
-    handleDeleteCanvas: (canvasIdToDelete: string | number) => Promise<void>;
+    handleDeleteCanvas: (canvasIdToDelete: string) => Promise<void>;
     toggleLoadMenu: () => void;
 }
 
@@ -39,11 +39,11 @@ export function useCanvasPersistence({
     adapter
 }: UseCanvasPersistenceOptions): UseCanvasPersistenceReturn {
     const storageAdapter: StorageAdapter = useMemo(
-        () => adapter ?? createApiClient(),
+        () => adapter ?? getStorageAdapter(),
         [adapter]
     );
 
-    const [canvasId, setCanvasId] = useState<string | number | null>(null);
+    const [canvasId, setCanvasId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [savedCanvases, setSavedCanvases] = useState<SavedCanvas[]>([]);
@@ -65,12 +65,26 @@ export function useCanvasPersistence({
         };
     }, [showLoadMenu]);
 
+    // Track initial render to skip marking unsaved changes on mount
+    const isFirstRenderRef = useRef<boolean>(true);
+
     // Mark changes as unsaved when placedItems or composition changes
     useEffect(() => {
+        if (isFirstRenderRef.current) {
+            isFirstRenderRef.current = false;
+            return;
+        }
         if (canvasId) {
             setHasUnsavedChanges(true);
         }
-    }, [placedItems, composition, canvasId]);
+    }, [placedItems, composition]);
+
+    // Core helper to execute save and reset dirty state
+    const performSave = useCallback(async (targetCanvasId: string) => {
+        await storageAdapter.saveCanvas(targetCanvasId, composition, placedItems ?? []);
+        setHasUnsavedChanges(false);
+        setLastSavedAt(Date.now());
+    }, [storageAdapter, composition, placedItems]);
 
     // Auto-save functionality
     useEffect(() => {
@@ -82,9 +96,7 @@ export function useCanvasPersistence({
 
         autoSaveTimerRef.current = setTimeout(async () => {
             try {
-                await storageAdapter.saveCanvas(String(canvasId), composition, placedItems ?? []);
-                setHasUnsavedChanges(false);
-                setLastSavedAt(Date.now());
+                await performSave(canvasId);
                 console.log('Auto-saved canvas:', canvasId);
             } catch (error) {
                 console.error('Auto-save failed:', error);
@@ -96,7 +108,7 @@ export function useCanvasPersistence({
                 clearTimeout(autoSaveTimerRef.current);
             }
         };
-    }, [hasUnsavedChanges, canvasId, composition, placedItems, storageAdapter]);
+    }, [hasUnsavedChanges, canvasId, performSave]);
 
     // Fetch list of saved canvases
     const fetchSavedCanvases = useCallback(async () => {
@@ -120,20 +132,18 @@ export function useCanvasPersistence({
                     name: `Canvas ${new Date().toLocaleString()}`,
                     mode
                 });
-                currentCanvasId = result.canvasId;
+                currentCanvasId = String(result.canvasId);
                 setCanvasId(currentCanvasId);
             }
 
-            await storageAdapter.saveCanvas(String(currentCanvasId), composition, placedItems ?? []);
-            setHasUnsavedChanges(false);
-            setLastSavedAt(Date.now());
+            await performSave(currentCanvasId);
             console.log('Canvas saved successfully:', currentCanvasId);
         } catch (error) {
             console.error('Failed to save canvas:', error);
         } finally {
             setIsSaving(false);
         }
-    }, [canvasId, composition, placedItems, mode, storageAdapter]);
+    }, [canvasId, mode, storageAdapter, performSave]);
 
     // Handle loading a canvas
     const handleLoadCanvas = useCallback(async (selectedCanvasId: string) => {
@@ -157,17 +167,18 @@ export function useCanvasPersistence({
     }, [onLoadState, storageAdapter]);
 
     // Handle deleting a canvas
-    const handleDeleteCanvas = useCallback(async (canvasIdToDelete: string | number) => {
+    const handleDeleteCanvas = useCallback(async (canvasIdToDelete: string) => {
         try {
-            await storageAdapter.deleteCanvas(String(canvasIdToDelete));
-            setSavedCanvases(prev => prev.filter(c => String(c.id) !== String(canvasIdToDelete)));
+            const idString = String(canvasIdToDelete);
+            await storageAdapter.deleteCanvas(idString);
+            setSavedCanvases(prev => prev.filter(c => String(c.id) !== idString));
 
-            if (String(canvasIdToDelete) === String(canvasId)) {
+            if (canvasId === idString) {
                 setCanvasId(null);
                 setHasUnsavedChanges(false);
             }
 
-            console.log('Canvas deleted:', canvasIdToDelete);
+            console.log('Canvas deleted:', idString);
         } catch (error) {
             console.error('Failed to delete canvas:', error);
         }

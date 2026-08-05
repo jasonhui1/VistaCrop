@@ -61,6 +61,22 @@ export function useUndoRedo<T>(
         setCanRedo(futureRef.current.length > 0);
     }, []);
 
+    // Helper to push state onto past history stack and clear future
+    const pushHistory = useCallback((snapshot: T) => {
+        pastRef.current = [...pastRef.current.slice(-(maxHistory - 1)), snapshot];
+        futureRef.current = [];
+        preActionStateRef.current = null;
+        setTimeout(updateFlags, 0);
+    }, [maxHistory, updateFlags]);
+
+    // Helper to clear all history stacks and update flags
+    const resetHistory = useCallback(() => {
+        pastRef.current = [];
+        futureRef.current = [];
+        preActionStateRef.current = null;
+        updateFlags();
+    }, [updateFlags]);
+
     // Set state AND record to history (use for discrete actions like add/delete)
     const setState = useCallback((newState: T | ((prevState: T) => T)) => {
         setStateInternal((prevState: T) => {
@@ -71,20 +87,10 @@ export function useUndoRedo<T>(
                 return prevState;
             }
 
-            // Push current state to past
-            pastRef.current = [...pastRef.current.slice(-(maxHistory - 1)), prevState];
-
-            // Clear future on new action
-            futureRef.current = [];
-
-            // Clear any pending pre-action state
-            preActionStateRef.current = null;
-
-            setTimeout(updateFlags, 0);
-
+            pushHistory(prevState);
             return nextState;
         });
-    }, [maxHistory, updateFlags]);
+    }, [pushHistory]);
 
     // Set state WITHOUT recording to history (use during drag operations)
     const setStateSilent = useCallback((newState: T | ((prevState: T) => T)) => {
@@ -103,13 +109,9 @@ export function useUndoRedo<T>(
     // Explicitly record current state to history (call on drag end)
     const recordState = useCallback(() => {
         if (preActionStateRef.current !== null) {
-            // Add the pre-action state to history
-            pastRef.current = [...pastRef.current.slice(-(maxHistory - 1)), preActionStateRef.current];
-            futureRef.current = [];
-            preActionStateRef.current = null;
-            setTimeout(updateFlags, 0);
+            pushHistory(preActionStateRef.current);
         }
-    }, [maxHistory, updateFlags]);
+    }, [pushHistory]);
 
     // Undo: pop from past, push current to future
     const undo = useCallback(() => {
@@ -158,20 +160,14 @@ export function useUndoRedo<T>(
 
     // Clear all history
     const clearHistory = useCallback(() => {
-        pastRef.current = [];
-        futureRef.current = [];
-        preActionStateRef.current = null;
-        updateFlags();
-    }, [updateFlags]);
+        resetHistory();
+    }, [resetHistory]);
 
     // Reset to a specific state (clears history)
     const reset = useCallback((newState: T) => {
         setStateInternal(newState);
-        pastRef.current = [];
-        futureRef.current = [];
-        preActionStateRef.current = null;
-        updateFlags();
-    }, [updateFlags]);
+        resetHistory();
+    }, [resetHistory]);
 
     return {
         state,
