@@ -75,42 +75,36 @@ const RotatableImage = memo(function RotatableImage({
         }
     }, [currentRotation, cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
 
-    const showOriginalImage = Boolean(originalImage && (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0))
-
     const displayData = useMemo(() => {
+        const containerWidth = containerSize.width || 100
+        const containerHeight = containerSize.height || 100
+
+        const boxWidth = containerWidth - (containerInset * 2)
+        const boxHeight = containerHeight - (containerInset * 2)
+
+        const scaleX = crop.width > 0 ? boxWidth / crop.width : 1
+        const scaleY = crop.height > 0 ? boxHeight / crop.height : 1
+
         const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
         const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
-        const cropW = crop.width || DEFAULT_IMAGE_DIMENSION
-        const cropH = crop.height || DEFAULT_IMAGE_DIMENSION
-
-        const cWidth = containerSize.width || cropW
-        const cHeight = containerSize.height || cropH
-
-        const scaleX = cWidth / cropW
-        const scaleY = cHeight / cropH
-        const scale = (scaleX + scaleY) / 2
-
-        const displayedOrigWidth = origW * scale
-        const displayedOrigHeight = origH * scale
-
-        const cropX = crop.x || 0
-        const cropY = crop.y || 0
-
-        const offsetX = -cropX * scale + cropOffsetX
-        const offsetY = -cropY * scale + cropOffsetY
-
-        const cropCenterX = offsetX + (cropX + cropW / 2) * scale
-        const cropCenterY = offsetY + (cropY + cropH / 2) * scale
+        const cropX = (crop.x || 0) + cropOffsetX
+        const cropY = (crop.y || 0) + cropOffsetY
+        const cropW = crop.width || 100
+        const cropH = crop.height || 100
 
         return {
-            displayedOrigWidth,
-            displayedOrigHeight,
-            offsetX,
-            offsetY,
-            cropCenterX,
-            cropCenterY
+            displayedOrigWidth: origW * scaleX,
+            displayedOrigHeight: origH * scaleY,
+            offsetX: -cropX * scaleX,
+            offsetY: -cropY * scaleY,
+            cropCenterX: (cropX + cropW / 2) * scaleX,
+            cropCenterY: (cropY + cropH / 2) * scaleY,
+            scaleX,
+            scaleY
         }
-    }, [crop, containerSize, cropOffsetX, cropOffsetY])
+    }, [containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight, cropOffsetX, cropOffsetY])
+
+    const showOriginalImage = (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0) && originalImage
 
     const cornerHandleStyle: CSSProperties = {
         position: 'absolute',

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { StorageAdapter, Composition, PlacedItem, SavedCanvas } from '../types.ts';
-import { getStorageAdapter } from '../lib/storage/index.ts';
+import { createApiClient } from '../utils/api.ts';
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DELAY = 30000;
@@ -39,7 +39,7 @@ export function useCanvasPersistence({
     adapter
 }: UseCanvasPersistenceOptions): UseCanvasPersistenceReturn {
     const storageAdapter: StorageAdapter = useMemo(
-        () => adapter ?? getStorageAdapter(),
+        () => adapter ?? createApiClient(),
         [adapter]
     );
 
