@@ -1,11 +1,14 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import ImageUploader from './components/ImageUploader'
-import { CanvasView, GalleryView, ComposerView, Crop, CropData } from './index'
-import { saveCrops, loadAllCrops, updateCrop, deleteCrop, uploadImage, getImage } from './utils/api'
+import { CanvasView, GalleryView, ComposerView, StorageAdapterProvider, Crop, CropData } from './index'
+import { createApiClient } from './utils/api'
 
 type View = 'canvas' | 'gallery' | 'composer'
 
 function App() {
+  // Composition root: the host owns the storage adapter and hands it to the
+  // views through context (#201).
+  const storage = useMemo(() => createApiClient(), [])
   const [view, setView] = useState<View>('canvas')
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [imageId, setImageId] = useState<string | null>(null)
@@ -19,7 +22,7 @@ function App() {
   useEffect(() => {
     async function loadSavedCrops() {
       try {
-        const allCrops = await loadAllCrops()
+        const allCrops = await storage.loadAllCrops()
         if (allCrops.length > 0) {
           setCrops(allCrops)
           // Get the imageId from the first crop
@@ -29,7 +32,7 @@ function App() {
             setImageId(firstCropImageId)
             // Fetch the original image from the server
             try {
-              const imageData = await getImage(firstCropImageId)
+              const imageData = await storage.getImage(firstCropImageId)
               if (imageData && imageData.data) {
                 setUploadedImage(imageData.data)
               }
@@ -46,7 +49,7 @@ function App() {
       }
     }
     loadSavedCrops()
-  }, [])
+  }, [storage])
 
   const handleImageUpload = async (imageDataUrl: string) => {
     // Generate a unique imageId for this upload session
@@ -59,7 +62,7 @@ function App() {
 
     // Upload the image to the server immediately
     try {
-      await uploadImage(newImageId, imageDataUrl)
+      await storage.uploadImage(newImageId, imageDataUrl)
       console.log(`Uploaded image: ${newImageId}`)
     } catch (error) {
       console.error('Failed to upload image:', error)
@@ -82,13 +85,13 @@ function App() {
     // Save each group to its respective imageId
     try {
       for (const [imgId, imgCrops] of Object.entries(cropsByImageId)) {
-        await saveCrops(imgId, imgCrops)
+        await storage.saveCrops(imgId, imgCrops)
         console.log(`Saved ${imgCrops.length} crops to image: ${imgId}`)
       }
     } catch (error) {
       console.error('Failed to save crops:', error)
     }
-  }, [])
+  }, [storage])
 
   const handleAddCrop = async (cropData: CropData) => {
     const newCrop: Crop = {
@@ -128,7 +131,7 @@ function App() {
     try {
       const cropImageId = crop.imageId || imageIdRef.current
       if (cropImageId) {
-        await updateCrop(cropImageId, id, updates)
+        await storage.updateCrop(cropImageId, id, updates)
         console.log(`Updated crop ${id} for image: ${cropImageId}`)
       }
     } catch (error) {
@@ -145,7 +148,7 @@ function App() {
     try {
       const cropImageId = crop?.imageId || imageIdRef.current
       if (cropImageId) {
-        await deleteCrop(cropImageId, id)
+        await storage.deleteCrop(cropImageId, id)
         console.log(`Deleted crop ${id} from image: ${cropImageId}`)
       }
     } catch (error) {
@@ -223,24 +226,26 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 min-h-0 flex flex-col">
-        {view === 'canvas' ? (
-          <CanvasView
-            image={uploadedImage}
-            onAddCrop={handleAddCrop}
-            onImageUpload={handleImageUpload}
-            onSwitchToGallery={() => setView('gallery')}
-          />
-        ) : view === 'gallery' ? (
-          <GalleryView
-            crops={crops}
-            onUpdateCrop={handleUpdateCrop}
-            onDeleteCrop={handleDeleteCrop}
-          />
-        ) : (
-          <ComposerView
-            crops={crops}
-          />
-        )}
+        <StorageAdapterProvider adapter={storage}>
+          {view === 'canvas' ? (
+            <CanvasView
+              image={uploadedImage}
+              onAddCrop={handleAddCrop}
+              onImageUpload={handleImageUpload}
+              onSwitchToGallery={() => setView('gallery')}
+            />
+          ) : view === 'gallery' ? (
+            <GalleryView
+              crops={crops}
+              onUpdateCrop={handleUpdateCrop}
+              onDeleteCrop={handleDeleteCrop}
+            />
+          ) : (
+            <ComposerView
+              crops={crops}
+            />
+          )}
+        </StorageAdapterProvider>
       </main>
     </div>
   )

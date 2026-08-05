@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { StorageAdapter, Composition, PlacedItem, SavedCanvas } from '../types';
-import { createApiClient } from '../utils/api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Composition, PlacedItem, SavedCanvas } from '../types';
+import { useStorageAdapter } from '../lib/storage';
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DELAY = 30000;
@@ -10,7 +10,6 @@ export interface UseCanvasPersistenceOptions {
     placedItems?: PlacedItem[];
     mode?: string;
     onLoadState?: (canvasData: SavedCanvas) => void;
-    adapter?: StorageAdapter;
 }
 
 export interface UseCanvasPersistenceReturn {
@@ -35,13 +34,9 @@ export function useCanvasPersistence({
     composition,
     placedItems,
     mode,
-    onLoadState,
-    adapter
+    onLoadState
 }: UseCanvasPersistenceOptions): UseCanvasPersistenceReturn {
-    const storageAdapter: StorageAdapter = useMemo(
-        () => adapter ?? createApiClient(),
-        [adapter]
-    );
+    const storageAdapter = useStorageAdapter();
 
     const [canvasId, setCanvasId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState<boolean>(false);

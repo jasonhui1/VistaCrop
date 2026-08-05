@@ -4,21 +4,27 @@ import esbuild from 'esbuild';
 
 const RESOLVE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
 
-// Node's ESM resolver requires explicit extensions on relative specifiers;
-// src/ imports intentionally omit them (see #198), so retry with each
-// candidate extension before giving up.
+const DIRECTORY_IMPORT_CODES = new Set(['ERR_MODULE_NOT_FOUND', 'ERR_UNSUPPORTED_DIR_IMPORT']);
+
+// Node's ESM resolver requires explicit extensions on relative specifiers and
+// does not resolve a directory to its index file; src/ imports intentionally
+// rely on both (see #198), so retry with each candidate extension — bare and
+// as an index file — before giving up.
 export async function resolve(specifier, context, nextResolve) {
     try {
         return await nextResolve(specifier, context);
     } catch (err) {
-        if (err.code !== 'ERR_MODULE_NOT_FOUND' || !specifier.startsWith('.')) {
+        if (!DIRECTORY_IMPORT_CODES.has(err.code) || !specifier.startsWith('.')) {
             throw err;
         }
+        const trimmed = specifier.replace(/\/$/, '');
         for (const ext of RESOLVE_EXTENSIONS) {
-            try {
-                return await nextResolve(specifier + ext, context);
-            } catch {
-                // try the next candidate extension
+            for (const candidate of [trimmed + ext, `${trimmed}/index${ext}`]) {
+                try {
+                    return await nextResolve(candidate, context);
+                } catch {
+                    // try the next candidate
+                }
             }
         }
         throw err;

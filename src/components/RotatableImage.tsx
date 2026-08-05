@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, CSSProperties } from 'react'
-import { getImage } from '../utils/api'
+import { useStorageAdapter } from '../lib/storage'
 import { Crop } from '../types'
 
 const DEFAULT_IMAGE_DIMENSION = 1000
@@ -31,6 +31,7 @@ const RotatableImage = memo(function RotatableImage({
     cropOffsetY = 0,
     isPanning = false
 }: RotatableImageProps) {
+    const storageAdapter = useStorageAdapter()
     const containerRef = useRef<HTMLDivElement>(null)
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
     const [originalImage, setOriginalImage] = useState<string | null>(null)
@@ -61,7 +62,7 @@ const RotatableImage = memo(function RotatableImage({
             const loadImage = async () => {
                 setIsLoadingOriginal(true)
                 try {
-                    const imageData = await getImage(imageId)
+                    const imageData = await storageAdapter.getImage(imageId)
                     if (imageData && imageData.data) {
                         setOriginalImage(imageData.data)
                     }
@@ -73,7 +74,7 @@ const RotatableImage = memo(function RotatableImage({
             }
             loadImage()
         }
-    }, [currentRotation, cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
+    }, [currentRotation, cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId, storageAdapter])
 
     const displayData = useMemo(() => {
         const containerWidth = containerSize.width || 100

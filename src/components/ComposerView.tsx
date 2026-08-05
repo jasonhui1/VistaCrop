@@ -15,18 +15,17 @@ import {
     PAGE_PRESETS
 } from '../utils/panelLayouts'
 import { exportCanvas } from '../utils/exportCanvas'
-import { CanvasMode, Composition, Crop, PlacedItem, SavedCanvas, StorageAdapter } from '../types'
+import { CanvasMode, Composition, Crop, PlacedItem, SavedCanvas } from '../types'
 
 export interface ComposerViewProps {
     crops: Crop[]
-    adapter?: StorageAdapter
 }
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
  * Supports both panel-based layouts and freeform placement
  */
-function ComposerView({ crops, adapter }: ComposerViewProps) {
+function ComposerView({ crops }: ComposerViewProps) {
     // === MODE STATE ===
     const [mode, setMode] = useState<CanvasMode>('freeform')
 
@@ -67,8 +66,7 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         composition,
         placedItems,
         mode,
-        onLoadState: handleLoadState,
-        adapter
+        onLoadState: handleLoadState
     })
 
     // === DERIVED STATE ===

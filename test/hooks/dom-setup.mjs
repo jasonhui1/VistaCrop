@@ -26,6 +26,23 @@ for (const key of GLOBALS_TO_COPY) {
     }
 }
 
+// jsdom implements no layout engine and therefore no ResizeObserver, which
+// components use to track their own size. Nothing resizes under test, so a
+// no-op observer is enough to let those components mount.
+class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+}
+
+for (const target of [window, globalThis]) {
+    Object.defineProperty(target, 'ResizeObserver', {
+        value: ResizeObserverStub,
+        configurable: true,
+        writable: true
+    });
+}
+
 // jsdom has no canvas implementation (see #207): getContext('2d') returns
 // null out of the box, which breaks any component that calls it. This stub
 // implements just enough of the 2D context surface — drawing calls, pixel
