@@ -1,9 +1,17 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
+import { memo, useCallback, useMemo, useRef, useState, DragEvent, CSSProperties } from 'react'
+import { Composition, Panel, Crop } from '../types'
+import { getCropById, getFilterStyle } from '../utils/canvasUtils'
 
-/**
- * PageCanvas - Renders the composition with assigned crops in panels
- */
+export interface PageCanvasProps {
+    composition: Composition
+    panels: Panel[]
+    crops: Crop[]
+    selectedPanelIndex: number | null
+    onSelectPanel: (index: number) => void
+    onDropCrop: (panelIndex: number, cropId: string | number) => void
+    previewMode?: boolean
+}
+
 function PageCanvas({
     composition,
     panels,
@@ -12,52 +20,38 @@ function PageCanvas({
     onSelectPanel,
     onDropCrop,
     previewMode = false
-}) {
-    const canvasRef = useRef(null)
-    const [dragOverPanel, setDragOverPanel] = useState(null)
+}: PageCanvasProps) {
+    const canvasRef = useRef<HTMLDivElement>(null)
+    const [dragOverPanel, setDragOverPanel] = useState<number | null>(null)
 
-    // Find crop by ID
-    const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
-
-    // Handle drag over panel
-    const handleDragOver = useCallback((e, panelIndex) => {
+    const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>, panelIndex: number) => {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'copy'
         setDragOverPanel(panelIndex)
     }, [])
 
-    // Handle drag leave
-    const handleDragLeave = useCallback((e) => {
-        // Only clear if leaving the panel entirely
-        if (!e.currentTarget.contains(e.relatedTarget)) {
+    const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
             setDragOverPanel(null)
         }
     }, [])
 
-    // Handle drop
-    const handleDrop = useCallback((e, panelIndex) => {
+    const handleDrop = useCallback((e: DragEvent<HTMLDivElement>, panelIndex: number) => {
         e.preventDefault()
         setDragOverPanel(null)
 
-        const cropId = e.dataTransfer.getData('application/crop-id')
-        if (cropId) {
-            onDropCrop(panelIndex, parseInt(cropId, 10))
+        const rawCropId = e.dataTransfer.getData('application/crop-id') || e.dataTransfer.getData('text/plain')
+        if (rawCropId) {
+            const parsedNumber = parseInt(rawCropId, 10)
+            const cropId = isNaN(parsedNumber) ? rawCropId : parsedNumber
+            onDropCrop(panelIndex, cropId)
         }
     }, [onDropCrop])
 
-    // Get CSS filter string from filter name
-    const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.css : 'none'
-    }, [])
-
-    // Calculate scale to fit page in container
-    const containerStyle = useMemo(() => {
+    const containerStyle = useMemo<CSSProperties>(() => {
         const aspectRatio = composition.pageWidth / composition.pageHeight
         return {
-            aspectRatio: aspectRatio,
+            aspectRatio,
             maxWidth: '100%',
             maxHeight: '100%',
             backgroundColor: composition.backgroundColor,
@@ -76,12 +70,11 @@ function PageCanvas({
         >
             {panels.map((panel, index) => {
                 const assignment = composition.assignments[index]
-                const crop = assignment?.cropId ? getCropById(assignment.cropId) : null
+                const crop = assignment?.cropId ? getCropById(crops, assignment.cropId) : null
                 const isSelected = selectedPanelIndex === index
                 const isDragOver = dragOverPanel === index
 
-                // Calculate panel position as percentage
-                const panelStyle = {
+                const panelStyle: CSSProperties = {
                     position: 'absolute',
                     left: `${(panel.x / composition.pageWidth) * 100}%`,
                     top: `${(panel.y / composition.pageHeight) * 100}%`,

@@ -10,15 +10,7 @@ import type {
     StorageAdapter as IStorageAdapter
 } from '../../types.ts';
 
-/**
- * StorageAdapter abstract base class for VistaCrop.
- * Abstracts all persistence operations for canvases, crops, and images.
- */
 export class StorageAdapter implements IStorageAdapter {
-    // ============================================================================
-    // CANVAS CRUD
-    // ============================================================================
-
     async listCanvases(): Promise<SavedCanvas[]> {
         throw new Error('StorageAdapter.listCanvases() must be implemented');
     }
@@ -31,21 +23,17 @@ export class StorageAdapter implements IStorageAdapter {
         return this.getCanvas(canvasId);
     }
 
-    async createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}): Promise<CreateCanvasResponse & SavedCanvas> {
+    async createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}): Promise<CreateCanvasResponse & Partial<SavedCanvas>> {
         throw new Error('StorageAdapter.createCanvas() must be implemented');
     }
 
-    async saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = []): Promise<OperationSuccessResponse & SavedCanvas> {
+    async saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = []): Promise<OperationSuccessResponse & Partial<SavedCanvas>> {
         throw new Error('StorageAdapter.saveCanvas() must be implemented');
     }
 
     async deleteCanvas(canvasId: string): Promise<OperationSuccessResponse> {
         throw new Error('StorageAdapter.deleteCanvas() must be implemented');
     }
-
-    // ============================================================================
-    // CROP CRUD
-    // ============================================================================
 
     async loadAllCrops(): Promise<Crop[]> {
         throw new Error('StorageAdapter.loadAllCrops() must be implemented');
@@ -70,10 +58,6 @@ export class StorageAdapter implements IStorageAdapter {
     async deleteCrop(imageId: string, cropId: string | number): Promise<OperationSuccessResponse> {
         throw new Error('StorageAdapter.deleteCrop() must be implemented');
     }
-
-    // ============================================================================
-    // IMAGE CRUD
-    // ============================================================================
 
     async listImages(): Promise<StoredImage[]> {
         throw new Error('StorageAdapter.listImages() must be implemented');

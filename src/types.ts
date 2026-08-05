@@ -2,45 +2,33 @@
  * Shared TypeScript type definitions for VistaCrop
  */
 
-/**
- * 2D coordinate point [x, y] as percentages or pixels
- */
 export type Point2D = [number, number];
 
-/**
- * 2D point coordinate object
- */
 export interface Point {
     x: number;
     y: number;
 }
 
-/**
- * 2D dimensions object
- */
 export interface Dimensions {
     width: number;
     height: number;
 }
 
-/**
- * 2D bounding rectangle combining position and dimensions
- */
 export interface Rect extends Point, Dimensions {}
 
-/**
- * Supported frame border styles
- */
 export type BorderStyle = 'none' | 'solid' | 'dashed' | 'manga';
 
-/**
- * Represents an image crop preset / cut object
- */
-export interface Crop extends Rect {
+export type PhoneStyle = 'modern' | 'classic';
+
+export interface Crop {
     id: string | number;
     imageId?: string;
     imageData?: string;
     imageDataPath?: string;
+    x?: number;
+    y?: number;
+    width: number;
+    height: number;
     originalImageWidth?: number;
     originalImageHeight?: number;
     rotation?: number;
@@ -52,9 +40,6 @@ export interface Crop extends Rect {
     updatedAt?: number;
 }
 
-/**
- * Represents an item placed onto a freeform canvas
- */
 export interface PlacedItem extends Rect {
     id: string | number;
     cropId: string | number;
@@ -70,12 +55,9 @@ export interface PlacedItem extends Rect {
     editingCorners?: boolean;
     phoneMockup?: boolean;
     phoneColor?: string;
-    phoneStyle?: string;
+    phoneStyle?: PhoneStyle;
 }
 
-/**
- * Assignment of a crop to a specific panel index within a composition
- */
 export interface PanelAssignment {
     panelIndex: number;
     cropId: string | number | null;
@@ -84,9 +66,6 @@ export interface PanelAssignment {
     offsetY: number;
 }
 
-/**
- * Canvas composition definition containing layout, dimensions, and assignments
- */
 export interface Composition {
     id: string | number;
     name: string;
@@ -101,9 +80,6 @@ export interface Composition {
     updatedAt?: number;
 }
 
-/**
- * Panel positioning and bounding rectangle inside a composition
- */
 export interface Panel extends Rect {
     index: number;
     ratioX?: number;
@@ -112,14 +88,8 @@ export interface Panel extends Rect {
     ratioHeight?: number;
 }
 
-/**
- * Panel ratio within a layout preset definition (values 0-1)
- */
 export interface PanelRatio extends Rect {}
 
-/**
- * Manga panel layout preset configuration
- */
 export interface PanelLayout {
     id: string;
     name: string;
@@ -127,16 +97,10 @@ export interface PanelLayout {
     panels: PanelRatio[];
 }
 
-/**
- * Preset page dimension configuration
- */
 export interface PagePreset extends Dimensions {
     label: string;
 }
 
-/**
- * Preset frame shape polygon definition
- */
 export interface FrameShape {
     id: string;
     name: string;
@@ -144,21 +108,14 @@ export interface FrameShape {
     points: Point2D[];
 }
 
-/**
- * Image filter preset configuration
- */
 export interface FilterPreset {
     id: string;
     name: string;
     filter: string;
     description: string;
-    /** Tailwind CSS background color class for UI badges */
     vibe: string;
 }
 
-/**
- * Stored image record metadata
- */
 export interface StoredImage {
     id: string;
     data?: string;
@@ -168,9 +125,6 @@ export interface StoredImage {
     updatedAt?: number;
 }
 
-/**
- * Saved canvas record containing composition and freeform placed items
- */
 export interface SavedCanvas {
     id: string | number;
     name?: string;
@@ -181,38 +135,26 @@ export interface SavedCanvas {
     updatedAt?: number;
 }
 
-/**
- * Result structure when saving or updating crop records
- */
 export interface SaveCropsResponse {
     crops: Crop[];
     updatedAt: number;
 }
 
-/**
- * Result structure when creating a canvas
- */
 export interface CreateCanvasResponse {
     canvasId: string;
 }
 
-/**
- * Result structure for general operation success
- */
 export interface OperationSuccessResponse {
     success: boolean;
     message?: string;
 }
 
-/**
- * Interface defining persistence storage operations for crops, canvases, and images
- */
 export interface CanvasStorageAdapter {
     listCanvases(): Promise<SavedCanvas[]>;
     getCanvas(canvasId: string): Promise<SavedCanvas | null>;
     loadCanvas(canvasId: string): Promise<SavedCanvas | null>;
-    createCanvas(options?: { name?: string; mode?: string; [key: string]: unknown }): Promise<CreateCanvasResponse>;
-    saveCanvas(canvasId: string, composition: Composition, placedItems?: PlacedItem[]): Promise<OperationSuccessResponse>;
+    createCanvas(options?: { name?: string; mode?: string; [key: string]: unknown }): Promise<CreateCanvasResponse & Partial<SavedCanvas>>;
+    saveCanvas(canvasId: string, composition: Composition, placedItems?: PlacedItem[]): Promise<OperationSuccessResponse & Partial<SavedCanvas>>;
     deleteCanvas(canvasId: string): Promise<OperationSuccessResponse>;
 }
 
@@ -233,8 +175,4 @@ export interface CropStorageAdapter {
     deleteCrop(imageId: string, cropId: string | number): Promise<OperationSuccessResponse>;
 }
 
-/**
- * Interface defining persistence storage operations for crops, canvases, and images
- */
 export interface StorageAdapter extends CanvasStorageAdapter, ImageStorageAdapter, CropStorageAdapter {}
-

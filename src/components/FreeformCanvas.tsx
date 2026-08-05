@@ -1,35 +1,146 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FILTERS } from '../utils/filters'
-import { getClipPath, getSvgPoints, FRAME_SHAPES, getEffectivePoints } from '../utils/frameShapes'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, DragEvent, MouseEvent, CSSProperties } from 'react'
+import { Composition, Crop, PlacedItem, Point2D, BorderStyle, PhoneStyle } from '../types'
+import { getClipPath, FRAME_SHAPES } from '../utils/frameShapes'
+import { getCropById, getFilterStyle, idsEqual } from '../utils/canvasUtils'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
 
-// ============================================================================
-// Constants
-// ============================================================================
-const ROTATION_EDGE_THRESHOLD = 20 // pixels from edge that triggers rotation mode
+const ROTATION_EDGE_THRESHOLD = 20
 const MIN_ITEM_SIZE = 50
 const MIN_CANVAS_SIZE = 200
 
-// ============================================================================
-// Resize Handle Component
-// ============================================================================
-const ResizeHandle = memo(function ResizeHandle({ corner, onMouseDown }) {
-    const positions = {
+export type CornerType = 'tl' | 'tr' | 'bl' | 'br'
+export type CanvasEdge = 'top' | 'bottom' | 'left' | 'right'
+
+export interface ResizeDelta {
+    deltaX: number
+    deltaY: number
+}
+
+export interface PageBounds {
+    pageWidth: number
+    pageHeight: number
+}
+
+export interface CalculateResizeParams {
+    corner: CornerType
+    delta: ResizeDelta
+    startItem: PlacedItem
+    aspectRatio: number
+    page: PageBounds
+}
+
+export function calculateResizeUpdates({
+    corner,
+    delta,
+    startItem,
+    aspectRatio,
+    page
+}: CalculateResizeParams): Partial<PlacedItem> {
+    const { deltaX, deltaY } = delta
+    const { pageWidth, pageHeight } = page
+    const absDeltaX = Math.abs(deltaX)
+    const absDeltaY = Math.abs(deltaY)
+    const useDeltaX = absDeltaX > absDeltaY
+
+    const updates: Partial<PlacedItem> = {}
+
+    switch (corner) {
+        case 'br': {
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, Math.min(pageWidth - startItem.x, startItem.width + deltaX))
+                updates.width = newWidth
+                updates.height = newWidth / aspectRatio
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, Math.min(pageHeight - startItem.y, startItem.height + deltaY))
+                updates.height = newHeight
+                updates.width = newHeight * aspectRatio
+            }
+            break
+        }
+        case 'bl': {
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, startItem.width - deltaX)
+                const widthDiff = newWidth - startItem.width
+                updates.width = newWidth
+                updates.height = newWidth / aspectRatio
+                updates.x = startItem.x - widthDiff
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, Math.min(pageHeight - startItem.y, startItem.height + deltaY))
+                const newWidth = newHeight * aspectRatio
+                const widthDiff = newWidth - startItem.width
+                updates.height = newHeight
+                updates.width = newWidth
+                updates.x = startItem.x - widthDiff
+            }
+            break
+        }
+        case 'tr': {
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, Math.min(pageWidth - startItem.x, startItem.width + deltaX))
+                const newHeight = newWidth / aspectRatio
+                const heightDiff = newHeight - startItem.height
+                updates.width = newWidth
+                updates.height = newHeight
+                updates.y = startItem.y - heightDiff
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, startItem.height - deltaY)
+                const heightDiff = newHeight - startItem.height
+                updates.height = newHeight
+                updates.width = newHeight * aspectRatio
+                updates.y = startItem.y - heightDiff
+            }
+            break
+        }
+        case 'tl': {
+            if (useDeltaX) {
+                const newWidth = Math.max(MIN_ITEM_SIZE, startItem.width - deltaX)
+                const newHeight = newWidth / aspectRatio
+                const widthDiff = newWidth - startItem.width
+                const heightDiff = newHeight - startItem.height
+                updates.width = newWidth
+                updates.height = newHeight
+                updates.x = startItem.x - widthDiff
+                updates.y = startItem.y - heightDiff
+            } else {
+                const newHeight = Math.max(MIN_ITEM_SIZE, startItem.height - deltaY)
+                const newWidth = newHeight * aspectRatio
+                const widthDiff = newWidth - startItem.width
+                const heightDiff = newHeight - startItem.height
+                updates.height = newHeight
+                updates.width = newWidth
+                updates.x = startItem.x - widthDiff
+                updates.y = startItem.y - heightDiff
+            }
+            break
+        }
+    }
+
+    if (updates.x !== undefined) updates.x = Math.max(0, updates.x)
+    if (updates.y !== undefined) updates.y = Math.max(0, updates.y)
+
+    return updates
+}
+
+interface ResizeHandleProps {
+    corner: CornerType
+    onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
+}
+
+const ResizeHandle = memo(function ResizeHandle({ corner, onMouseDown }: ResizeHandleProps) {
+    const positions: Record<CornerType, CSSProperties> = {
         tl: { left: -8, top: -8, cursor: 'nwse-resize' },
         tr: { right: -8, top: -8, cursor: 'nesw-resize' },
         bl: { left: -8, bottom: -8, cursor: 'nesw-resize' },
         br: { right: -8, bottom: -8, cursor: 'nwse-resize' }
     }
 
-    const pos = positions[corner]
-
     return (
         <div
             className={`resize-handle resize-${corner}`}
             style={{
                 position: 'absolute',
-                ...pos,
+                ...positions[corner],
                 width: 14,
                 height: 14,
                 backgroundColor: '#000',
@@ -41,11 +152,13 @@ const ResizeHandle = memo(function ResizeHandle({ corner, onMouseDown }) {
     )
 })
 
-// ============================================================================
-// Resize Handles Group Component
-// ============================================================================
-const ResizeHandles = memo(function ResizeHandles({ item, onMouseDown }) {
-    const corners = ['tl', 'tr', 'bl', 'br']
+interface ResizeHandlesProps {
+    item: PlacedItem
+    onMouseDown: (e: MouseEvent<HTMLDivElement>, item: PlacedItem, action: string) => void
+}
+
+const ResizeHandles = memo(function ResizeHandles({ item, onMouseDown }: ResizeHandlesProps) {
+    const corners: CornerType[] = ['tl', 'tr', 'bl', 'br']
 
     return (
         <>
@@ -60,10 +173,11 @@ const ResizeHandles = memo(function ResizeHandles({ item, onMouseDown }) {
     )
 })
 
-// ============================================================================
-// Rotation Ring Component (for original image rotation)
-// ============================================================================
-const RotationRing = memo(function RotationRing({ onMouseDown }) {
+interface RotationRingProps {
+    onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
+}
+
+const RotationRing = memo(function RotationRing({ onMouseDown }: RotationRingProps) {
     return (
         <div
             className="rotation-ring"
@@ -80,10 +194,12 @@ const RotationRing = memo(function RotationRing({ onMouseDown }) {
     )
 })
 
-// ============================================================================
-// Frame Rotation Handle Component (for selection box rotation)
-// ============================================================================
-const FrameRotationHandle = memo(function FrameRotationHandle({ onMouseDown, frameRotation }) {
+interface FrameRotationHandleProps {
+    onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
+    frameRotation?: number
+}
+
+const FrameRotationHandle = memo(function FrameRotationHandle({ onMouseDown, frameRotation }: FrameRotationHandleProps) {
     return (
         <div
             className="frame-rotation-handle"
@@ -124,10 +240,12 @@ const FrameRotationHandle = memo(function FrameRotationHandle({ onMouseDown, fra
     )
 })
 
-// ============================================================================
-// Selection Indicator Component
-// ============================================================================
-const SelectionIndicator = memo(function SelectionIndicator({ frameShape, customPoints }) {
+interface SelectionIndicatorProps {
+    frameShape?: string
+    customPoints?: Point2D[]
+}
+
+const SelectionIndicator = memo(function SelectionIndicator({ frameShape, customPoints }: SelectionIndicatorProps) {
     return (
         <div
             style={{
@@ -143,9 +261,6 @@ const SelectionIndicator = memo(function SelectionIndicator({ frameShape, custom
     )
 })
 
-// ============================================================================
-// Empty State Component
-// ============================================================================
 const EmptyStateHint = memo(function EmptyStateHint() {
     return (
         <div
@@ -179,20 +294,27 @@ const EmptyStateHint = memo(function EmptyStateHint() {
     )
 })
 
-// ============================================================================
-// ShapedBorder Component - SVG polygon borders for manga-style effect
-// ============================================================================
+interface ShapedBorderProps {
+    shapeId?: string
+    customPoints?: Point2D[]
+    isSelected?: boolean
+    isEditingCorners?: boolean
+    onCornerMouseDown?: (e: MouseEvent, cornerIndex: number) => void
+    borderColor?: string
+    borderWidth?: number
+    borderStyle?: BorderStyle
+}
+
 const ShapedBorder = memo(function ShapedBorder({
-    shapeId,
+    shapeId = 'rectangle',
     customPoints,
-    isSelected,
     isEditingCorners,
     onCornerMouseDown,
     borderColor = '#000',
     borderWidth = 3,
     borderStyle = 'manga'
-}) {
-    const containerRef = useRef(null)
+}: ShapedBorderProps) {
+    const containerRef = useRef<HTMLDivElement>(null)
     const [size, setSize] = useState({ width: 100, height: 100 })
 
     useEffect(() => {
@@ -211,15 +333,12 @@ const ShapedBorder = memo(function ShapedBorder({
         return () => resizeObserver.disconnect()
     }, [])
 
-    // Use custom points if provided, else fall back to shape preset
     const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points
 
-    // Generate SVG points for the shape
     const outerPoints = points
         .map(([xPct, yPct]) => `${(xPct / 100) * size.width},${(yPct / 100) * size.height}`)
         .join(' ')
 
-    // Calculate inner points for double border effect
     const innerPoints = useMemo(() => {
         const insetAmount = Math.max(borderWidth, 4)
         const centerX = size.width / 2
@@ -238,20 +357,17 @@ const ShapedBorder = memo(function ShapedBorder({
             .join(' ')
     }, [points, size.width, size.height, borderWidth])
 
-    // Container style
-    const containerStyle = {
+    const containerStyle: CSSProperties = {
         position: 'absolute',
         inset: -4,
         pointerEvents: isEditingCorners ? 'auto' : 'none',
         zIndex: 2
     }
 
-    // Don't render borders if style is 'none'
     if (borderStyle === 'none' && !isEditingCorners) {
         return <div ref={containerRef} style={containerStyle} />
     }
 
-    // Get stroke dash array based on style
     const strokeDashArray = borderStyle === 'dashed'
         ? `${borderWidth * 3},${borderWidth * 2}`
         : 'none'
@@ -265,7 +381,6 @@ const ShapedBorder = memo(function ShapedBorder({
                 preserveAspectRatio="none"
                 style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}
             >
-                {/* Outer border */}
                 <polygon
                     points={outerPoints}
                     fill="none"
@@ -274,7 +389,6 @@ const ShapedBorder = memo(function ShapedBorder({
                     strokeLinejoin="miter"
                     strokeDasharray={strokeDashArray}
                 />
-                {/* Inner border for manga double style */}
                 {borderStyle === 'manga' && (
                     <polygon
                         points={innerPoints}
@@ -284,7 +398,6 @@ const ShapedBorder = memo(function ShapedBorder({
                         strokeLinejoin="miter"
                     />
                 )}
-                {/* Corner handles when editing */}
                 {isEditingCorners && points.map((point, index) => {
                     const x = (point[0] / 100) * size.width
                     const y = (point[1] / 100) * size.height
@@ -307,111 +420,16 @@ const ShapedBorder = memo(function ShapedBorder({
     )
 })
 
-// ============================================================================
-// Resize Logic Helpers
-// ============================================================================
-
-/**
- * Calculate resize updates for a specific corner
- * Maintains aspect ratio and anchors to the opposite corner
- */
-function calculateResizeUpdates(corner, deltaX, deltaY, startItem, aspectRatio, pageWidth, pageHeight) {
-    const absDeltaX = Math.abs(deltaX)
-    const absDeltaY = Math.abs(deltaY)
-    const useDeltaX = absDeltaX > absDeltaY
-
-    let updates = {}
-
-    switch (corner) {
-        case 'br': {
-            // Bottom-right: anchor top-left
-            if (useDeltaX) {
-                const newWidth = Math.max(MIN_ITEM_SIZE, Math.min(pageWidth - startItem.x, startItem.width + deltaX))
-                updates.width = newWidth
-                updates.height = newWidth / aspectRatio
-            } else {
-                const newHeight = Math.max(MIN_ITEM_SIZE, Math.min(pageHeight - startItem.y, startItem.height + deltaY))
-                updates.height = newHeight
-                updates.width = newHeight * aspectRatio
-            }
-            break
-        }
-        case 'bl': {
-            // Bottom-left: anchor top-right
-            if (useDeltaX) {
-                const newWidth = Math.max(MIN_ITEM_SIZE, startItem.width - deltaX)
-                const widthDiff = newWidth - startItem.width
-                updates.width = newWidth
-                updates.height = newWidth / aspectRatio
-                updates.x = startItem.x - widthDiff
-            } else {
-                const newHeight = Math.max(MIN_ITEM_SIZE, Math.min(pageHeight - startItem.y, startItem.height + deltaY))
-                const newWidth = newHeight * aspectRatio
-                const widthDiff = newWidth - startItem.width
-                updates.height = newHeight
-                updates.width = newWidth
-                updates.x = startItem.x - widthDiff
-            }
-            break
-        }
-        case 'tr': {
-            // Top-right: anchor bottom-left
-            if (useDeltaX) {
-                const newWidth = Math.max(MIN_ITEM_SIZE, Math.min(pageWidth - startItem.x, startItem.width + deltaX))
-                const newHeight = newWidth / aspectRatio
-                const heightDiff = newHeight - startItem.height
-                updates.width = newWidth
-                updates.height = newHeight
-                updates.y = startItem.y - heightDiff
-            } else {
-                const newHeight = Math.max(MIN_ITEM_SIZE, startItem.height - deltaY)
-                const heightDiff = newHeight - startItem.height
-                updates.height = newHeight
-                updates.width = newHeight * aspectRatio
-                updates.y = startItem.y - heightDiff
-            }
-            break
-        }
-        case 'tl': {
-            // Top-left: anchor bottom-right
-            if (useDeltaX) {
-                const newWidth = Math.max(MIN_ITEM_SIZE, startItem.width - deltaX)
-                const newHeight = newWidth / aspectRatio
-                const widthDiff = newWidth - startItem.width
-                const heightDiff = newHeight - startItem.height
-                updates.width = newWidth
-                updates.height = newHeight
-                updates.x = startItem.x - widthDiff
-                updates.y = startItem.y - heightDiff
-            } else {
-                const newHeight = Math.max(MIN_ITEM_SIZE, startItem.height - deltaY)
-                const newWidth = newHeight * aspectRatio
-                const widthDiff = newWidth - startItem.width
-                const heightDiff = newHeight - startItem.height
-                updates.height = newHeight
-                updates.width = newWidth
-                updates.x = startItem.x - widthDiff
-                updates.y = startItem.y - heightDiff
-            }
-            break
-        }
-    }
-
-    // Clamp position to stay within canvas
-    if (updates.x !== undefined) updates.x = Math.max(0, updates.x)
-    if (updates.y !== undefined) updates.y = Math.max(0, updates.y)
-
-    return updates
+interface CanvasResizeHandleProps {
+    edge: CanvasEdge
+    onMouseDown: (e: MouseEvent<HTMLDivElement>, edge: CanvasEdge) => void
 }
 
-// ============================================================================
-// Canvas Edge Resize Handle Component
-// ============================================================================
-const CanvasResizeHandle = memo(function CanvasResizeHandle({ edge, onMouseDown }) {
+const CanvasResizeHandle = memo(function CanvasResizeHandle({ edge, onMouseDown }: CanvasResizeHandleProps) {
     const size = 8
     const len = 50
 
-    const baseStyle = {
+    const baseStyle: CSSProperties = {
         position: 'absolute',
         backgroundColor: 'var(--accent-primary)',
         opacity: 0.7,
@@ -419,7 +437,7 @@ const CanvasResizeHandle = memo(function CanvasResizeHandle({ edge, onMouseDown 
         borderRadius: '3px'
     }
 
-    const edgeStyles = {
+    const edgeStyles: Record<CanvasEdge, CSSProperties> = {
         top: { top: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' },
         bottom: { bottom: -size - 6, left: '50%', transform: 'translateX(-50%)', width: len, height: size, cursor: 'ns-resize' },
         left: { left: -size - 6, top: '50%', transform: 'translateY(-50%)', width: size, height: len, cursor: 'ew-resize' },
@@ -435,10 +453,23 @@ const CanvasResizeHandle = memo(function CanvasResizeHandle({ edge, onMouseDown 
     )
 })
 
-// ============================================================================
-// Placed Item Component
-// ============================================================================
-const PlacedItem = memo(function PlacedItem({
+interface PlacedItemComponentProps {
+    item: PlacedItem
+    crop: Crop
+    isSelected: boolean
+    isRotating: boolean
+    isFrameRotating: boolean
+    isPanning: boolean
+    currentRotation: number
+    currentFrameRotation?: number
+    currentCropOffset: { x: number; y: number } | null
+    composition: Composition
+    filterCss: string
+    onMouseDown: (e: MouseEvent<HTMLDivElement>, item: PlacedItem, action: string) => void
+    onCornerMouseDown: (e: MouseEvent, item: PlacedItem, cornerIndex: number) => void
+}
+
+const PlacedItemComponent = memo(function PlacedItemComponent({
     item,
     crop,
     isSelected,
@@ -452,17 +483,15 @@ const PlacedItem = memo(function PlacedItem({
     filterCss,
     onMouseDown,
     onCornerMouseDown
-}) {
-    // Convert pixel coordinates to percentages for rendering
+}: PlacedItemComponentProps) {
     const leftPct = (item.x / composition.pageWidth) * 100
     const topPct = (item.y / composition.pageHeight) * 100
     const widthPct = (item.width / composition.pageWidth) * 100
     const heightPct = (item.height / composition.pageHeight) * 100
 
-    // Frame rotation (rotates the entire container/selection box)
     const frameRotation = currentFrameRotation ?? item.frameRotation ?? 0
 
-    const itemStyle = {
+    const itemStyle: CSSProperties = {
         position: 'absolute',
         left: `${leftPct}%`,
         top: `${topPct}%`,
@@ -475,7 +504,7 @@ const PlacedItem = memo(function PlacedItem({
         transformOrigin: 'center center',
     }
 
-    const imageContainerStyle = {
+    const imageContainerStyle: CSSProperties = {
         position: 'absolute',
         inset: 0,
         clipPath: item.phoneMockup ? 'none' : getClipPath(item.frameShape || 'rectangle', item.customPoints),
@@ -484,7 +513,6 @@ const PlacedItem = memo(function PlacedItem({
 
     const isEditingCorners = isSelected && !!item.editingCorners
 
-    // Image content (reused in both normal and phone mockup modes)
     const imageContent = (
         <RotatableImage
             crop={crop}
@@ -505,12 +533,10 @@ const PlacedItem = memo(function PlacedItem({
             onMouseDown={(e) => onMouseDown(e, item, 'move')}
             onClick={(e) => e.stopPropagation()}
         >
-            {/* Rotation ring for image rotation - visible when selected */}
             {isSelected && (
                 <RotationRing onMouseDown={(e) => onMouseDown(e, item, 'rotate')} />
             )}
 
-            {/* Frame rotation handle - visible when selected */}
             {isSelected && (
                 <FrameRotationHandle
                     onMouseDown={(e) => onMouseDown(e, item, 'frame-rotate')}
@@ -518,18 +544,16 @@ const PlacedItem = memo(function PlacedItem({
                 />
             )}
 
-            {/* Phone Mockup Frame */}
             {item.phoneMockup ? (
                 <PhoneMockup
                     color={item.phoneColor || '#1a1a1a'}
-                    style={item.phoneStyle || 'modern'}
+                    style={(item.phoneStyle as PhoneStyle) || 'modern'}
                     landscape={crop && crop.width > crop.height}
                 >
                     {imageContent}
                 </PhoneMockup>
             ) : (
                 <>
-                    {/* Manga-style polygon border */}
                     <ShapedBorder
                         shapeId={item.frameShape || 'rectangle'}
                         customPoints={item.customPoints}
@@ -541,7 +565,6 @@ const PlacedItem = memo(function PlacedItem({
                         borderStyle={item.borderStyle || 'manga'}
                     />
 
-                    {/* Selection indicator */}
                     {isSelected && (
                         <SelectionIndicator
                             frameShape={item.frameShape}
@@ -549,14 +572,12 @@ const PlacedItem = memo(function PlacedItem({
                         />
                     )}
 
-                    {/* Image container with clipping */}
                     <div style={imageContainerStyle}>
                         {imageContent}
                     </div>
                 </>
             )}
 
-            {/* Resize handles (hide when editing custom corners) */}
             {isSelected && !item.editingCorners && (
                 <ResizeHandles item={item} onMouseDown={onMouseDown} />
             )}
@@ -564,9 +585,40 @@ const PlacedItem = memo(function PlacedItem({
     )
 })
 
-// ============================================================================
-// Main FreeformCanvas Component
-// ============================================================================
+interface DragState {
+    type: string
+    itemId: string | number
+    startX: number
+    startY: number
+    startItem: PlacedItem
+    startAngle?: number
+    centerX?: number
+    centerY?: number
+    cornerIndex?: number
+}
+
+interface CanvasResizeState {
+    edge: CanvasEdge
+    startX: number
+    startY: number
+    startWidth: number
+    startHeight: number
+}
+
+export interface FreeformCanvasProps {
+    composition: Composition
+    crops: Crop[]
+    placedItems: PlacedItem[]
+    selectedItemId: string | number | null
+    onSelectItem: (id: string | number | null) => void
+    onUpdateItem: (id: string | number, updates: Partial<PlacedItem>) => void
+    onUpdateItemSilent?: (id: string | number, updates: Partial<PlacedItem>) => void
+    onDragEnd?: () => void
+    onDropCrop: (cropId: string | number, x: number, y: number) => void
+    onDeleteItem: (id: string | number) => void
+    onUpdatePageSize?: (updates: { pageWidth?: number; pageHeight?: number }) => void
+}
+
 function FreeformCanvas({
     composition,
     crops,
@@ -579,24 +631,19 @@ function FreeformCanvas({
     onDropCrop,
     onDeleteItem,
     onUpdatePageSize
-}) {
-    const canvasRef = useRef(null)
-    const [dragState, setDragState] = useState(null)
+}: FreeformCanvasProps) {
+    const canvasRef = useRef<HTMLDivElement>(null)
+    const [dragState, setDragState] = useState<DragState | null>(null)
     const [dragOverCanvas, setDragOverCanvas] = useState(false)
-    const [canvasResizeState, setCanvasResizeState] = useState(null)
+    const [canvasResizeState, setCanvasResizeState] = useState<CanvasResizeState | null>(null)
 
-    // Rotation values during drag (not yet committed to item state)
-    const [imageRotation, setImageRotation] = useState(0)  // original image within crop
-    const [frameRotation, setFrameRotation] = useState(0)  // entire selection box
-    // Crop offset values during Ctrl+drag (panning within original image)
+    const [imageRotation, setImageRotation] = useState(0)
+    const [frameRotation, setFrameRotation] = useState(0)
     const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 })
 
-    // ========================================================================
-    // Keyboard Event Handler
-    // ========================================================================
     useEffect(() => {
-        const handleKeyDown = (e) => {
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !e.target.matches('input, textarea')) {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !((e.target as HTMLElement)?.matches('input, textarea'))) {
                 e.preventDefault()
                 onDeleteItem(selectedItemId)
             }
@@ -605,59 +652,41 @@ function FreeformCanvas({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [selectedItemId, onDeleteItem])
 
-    // ========================================================================
-    // Utility Functions
-    // ========================================================================
-    const getFilterStyle = useCallback((filterName) => {
-        const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.css : 'none'
-    }, [])
-
-    const getCropById = useCallback((cropId) => {
-        return crops.find(c => c.id === cropId)
-    }, [crops])
-
-    // ========================================================================
-    // Drag & Drop Handlers (for dropping new crops)
-    // ========================================================================
-    const handleDragOver = useCallback((e) => {
+    const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'copy'
         setDragOverCanvas(true)
     }, [])
 
-    const handleDragLeave = useCallback((e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) {
+    const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
             setDragOverCanvas(false)
         }
     }, [])
 
-    const handleDrop = useCallback((e) => {
+    const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
         e.preventDefault()
         setDragOverCanvas(false)
 
-        const cropId = e.dataTransfer.getData('application/crop-id')
-        if (cropId && canvasRef.current) {
+        const rawCropId = e.dataTransfer.getData('application/crop-id') || e.dataTransfer.getData('text/plain')
+        if (rawCropId && canvasRef.current) {
             const rect = canvasRef.current.getBoundingClientRect()
             const x = ((e.clientX - rect.left) / rect.width) * composition.pageWidth
             const y = ((e.clientY - rect.top) / rect.height) * composition.pageHeight
-            onDropCrop(parseInt(cropId, 10), x, y)
+            const parsedNumber = parseInt(rawCropId, 10)
+            const cropId = isNaN(parsedNumber) ? rawCropId : parsedNumber
+            onDropCrop(cropId, x, y)
         }
     }, [onDropCrop, composition.pageWidth, composition.pageHeight])
 
-    // ========================================================================
-    // Item Interaction Handlers
-    // ========================================================================
-    const handleItemMouseDown = useCallback((e, item, type = 'move') => {
+    const handleItemMouseDown = useCallback((e: MouseEvent<HTMLDivElement>, item: PlacedItem, type = 'move') => {
         e.stopPropagation()
         e.preventDefault()
         onSelectItem(item.id)
 
-        // Check if Ctrl is held for crop panning (only during move)
         const actualType = (type === 'move' && e.ctrlKey) ? 'crop-pan' : type
 
-        // Base drag state
-        const baseDragState = {
+        const baseDragState: DragState = {
             type: actualType,
             itemId: item.id,
             startX: e.clientX,
@@ -665,7 +694,6 @@ function FreeformCanvas({
             startItem: { ...item }
         }
 
-        // For crop-pan, initialize offset from item
         if (actualType === 'crop-pan') {
             setCropOffset({
                 x: item.cropOffsetX ?? 0,
@@ -675,9 +703,8 @@ function FreeformCanvas({
             return
         }
 
-        // For rotation types, add rotation-specific data
         if (type === 'rotate' || type === 'frame-rotate') {
-            const itemElement = e.target.closest('.freeform-item')
+            const itemElement = (e.target as HTMLElement).closest('.freeform-item')
             if (!itemElement) return
             const itemRect = itemElement.getBoundingClientRect()
             const centerX = itemRect.left + itemRect.width / 2
@@ -685,7 +712,7 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => c.id === item.cropId)
+                const crop = getCropById(crops, item.cropId)
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -699,7 +726,7 @@ function FreeformCanvas({
         }
     }, [onSelectItem, crops])
 
-    const handleCornerMouseDown = useCallback((e, item, cornerIndex) => {
+    const handleCornerMouseDown = useCallback((e: MouseEvent, item: PlacedItem, cornerIndex: number) => {
         e.stopPropagation()
         e.preventDefault()
 
@@ -713,10 +740,7 @@ function FreeformCanvas({
         })
     }, [])
 
-    // ========================================================================
-    // Mouse Move Handler - Handles all drag operations
-    // ========================================================================
-    const handleMouseMove = useCallback((e) => {
+    const handleMouseMove = useCallback((e: globalThis.MouseEvent) => {
         if (!dragState || !canvasRef.current) return
 
         const rect = canvasRef.current.getBoundingClientRect()
@@ -724,15 +748,13 @@ function FreeformCanvas({
         const deltaY = ((e.clientY - dragState.startY) / rect.height) * composition.pageHeight
         const updateFn = onUpdateItemSilent || onUpdateItem
 
-        // Handle image rotation (rotating the original image within the crop)
         if (dragState.type === 'rotate') {
-            const { centerX, centerY, startAngle, startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const { centerX = 0, centerY = 0, startAngle = 0, startItem } = dragState
+            const crop = getCropById(crops, startItem.cropId)
             const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
 
-            // Normalize to -180 to 180
             while (newRotation > 180) newRotation -= 360
             while (newRotation < -180) newRotation += 360
 
@@ -740,14 +762,12 @@ function FreeformCanvas({
             return
         }
 
-        // Handle frame rotation (rotating the entire selection box)
         if (dragState.type === 'frame-rotate') {
-            const { centerX, centerY, startAngle, startItem } = dragState
+            const { centerX = 0, centerY = 0, startAngle = 0, startItem } = dragState
             const initialAngle = startItem.frameRotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
 
-            // Normalize to -180 to 180
             while (newRotation > 180) newRotation -= 360
             while (newRotation < -180) newRotation += 360
 
@@ -755,20 +775,15 @@ function FreeformCanvas({
             return
         }
 
-        // Handle crop panning (Ctrl+drag to shift crop position within original image)
         if (dragState.type === 'crop-pan') {
             const { startItem } = dragState
-            const crop = crops.find(c => c.id === startItem.cropId)
+            const crop = getCropById(crops, startItem.cropId)
             if (!crop) return
 
-            // Calculate delta in original image pixel space
-            // The movement in screen pixels needs to be converted to original image pixels
             const screenDeltaX = e.clientX - dragState.startX
             const screenDeltaY = e.clientY - dragState.startY
 
-            // Scale from screen pixels to original image pixels based on crop size
-            // The item's display size represents the crop's width/height
-            const item = placedItems.find(i => i.id === dragState.itemId)
+            const item = placedItems.find(i => idsEqual(i.id, dragState.itemId))
             if (!item) return
             const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
             const itemDisplayHeight = (item.height / composition.pageHeight) * rect.height
@@ -778,7 +793,6 @@ function FreeformCanvas({
             const initialOffsetX = startItem.cropOffsetX ?? 0
             const initialOffsetY = startItem.cropOffsetY ?? 0
 
-            // Invert the delta so moving right reveals more of the left side of the image
             const newOffsetX = initialOffsetX - screenDeltaX * scaleToOriginalX
             const newOffsetY = initialOffsetY - screenDeltaY * scaleToOriginalY
 
@@ -786,7 +800,6 @@ function FreeformCanvas({
             return
         }
 
-        // Handle move
         if (dragState.type === 'move') {
             updateFn(dragState.itemId, {
                 x: Math.max(0, Math.min(composition.pageWidth - dragState.startItem.width, dragState.startItem.x + deltaX)),
@@ -795,28 +808,29 @@ function FreeformCanvas({
             return
         }
 
-        // Handle resize
         if (dragState.type.startsWith('resize-')) {
-            const corner = dragState.type.split('-')[1]
-            const crop = crops.find(c => c.id === dragState.startItem.cropId)
+            const corner = dragState.type.split('-')[1] as CornerType
+            const crop = getCropById(crops, dragState.startItem.cropId)
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
-            const updates = calculateResizeUpdates(
-                corner, deltaX, deltaY, dragState.startItem,
-                aspectRatio, composition.pageWidth, composition.pageHeight
-            )
+            const updates = calculateResizeUpdates({
+                corner,
+                delta: { deltaX, deltaY },
+                startItem: dragState.startItem,
+                aspectRatio,
+                page: { pageWidth: composition.pageWidth, pageHeight: composition.pageHeight }
+            })
             updateFn(dragState.itemId, updates)
             return
         }
 
-        // Handle corner dragging (custom polygon points)
         if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
-            const item = placedItems.find(i => i.id === dragState.itemId)
+            const item = placedItems.find(i => idsEqual(i.id, dragState.itemId))
             if (!item) return
 
             const currentPoints = item.customPoints ||
-                (FRAME_SHAPES[item.frameShape]?.points || FRAME_SHAPES.rectangle.points).map(p => [...p])
+                (FRAME_SHAPES[item.frameShape || 'rectangle']?.points || FRAME_SHAPES.rectangle.points).map(p => [...p] as Point2D)
 
             const itemWidthPx = (item.width / composition.pageWidth) * rect.width
             const itemHeightPx = (item.height / composition.pageHeight) * rect.height
@@ -828,49 +842,48 @@ function FreeformCanvas({
                     return [
                         Math.max(0, Math.min(100, point[0] + deltaPctX)),
                         Math.max(0, Math.min(100, point[1] + deltaPctY))
-                    ]
+                    ] as Point2D
                 }
-                return [...point]
+                return [...point] as Point2D
             })
 
             updateFn(dragState.itemId, { customPoints: newPoints })
-            setDragState(prev => ({ ...prev, startX: e.clientX, startY: e.clientY }))
+            setDragState(prev => prev ? { ...prev, startX: e.clientX, startY: e.clientY } : null)
         }
     }, [dragState, onUpdateItem, onUpdateItemSilent, crops, placedItems, composition.pageWidth, composition.pageHeight])
 
-    // ========================================================================
-    // Mouse Up Handler
-    // ========================================================================
     const handleMouseUp = useCallback(() => {
         if (!dragState) return
 
-        // Handle image rotation end - commit value to item state
         if (dragState.type === 'rotate') {
             onUpdateItem(dragState.itemId, { rotation: imageRotation })
-        }
-        // Handle frame rotation end - commit value to item state
-        else if (dragState.type === 'frame-rotate') {
+        } else if (dragState.type === 'frame-rotate') {
             onUpdateItem(dragState.itemId, { frameRotation: frameRotation })
-        }
-        // Handle crop pan end - commit offset to item state
-        else if (dragState.type === 'crop-pan') {
+        } else if (dragState.type === 'crop-pan') {
             onUpdateItem(dragState.itemId, {
                 cropOffsetX: cropOffset.x,
                 cropOffsetY: cropOffset.y
             })
-        }
-        // Handle other drag operations
-        else if (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner') {
+        } else if (dragState.type === 'move' || dragState.type.startsWith('resize-') || dragState.type === 'corner') {
             onDragEnd?.()
         }
 
         setDragState(null)
     }, [dragState, imageRotation, frameRotation, cropOffset, onUpdateItem, onDragEnd])
 
-    // ========================================================================
-    // Canvas Resize Handlers
-    // ========================================================================
-    const handleCanvasResizeStart = useCallback((e, edge) => {
+    useEffect(() => {
+        if (!dragState) return
+        const onMove = (e: globalThis.MouseEvent) => handleMouseMove(e)
+        const onUp = () => handleMouseUp()
+        window.addEventListener('mousemove', onMove)
+        window.addEventListener('mouseup', onUp)
+        return () => {
+            window.removeEventListener('mousemove', onMove)
+            window.removeEventListener('mouseup', onUp)
+        }
+    }, [dragState, handleMouseMove, handleMouseUp])
+
+    const handleCanvasResizeStart = useCallback((e: MouseEvent<HTMLDivElement>, edge: CanvasEdge) => {
         e.preventDefault()
         e.stopPropagation()
         setCanvasResizeState({
@@ -882,7 +895,7 @@ function FreeformCanvas({
         })
     }, [composition.pageWidth, composition.pageHeight])
 
-    const handleCanvasResizeMove = useCallback((e) => {
+    const handleCanvasResizeMove = useCallback((e: globalThis.MouseEvent) => {
         if (!canvasResizeState || !canvasRef.current) return
 
         const rect = canvasRef.current.getBoundingClientRect()
@@ -892,7 +905,7 @@ function FreeformCanvas({
         const deltaScreenX = e.clientX - startX
         const deltaScreenY = e.clientY - startY
 
-        let updates = {}
+        const updates: { pageWidth?: number; pageHeight?: number } = {}
         if (edge === 'right') updates.pageWidth = Math.max(MIN_CANVAS_SIZE, startWidth + deltaScreenX * screenToPageX)
         else if (edge === 'left') updates.pageWidth = Math.max(MIN_CANVAS_SIZE, startWidth - deltaScreenX * screenToPageX)
         else if (edge === 'bottom') updates.pageHeight = Math.max(MIN_CANVAS_SIZE, startHeight + deltaScreenY * screenToPageY)
@@ -907,10 +920,9 @@ function FreeformCanvas({
         setCanvasResizeState(null)
     }, [])
 
-    // Global mouse events for canvas resize
     useEffect(() => {
         if (!canvasResizeState) return
-        const onMove = (e) => handleCanvasResizeMove(e)
+        const onMove = (e: globalThis.MouseEvent) => handleCanvasResizeMove(e)
         const onUp = () => handleCanvasResizeEnd()
         window.addEventListener('mousemove', onMove)
         window.addEventListener('mouseup', onUp)
@@ -920,10 +932,7 @@ function FreeformCanvas({
         }
     }, [canvasResizeState, handleCanvasResizeMove, handleCanvasResizeEnd])
 
-    // ========================================================================
-    // Styles
-    // ========================================================================
-    const containerStyle = useMemo(() => ({
+    const containerStyle = useMemo<CSSProperties>(() => ({
         aspectRatio: composition.pageWidth / composition.pageHeight,
         height: '100%',
         width: 'auto',
@@ -937,7 +946,7 @@ function FreeformCanvas({
         cursor: dragState ? (dragState.type === 'move' ? 'grabbing' : 'nwse-resize') : 'default'
     }), [composition.pageWidth, composition.pageHeight, composition.backgroundColor, dragOverCanvas, dragState])
 
-    const wrapperStyle = {
+    const wrapperStyle: CSSProperties = {
         position: 'relative',
         height: '100%',
         display: 'flex',
@@ -945,16 +954,14 @@ function FreeformCanvas({
         justifyContent: 'center'
     }
 
-    // ========================================================================
-    // Render
-    // ========================================================================
+    const canvasEdges: CanvasEdge[] = ['top', 'bottom', 'left', 'right']
+
     return (
         <div style={wrapperStyle}>
             <div style={{ position: 'relative', height: '100%', maxWidth: '100%' }}>
-                {/* Canvas resize handles */}
                 {onUpdatePageSize && (
                     <>
-                        {['top', 'bottom', 'left', 'right'].map(edge => (
+                        {canvasEdges.map(edge => (
                             <CanvasResizeHandle
                                 key={edge}
                                 edge={edge}
@@ -964,7 +971,6 @@ function FreeformCanvas({
                     </>
                 )}
 
-                {/* Main canvas */}
                 <div
                     ref={canvasRef}
                     className="freeform-canvas"
@@ -972,27 +978,22 @@ function FreeformCanvas({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
                     onClick={() => onSelectItem(null)}
                 >
-                    {/* Render placed items */}
                     {placedItems.map((item) => {
-                        const crop = getCropById(item.cropId)
+                        const crop = getCropById(crops, item.cropId)
                         if (!crop) return null
 
-                        const isSelected = selectedItemId === item.id
-                        // Derive rotation state from dragState - no separate ID tracking needed
-                        const isDraggingImageRotation = dragState?.type === 'rotate' && dragState?.itemId === item.id
-                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && dragState?.itemId === item.id
-                        const isDraggingCropPan = dragState?.type === 'crop-pan' && dragState?.itemId === item.id
+                        const isSelected = idsEqual(selectedItemId, item.id)
+                        const isDraggingImageRotation = dragState?.type === 'rotate' && idsEqual(dragState?.itemId, item.id)
+                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && idsEqual(dragState?.itemId, item.id)
+                        const isDraggingCropPan = dragState?.type === 'crop-pan' && idsEqual(dragState?.itemId, item.id)
                         const currentRotation = isDraggingImageRotation ? imageRotation : (item.rotation ?? crop.rotation ?? 0)
                         const currentFrameRotation = isDraggingFrameRotation ? frameRotation : item.frameRotation
                         const currentCropOffset = isDraggingCropPan ? cropOffset : null
 
                         return (
-                            <PlacedItem
+                            <PlacedItemComponent
                                 key={item.id}
                                 item={item}
                                 crop={crop}
@@ -1011,7 +1012,6 @@ function FreeformCanvas({
                         )
                     })}
 
-                    {/* Empty state hint */}
                     {placedItems.length === 0 && <EmptyStateHint />}
                 </div>
             </div>

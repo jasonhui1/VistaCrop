@@ -1,10 +1,9 @@
 import { memo, useCallback, useRef, useState, KeyboardEvent, ChangeEvent, MouseEvent } from 'react'
 import RotatableImage, { CropData } from './RotatableImage'
-import { FILTERS } from '../utils/filters'
+import { getFilterStyle } from '../utils/canvasUtils'
 
-// Constants for rotation
-const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
-const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
+const ROTATION_EDGE_THRESHOLD = 40
+const SELECTION_BOX_INSET = 12
 
 export interface CropCardProps {
     crop: CropData
@@ -25,12 +24,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
     const containerRef = useRef<HTMLDivElement>(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
-
-    // Get CSS filter string from filter name
-    const getFilterStyle = useCallback((filterName?: string) => {
-        const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.filter : 'none'
-    }, [])
 
     const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && tagInput.trim()) {
@@ -64,17 +57,14 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
         const rect = containerRef.current.getBoundingClientRect()
         const pos = getMousePosition(e)
 
-        // Calculate center of the image container
         const centerX = rect.width / 2
         const centerY = rect.height / 2
 
-        // Define inner area (the actual image content area, with some padding)
         const isOutsideInner =
             pos.x < ROTATION_EDGE_THRESHOLD || pos.x > rect.width - ROTATION_EDGE_THRESHOLD ||
             pos.y < ROTATION_EDGE_THRESHOLD || pos.y > rect.height - ROTATION_EDGE_THRESHOLD
 
         if (isOutsideInner) {
-            // Start rotation mode
             const angleToMouse = Math.atan2(
                 pos.y - centerY,
                 pos.x - centerX
@@ -97,13 +87,11 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
         const centerX = rect.width / 2
         const centerY = rect.height / 2
 
-        // Calculate current angle from center to mouse
         const currentAngle = Math.atan2(
             pos.y - centerY,
             pos.x - centerX
         ) * (180 / Math.PI)
 
-        // Calculate rotation delta
         const angleDelta = currentAngle - initialRotationRef.current.startAngle
         const newRotation = normalizeAngle(initialRotationRef.current.angle + angleDelta)
 
@@ -112,7 +100,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
 
     const handleMouseUp = () => {
         if (isRotating) {
-            // Save the rotation to crop data
             onUpdate({ rotation: imageRotation })
         }
         setIsRotating(false)
@@ -125,12 +112,10 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
 
     return (
         <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-color)] transition-all duration-300 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10">
-            {/* Image container with rotation */}
             <div
                 ref={containerRef}
                 className={`relative w-full overflow-hidden bg-[var(--bg-tertiary)] ${isRotating ? 'cursor-grabbing' : 'cursor-grab'}`}
                 style={{
-                    // Use aspect-ratio to maintain height based on crop dimensions
                     aspectRatio: `${crop.width} / ${crop.height}`
                 }}
                 onMouseDown={handleMouseDown}
@@ -138,7 +123,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
             >
-                {/* Rotatable image with lazy loading */}
                 <RotatableImage
                     crop={crop}
                     currentRotation={imageRotation}
@@ -147,14 +131,12 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                     containerInset={SELECTION_BOX_INSET}
                 />
 
-                {/* Rotation angle badge */}
                 {imageRotation !== 0 && (
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full pointer-events-none z-10">
                         {Math.round(imageRotation)}°
                     </div>
                 )}
 
-                {/* Source rotation indicator - shows if crop was taken at an angle */}
                 {crop.sourceRotation !== undefined && crop.sourceRotation !== 0 && (
                     <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white flex items-center gap-1 z-10">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +146,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                     </div>
                 )}
 
-                {/* Delete button */}
                 <button
                     onClick={(e) => { e.stopPropagation(); onDelete() }}
                     className="absolute top-3 left-3 w-9 h-9 bg-red-500/80 hover:bg-red-500 backdrop-blur-sm rounded-xl flex items-center justify-center transition-all duration-200 z-10"
@@ -176,7 +157,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                     </svg>
                 </button>
 
-                {/* Reset rotation button (when rotated) */}
                 {imageRotation !== 0 && (
                     <button
                         onClick={(e) => { e.stopPropagation(); handleResetRotation() }}
@@ -189,15 +169,12 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                     </button>
                 )}
 
-                {/* Rotation hint */}
                 <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white/70 pointer-events-none">
                     Drag edge to rotate
                 </div>
             </div>
 
-            {/* Controls */}
             <div className="p-5 space-y-5">
-                {/* Tags */}
                 <div className="space-y-3">
                     <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +183,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                         Tags
                     </label>
 
-                    {/* Tag chips */}
                     {crop.tags && crop.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {crop.tags.map((tag, index) => (
@@ -226,7 +202,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                         </div>
                     )}
 
-                    {/* Tag input */}
                     <input
                         type="text"
                         value={tagInput}
@@ -236,7 +211,6 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
                     />
                 </div>
 
-                {/* Notes */}
                 <div className="space-y-3">
                     <label className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
