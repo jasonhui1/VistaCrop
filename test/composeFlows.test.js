@@ -1,29 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    CROP_ID,
+    CROP_IMAGE_DATA,
     PAGE_WIDTH,
     PAGE_HEIGHT,
     buttonLabelled,
     buttonTitled,
-    callsTo,
     clickElement,
     dragFrom,
     dropCropAt,
     itemBox,
-    makeCrop,
+    itemRotation,
     mountComposer,
-    recordCanvasWork,
+    selectItem,
     settle,
     stubBoundingRect,
-    toScreen,
-    withImmediateImageLoading
+    toScreen
 } from './helpers/composerHarness.mjs';
+import { callsTo, recordCanvasWork, withImmediateImageLoading } from './helpers/canvasStubs.mjs';
 
 // Where the tests drop the crop, and the box the composer gives it there:
 // a quarter of the page wide, at the crop's 2:1 aspect ratio, centred on the
 // drop point.
 const DROP_POINT = { x: 310, y: 200 };
 const PLACED_BOX = { x: 155, y: 122.5, width: 310, height: 155 };
+const MOVED_BOX = { ...PLACED_BOX, x: 355 };
+const RESIZED_BOX = { ...PLACED_BOX, width: 510, height: 255 };
+const DRAG_DISTANCE = 200;
 
 function assertBox(actual, expected, flow) {
     for (const key of ['x', 'y', 'width', 'height']) {
@@ -39,17 +43,33 @@ function placedItem(container) {
 }
 
 /** Places one crop and gives its element a measurable box, as the browser would. */
-async function placeCrop(harness) {
-    await dropCropAt(harness.canvas, 'crop-1', DROP_POINT.x, DROP_POINT.y);
+async function placeCrop(harness, flow) {
+    await dropCropAt(harness.canvas, CROP_ID, DROP_POINT.x, DROP_POINT.y);
     const item = placedItem(harness.container);
-    assert.ok(item, 'placing: expected a freeform item after dropping a crop');
-    stubBoundingRect(item, {
-        left: PLACED_BOX.x / 2,
-        top: PLACED_BOX.y / 2,
-        width: PLACED_BOX.width / 2,
-        height: PLACED_BOX.height / 2
-    });
+    assert.ok(item, `${flow}: expected a freeform item after dropping a crop`);
+    stubBoundingRect(item, PLACED_BOX);
     return item;
+}
+
+/** Drags the item's bottom-right handle `DRAG_DISTANCE` page units to the right. */
+async function dragResizeHandle(item, flow) {
+    const handle = item.querySelector('.resize-br');
+    assert.ok(handle, `${flow}: expected a bottom-right resize handle on the selected item`);
+
+    const corner = { x: PLACED_BOX.x + PLACED_BOX.width, y: PLACED_BOX.y + PLACED_BOX.height };
+    await dragFrom(handle, toScreen(corner.x, corner.y), toScreen(corner.x + DRAG_DISTANCE, corner.y));
+}
+
+/** Drags the frame rotation handle from above the item's centre round to its right. */
+async function dragRotationHandle(item, flow) {
+    const handle = item.querySelector('.frame-rotation-handle');
+    assert.ok(handle, `${flow}: expected a frame rotation handle on the selected item`);
+
+    await dragFrom(
+        handle,
+        toScreen(DROP_POINT.x, DROP_POINT.y - PLACED_BOX.height),
+        toScreen(DROP_POINT.x + PLACED_BOX.width, DROP_POINT.y)
+    );
 }
 
 test('placing: dropping a crop puts a correctly sized item at the drop point', async () => {
@@ -60,20 +80,20 @@ test('placing: dropping a crop puts a correctly sized item at the drop point', a
         'placing: expected the empty-canvas hint before anything is placed'
     );
 
-    const item = await placeCrop(harness);
+    const item = await placeCrop(harness, 'placing');
 
     assertBox(itemBox(item), PLACED_BOX, 'placing');
     assert.ok(
-        item.querySelector('img[src="data:image/png;base64,cropped"]'),
+        item.querySelector(`img[src="${CROP_IMAGE_DATA}"]`),
         'placing: expected the placed item to render the dropped crop'
     );
 
     harness.cleanup();
 });
 
-test('selecting: clicking an item reveals its transform handles, clicking the canvas clears them', async () => {
+test('selecting: pressing an item reveals its transform handles, clicking the canvas clears them', async () => {
     const harness = await mountComposer();
-    const item = await placeCrop(harness);
+    const item = await placeCrop(harness, 'selecting');
 
     await clickElement(harness.canvas);
     assert.equal(
@@ -82,9 +102,9 @@ test('selecting: clicking an item reveals its transform handles, clicking the ca
         'selecting: expected no handles while nothing is selected'
     );
 
-    await dragFrom(item, toScreen(DROP_POINT.x, DROP_POINT.y));
+    await selectItem(item, DROP_POINT.x, DROP_POINT.y);
 
-    assert.ok(item.classList.contains('selected'), 'selecting: expected the clicked item to be marked selected');
+    assert.ok(item.classList.contains('selected'), 'selecting: expected the pressed item to be marked selected');
     assert.equal(
         harness.container.querySelectorAll('.resize-handle').length,
         4,
@@ -109,56 +129,42 @@ test('selecting: clicking an item reveals its transform handles, clicking the ca
 
 test('moving: dragging an item moves it by the dragged distance', async () => {
     const harness = await mountComposer();
-    const item = await placeCrop(harness);
+    const item = await placeCrop(harness, 'moving');
 
     await dragFrom(
         item,
         toScreen(DROP_POINT.x, DROP_POINT.y),
-        toScreen(DROP_POINT.x + 200, DROP_POINT.y)
+        toScreen(DROP_POINT.x + DRAG_DISTANCE, DROP_POINT.y)
     );
 
-    assertBox(itemBox(item), { ...PLACED_BOX, x: PLACED_BOX.x + 200 }, 'moving');
+    assertBox(itemBox(item), MOVED_BOX, 'moving');
 
     harness.cleanup();
 });
 
 test('resizing: dragging the bottom-right handle resizes the item at the crop aspect ratio', async () => {
     const harness = await mountComposer();
-    const item = await placeCrop(harness);
+    const item = await placeCrop(harness, 'resizing');
 
-    await dragFrom(item, toScreen(DROP_POINT.x, DROP_POINT.y));
-    const handle = item.querySelector('.resize-br');
-    assert.ok(handle, 'resizing: expected a bottom-right resize handle on the selected item');
-
-    const corner = { x: PLACED_BOX.x + PLACED_BOX.width, y: PLACED_BOX.y + PLACED_BOX.height };
-    await dragFrom(handle, toScreen(corner.x, corner.y), toScreen(corner.x + 200, corner.y));
+    await selectItem(item, DROP_POINT.x, DROP_POINT.y);
+    await dragResizeHandle(item, 'resizing');
 
     // 200 page units wider, and half that taller to hold the crop's 2:1 ratio.
-    assertBox(itemBox(item), { ...PLACED_BOX, width: 510, height: 255 }, 'resizing');
+    assertBox(itemBox(item), RESIZED_BOX, 'resizing');
 
     harness.cleanup();
 });
 
 test('rotating: dragging the frame rotation handle turns the item', async () => {
     const harness = await mountComposer();
-    const item = await placeCrop(harness);
+    const item = await placeCrop(harness, 'rotating');
 
-    await dragFrom(item, toScreen(DROP_POINT.x, DROP_POINT.y));
-    const handle = item.querySelector('.frame-rotation-handle');
-    assert.ok(handle, 'rotating: expected a frame rotation handle on the selected item');
+    await selectItem(item, DROP_POINT.x, DROP_POINT.y);
+    await dragRotationHandle(item, 'rotating');
 
-    // From straight above the item's centre round to its right: a quarter turn.
-    await dragFrom(
-        handle,
-        toScreen(DROP_POINT.x, DROP_POINT.y - PLACED_BOX.height),
-        toScreen(DROP_POINT.x + PLACED_BOX.width, DROP_POINT.y)
-    );
-
-    const rotation = /rotate\((-?[\d.]+)deg\)/.exec(item.style.transform);
-    assert.ok(rotation, `rotating: expected a rotation transform, got "${item.style.transform}"`);
     assert.ok(
-        Math.abs(parseFloat(rotation[1]) - 90) < 0.01,
-        `rotating: expected a 90deg turn, got ${rotation[1]}deg`
+        Math.abs(itemRotation(item) - 90) < 0.01,
+        `rotating: expected a quarter turn, got ${itemRotation(item)}deg from "${item.style.transform}"`
     );
 
     harness.cleanup();
@@ -166,12 +172,12 @@ test('rotating: dragging the frame rotation handle turns the item', async () => 
 
 test('undo/redo: steps back and forward through placing and moving', async () => {
     const harness = await mountComposer();
-    const item = await placeCrop(harness);
+    const item = await placeCrop(harness, 'undo/redo');
 
     await dragFrom(
         item,
         toScreen(DROP_POINT.x, DROP_POINT.y),
-        toScreen(DROP_POINT.x + 200, DROP_POINT.y)
+        toScreen(DROP_POINT.x + DRAG_DISTANCE, DROP_POINT.y)
     );
     await settle();
 
@@ -199,19 +205,54 @@ test('undo/redo: steps back and forward through placing and moving', async () =>
 
     await clickElement(redo);
     await settle();
-    assertBox(
-        itemBox(placedItem(harness.container)),
-        { ...PLACED_BOX, x: PLACED_BOX.x + 200 },
-        'undo/redo (redo move)'
-    );
+    assertBox(itemBox(placedItem(harness.container)), MOVED_BOX, 'undo/redo (redo move)');
     assert.equal(redo.disabled, true, 'undo/redo: expected redo to be exhausted at the end of history');
+
+    harness.cleanup();
+});
+
+test('undo/redo: steps back and forward through resizing and rotating', async () => {
+    const harness = await mountComposer();
+    const item = await placeCrop(harness, 'undo/redo');
+    const undo = buttonTitled(harness.container, 'Undo');
+    const redo = buttonTitled(harness.container, 'Redo');
+
+    await selectItem(item, DROP_POINT.x, DROP_POINT.y);
+    await dragResizeHandle(item, 'undo/redo');
+    await settle();
+
+    await clickElement(undo);
+    await settle();
+    assertBox(itemBox(item), PLACED_BOX, 'undo/redo (undo resize)');
+
+    await clickElement(redo);
+    await settle();
+    assertBox(itemBox(item), RESIZED_BOX, 'undo/redo (redo resize)');
+
+    await dragRotationHandle(item, 'undo/redo');
+    await settle();
+    assert.ok(
+        Math.abs(itemRotation(item) - 90) < 0.01,
+        `undo/redo: expected the rotation to apply before undoing it, got ${itemRotation(item)}deg`
+    );
+
+    await clickElement(undo);
+    await settle();
+    assert.equal(itemRotation(item), 0, 'undo/redo: expected undo to take the rotation back to square');
+
+    await clickElement(redo);
+    await settle();
+    assert.ok(
+        Math.abs(itemRotation(item) - 90) < 0.01,
+        `undo/redo: expected redo to restore the rotation, got ${itemRotation(item)}deg`
+    );
 
     harness.cleanup();
 });
 
 test('export: draws the placed item onto a page-sized canvas and downloads a PNG', async () => {
     const harness = await mountComposer();
-    await placeCrop(harness);
+    await placeCrop(harness, 'export');
 
     const exportButton = buttonLabelled(harness.container, 'Export');
     assert.ok(exportButton, 'export: expected an Export control in the toolbar');

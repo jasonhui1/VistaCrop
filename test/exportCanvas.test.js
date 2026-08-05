@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { exportCanvas } from '../src/utils/exportCanvas.ts';
-import { withImmediateImageLoading } from './helpers/composerHarness.mjs';
+import { withImmediateImageLoading } from './helpers/canvasStubs.mjs';
 
 const composition = {
     pageWidth: 200,
