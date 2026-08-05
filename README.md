@@ -1,16 +1,42 @@
-# React + Vite
+# VistaCrop
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Image cropping and composition views for Next.js apps, plus the demo app in
+`src/app` that exercises them.
 
-Currently, two official plugins are available:
+## Installing into a Next.js app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+VistaCrop ships raw TypeScript source — no build step, no emitted declarations.
+The consuming app transpiles it, so both ends must be Next.js + TypeScript.
 
-## React Compiler
+```bash
+npm install github:jasonhui1/VistaCrop#v0.1.0
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```js
+// next.config.mjs
+export default { transpilePackages: ['vistacrop'] };
+```
 
-## Expanding the ESLint configuration
+For local iteration, `npm link` from a checkout of this repo instead of
+installing the git ref.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+React and React DOM are peer dependencies: the consumer's copy is the only one.
+
+## Entrypoints
+
+| Import | Contents |
+| --- | --- |
+| `vistacrop` | The views (`CanvasView`, `ComposerView`, `GalleryView`, `ImageUploader`), `StorageAdapterProvider`, `createApiClient`, and the shared types |
+| `vistacrop/server` | The storage adapters that touch the filesystem and the db |
+
+`vistacrop` declares `'use client'` at the entrypoint, so a server component can
+import the views without adding the directive itself. `vistacrop/server` pulls in
+Node builtins and is unreachable from the client entrypoint.
+
+## Working on this repo
+
+```bash
+npm run dev    # the demo app
+npm test       # node:test suite
+npm run build  # production build of the demo app
+```

@@ -1,8 +1,20 @@
 {
-  "name": "image_cropper",
-  "private": true,
-  "version": "0.0.0",
+  "name": "vistacrop",
+  "version": "0.1.0",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./src/server.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,10 +22,9 @@
     "lint": "next lint",
     "test": "node --import ./test/register.mjs --test \"test/*.test.js\""
   },
-  "dependencies": {
-    "next": "15.1.4",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
@@ -29,7 +40,10 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^30.0.1",
+    "next": "15.1.4",
     "postcss": "^8.4.31",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^6.0.3"
   }
