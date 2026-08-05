@@ -1,22 +1,7 @@
 import { StorageAdapter } from './StorageAdapter';
-import { JsonStorageAdapter } from './JsonStorageAdapter';
 import { createApiClient } from '../../utils/api';
+import { createAdapterRegistry } from './adapterRegistry';
 
-let activeAdapter: StorageAdapter | null = null;
+const { getStorageAdapter, setStorageAdapter } = createAdapterRegistry(() => createApiClient());
 
-export function getStorageAdapter(): StorageAdapter {
-    if (activeAdapter) return activeAdapter;
-    if (typeof window !== 'undefined') {
-        return createApiClient();
-    }
-    return new JsonStorageAdapter();
-}
-
-export function setStorageAdapter(adapter: StorageAdapter): void {
-    if (!adapter) {
-        throw new Error('Adapter cannot be null or undefined');
-    }
-    activeAdapter = adapter;
-}
-
-export { StorageAdapter, JsonStorageAdapter };
+export { StorageAdapter, getStorageAdapter, setStorageAdapter };

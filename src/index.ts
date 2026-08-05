@@ -13,4 +13,4 @@ export type { GalleryViewProps } from './components/GalleryView';
 
 export * from './types';
 
-export { getStorageAdapter, setStorageAdapter, JsonStorageAdapter } from './lib/storage';
+export { getStorageAdapter, setStorageAdapter } from './lib/storage';

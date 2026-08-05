@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { StorageAdapter, JsonStorageAdapter, getStorageAdapter, setStorageAdapter } from '../src/lib/storage/index.ts';
+import { StorageAdapter, JsonStorageAdapter, getStorageAdapter, setStorageAdapter } from '../src/lib/storage/server.ts';
 
 test('StorageAdapter base class throws on unimplemeted methods', async () => {
     class UnimplementedAdapter extends StorageAdapter {}
