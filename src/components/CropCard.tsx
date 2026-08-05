@@ -12,6 +12,13 @@ export interface CropCardProps {
     onDelete: () => void
 }
 
+function normalizeAngle(angle: number): number {
+    let normalized = angle % 360
+    if (normalized > 180) normalized -= 360
+    if (normalized < -180) normalized += 360
+    return normalized
+}
+
 function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
     const [tagInput, setTagInput] = useState('')
     const [isRotating, setIsRotating] = useState(false)
@@ -98,11 +105,7 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
 
         // Calculate rotation delta
         const angleDelta = currentAngle - initialRotationRef.current.startAngle
-        let newRotation = initialRotationRef.current.angle + angleDelta
-
-        // Normalize to -180 to 180
-        while (newRotation > 180) newRotation -= 360
-        while (newRotation < -180) newRotation += 360
+        const newRotation = normalizeAngle(initialRotationRef.current.angle + angleDelta)
 
         setImageRotation(newRotation)
     }

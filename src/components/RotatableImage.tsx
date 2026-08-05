@@ -81,83 +81,27 @@ const RotatableImage = memo(function RotatableImage({
         return () => resizeObserver.disconnect()
     }, [])
 
-    // Lazy load original image when rotation is applied
+    // Lazy load original image when rotation or panning offset is applied
     useEffect(() => {
-        if (currentRotation !== 0 && !originalImage && !isLoadingOriginal && crop.imageId) {
+        const needsOriginalImage = currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0
+        const imageId = crop.imageId
+        if (needsOriginalImage && !originalImage && !isLoadingOriginal && imageId) {
             const loadImage = async () => {
                 setIsLoadingOriginal(true)
                 try {
-                    const imageData = await getImage(crop.imageId!)
+                    const imageData = await getImage(imageId)
                     if (imageData && imageData.data) {
                         setOriginalImage(imageData.data)
                     }
                 } catch (error) {
-                    console.error('Failed to lazy-load original image for rotation:', error)
+                    console.error('Failed to lazy-load original image:', error)
                 } finally {
                     setIsLoadingOriginal(false)
                 }
             }
             loadImage()
         }
-    }, [currentRotation, originalImage, isLoadingOriginal, crop.imageId])
-
-    // Calculate rotation display data (pixel-based)
-    // When hideRotationOverlay is true, we still need the data to render the rotated image correctly
-    // We just hide the overlay UI elements (dark background, selection box, corner handles)
-    // Calculate display data for both rotation and panning
-    const displayData = useMemo(() => {
-        const containerWidth = containerSize.width || 100
-        const containerHeight = containerSize.height || 100
-
-        // Calculate the box dimensions (accounting for inset)
-        const boxWidth = containerWidth - (containerInset * 2)
-        const boxHeight = containerHeight - (containerInset * 2)
-
-        // Scale factors to map crop coordinates to container pixels
-        const scaleX = crop.width > 0 ? boxWidth / crop.width : 1
-        const scaleY = crop.height > 0 ? boxHeight / crop.height : 1
-
-        const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
-        const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
-        const cropX = (crop.x || 0) + cropOffsetX
-        const cropY = (crop.y || 0) + cropOffsetY
-        const cropW = crop.width || 100
-        const cropH = crop.height || 100
-
-        return {
-            displayedOrigWidth: origW * scaleX,
-            displayedOrigHeight: origH * scaleY,
-            offsetX: -cropX * scaleX,
-            offsetY: -cropY * scaleY,
-            cropCenterX: (cropX + cropW / 2) * scaleX,
-            cropCenterY: (cropY + cropH / 2) * scaleY,
-            scaleX,
-            scaleY
-        }
-    }, [containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight, cropOffsetX, cropOffsetY])
-
-    // Determine if we need to show the original image (rotation or panning with offset)
-    const showOriginalImage = (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0) && originalImage
-
-    // For panning preview, also load original image
-    useEffect(() => {
-        if ((cropOffsetX !== 0 || cropOffsetY !== 0) && !originalImage && !isLoadingOriginal && crop.imageId) {
-            const loadImage = async () => {
-                setIsLoadingOriginal(true)
-                try {
-                    const imageData = await getImage(crop.imageId!)
-                    if (imageData && imageData.data) {
-                        setOriginalImage(imageData.data)
-                    }
-                } catch (error) {
-                    console.error('Failed to lazy-load original image for panning:', error)
-                } finally {
-                    setIsLoadingOriginal(false)
-                }
-            }
-            loadImage()
-        }
-    }, [cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
+    }, [currentRotation, cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
 
     // Corner handle style (reusable)
     const cornerHandleStyle: CSSProperties = {

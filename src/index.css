@@ -323,11 +323,6 @@
     transform: scale(1.1);
     background-color: #dc2626 !important;
   }
-}
 
-html,
-body {
-  height: 100%;
-  overflow: hidden;
   color-scheme: dark;
 }
