@@ -116,17 +116,14 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
     if (!image) return
     const pos = getMousePosition(e)
 
-    // Check if we have an existing selection
     const rect = getSelectionRect()
 
     if (rect && rect.width > 10 && rect.height > 10) {
-      // Check if click is OUTSIDE the selection - start rotation mode
       const isOutsideSelection =
         pos.x < rect.x || pos.x > rect.x + rect.width ||
         pos.y < rect.y || pos.y > rect.y + rect.height
 
       if (isOutsideSelection) {
-        // Calculate initial angle from selection center to mouse
         const angleToMouse = Math.atan2(
           pos.y - rect.centerY,
           pos.x - rect.centerX
@@ -141,7 +138,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
       }
     }
 
-    // Otherwise, start a new selection if within image bounds
     if (pos.x < 0 || pos.y < 0 || pos.x > displaySize.width || pos.y > displaySize.height) return
 
     setIsDragging(true)
@@ -161,17 +157,14 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
       const rect = getSelectionRect()
       if (!rect) return
 
-      // Calculate current angle from selection center to mouse
       const currentAngle = Math.atan2(
         pos.y - rect.centerY,
         pos.x - rect.centerX
       ) * (180 / Math.PI)
 
-      // Calculate rotation delta
       const angleDelta = currentAngle - initialRotationRef.current.startAngle
       let newRotation = initialRotationRef.current.angle + angleDelta
 
-      // Normalize to -180 to 180
       while (newRotation > 180) newRotation -= 360
       while (newRotation < -180) newRotation += 360
 
@@ -207,7 +200,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
     e.preventDefault()
     e.stopPropagation()
 
-    // Only set to false if we actually leave the container
     const rect = containerRef.current?.getBoundingClientRect()
     if (rect) {
       const isOutside =
@@ -263,7 +255,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
 
     const img = new Image()
     img.onload = () => {
-      // Apply filter before drawing
       if (activeFilter.filter !== 'none') {
         ctx.filter = activeFilter.filter
       }
@@ -338,7 +329,7 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Click the "Upload Artwork" button in the header
+            Click the &quot;Upload Artwork&quot; button in the header
           </div>
         )}
       </div>
@@ -357,7 +348,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Image */}
       <img
         ref={canvasRef}
         src={image}
@@ -373,7 +363,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
         draggable={false}
       />
 
-      {/* Drop Overlay for existing image */}
       {isDraggingOver && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-purple-900/40 backdrop-blur-sm pointer-events-none">
           <div className="bg-[var(--bg-primary)] p-8 rounded-2xl shadow-2xl border border-purple-500/30 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
@@ -390,7 +379,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
         </div>
       )}
 
-      {/* Filter Toolbar - Middle Right */}
       <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20 pointer-events-auto">
         <div className="bg-[var(--bg-card)]/90 backdrop-blur-xl border border-[var(--border-color)] p-2 rounded-2xl shadow-2xl flex flex-col gap-2">
           {FILTERS.map(filter => (
@@ -403,10 +391,8 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
                 }`}
               title={filter.name}
             >
-              {/* Color preview dot */}
               <div className={`w-3 h-3 rounded-full ${filter.vibe} shadow-inner`}></div>
 
-              {/* Tooltip */}
               <div className="absolute right-full mr-3 px-3 py-1.5 bg-black/80 text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm">
                 {filter.name}
               </div>
@@ -415,10 +401,8 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
         </div>
       </div>
 
-      {/* Selection overlay */}
       {selectionRect && selectionRect.width > 0 && selectionRect.height > 0 && !isDraggingOver && (
         <>
-          {/* Full dark overlay */}
           <div
             className="absolute bg-black/60 pointer-events-none"
             style={{
@@ -429,7 +413,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
             }}
           />
 
-          {/* Rotated selection preview - shows what will be cropped */}
           <div
             className="absolute pointer-events-none overflow-hidden"
             style={{
@@ -443,7 +426,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
               boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
             }}
           >
-            {/* Image inside the rotated box - counter-rotated to show correct preview */}
             <div
               className="absolute"
               style={{
@@ -468,14 +450,12 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
               />
             </div>
 
-            {/* Corner handles */}
             <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
             <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
             <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
             <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white rounded-full shadow-lg" />
           </div>
 
-          {/* Rotation angle badge */}
           {selectionRotation !== 0 && (
             <div
               className="absolute bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full pointer-events-none z-10"
@@ -491,10 +471,8 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
         </>
       )}
 
-      {/* Bottom controls */}
       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end gap-4 pointer-events-none">
         <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl text-sm text-[var(--text-secondary)] pointer-events-auto">
-          {/* Active filter display */}
           <div className="flex items-center gap-2 mb-1">
             <span className={`w-2 h-2 rounded-full ${activeFilter.vibe}`}></span>
             <span className="font-medium text-[var(--text-primary)]">{activeFilter.name}</span>
@@ -514,7 +492,6 @@ function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
 
         {selectionRect && selectionRect.width > 10 && selectionRect.height > 10 && (
           <div className="flex items-center gap-4 pointer-events-auto">
-            {/* Rotation display */}
             <div className="bg-[var(--bg-primary)]/90 backdrop-blur-sm px-4 py-3 rounded-xl flex items-center gap-2">
               <svg className="w-4 h-4 text-[var(--accent-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
