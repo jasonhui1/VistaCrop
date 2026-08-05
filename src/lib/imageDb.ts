@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { ImageStorageAdapter, StoredImage, OperationSuccessResponse } from '../types.ts';
+import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils.ts';
 
 export interface ImageMeta {
     path: string;
@@ -15,17 +16,12 @@ export interface ImageDbData {
 }
 
 // Store image mapping in a separate file
-const DB_DIR = path.join(process.cwd(), 'data');
 const IMAGE_DB_FILE = path.join(DB_DIR, 'imageDb.json');
 const IMAGES_DIR = path.join(DB_DIR, 'images');
 
 function ensureImageDb(): void {
-    if (!fs.existsSync(DB_DIR)) {
-        fs.mkdirSync(DB_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(IMAGES_DIR)) {
-        fs.mkdirSync(IMAGES_DIR, { recursive: true });
-    }
+    ensureDir(DB_DIR);
+    ensureDir(IMAGES_DIR);
     if (!fs.existsSync(IMAGE_DB_FILE)) {
         fs.writeFileSync(IMAGE_DB_FILE, JSON.stringify({ images: {} }, null, 2));
     }
@@ -79,14 +75,7 @@ export function saveImageFile(
 ): { path: string } {
     ensureImageDb();
 
-    // Extract the base64 content and mime type
-    const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!matches) {
-        throw new Error('Invalid base64 image data');
-    }
-
-    const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-    const base64Content = matches[2];
+    const { extension, base64Content } = parseBase64Image(base64Data);
     const fileName = `${imageId}.${extension}`;
     const filePath = path.join(IMAGES_DIR, fileName);
 
@@ -224,10 +213,15 @@ export class DbImageStorageAdapter implements ImageStorageAdapter {
     }
 
     async deleteImage(imageId: string, deleteCrops: boolean = false): Promise<OperationSuccessResponse & { cropsDeleted?: number }> {
+        let cropsDeleted = 0;
+        if (deleteCrops) {
+            const { deleteCropsForImage } = await import('./cropDb.ts');
+            cropsDeleted = deleteCropsForImage(imageId);
+        }
         const deleted = deleteImageFile(imageId);
         if (!deleted) {
             return { success: false, cropsDeleted: 0 };
         }
-        return { success: true };
+        return { success: true, cropsDeleted };
     }
 }

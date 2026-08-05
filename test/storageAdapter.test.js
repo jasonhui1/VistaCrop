@@ -62,3 +62,32 @@ test('setStorageAdapter allows custom adapter injection', async () => {
     setStorageAdapter(new JsonStorageAdapter());
     assert.ok(getStorageAdapter() instanceof JsonStorageAdapter);
 });
+
+test('JsonStorageAdapter deleteImage with deleteCrops deletes associated crops', async () => {
+    const adapter = new JsonStorageAdapter();
+    const testImageId = 'test_delete_crops_img_' + Date.now();
+    const sampleBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    // 1. Upload test image
+    await adapter.saveImage(testImageId, sampleBase64, { width: 10, height: 10 });
+    const img = await adapter.getImage(testImageId);
+    assert.ok(img);
+
+    // 2. Save crop for test image
+    const cropId = 'crop_' + Date.now();
+    await adapter.saveCrops(testImageId, [{ id: cropId, x: 0, y: 0, width: 5, height: 5, imageData: sampleBase64 }]);
+    const cropsBefore = await adapter.loadCrops(testImageId);
+    assert.equal(cropsBefore.length, 1);
+
+    // 3. Delete image with deleteCrops = true
+    const result = await adapter.deleteImage(testImageId, true);
+    assert.equal(result.success, true);
+    assert.equal(result.cropsDeleted, 1);
+
+    // 4. Verify image and crops are deleted
+    const imgAfter = await adapter.getImage(testImageId);
+    assert.equal(imgAfter, null);
+    const cropsAfter = await adapter.loadCrops(testImageId);
+    assert.equal(cropsAfter.length, 0);
+});
+

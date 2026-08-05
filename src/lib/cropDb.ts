@@ -3,18 +3,14 @@ import path from 'path';
 import type { CropStorageAdapter, Crop, SaveCropsResponse, OperationSuccessResponse } from '../types.ts';
 import { readDb, writeDb } from './db.ts';
 import { getImageMeta, saveImageFile } from './imageDb.ts';
+import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils.ts';
 
 // Store crop preview images in a separate folder
-const DB_DIR = path.join(process.cwd(), 'data');
 const CROPS_DIR = path.join(DB_DIR, 'crops');
 
 function ensureCropsDir(): void {
-    if (!fs.existsSync(DB_DIR)) {
-        fs.mkdirSync(DB_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(CROPS_DIR)) {
-        fs.mkdirSync(CROPS_DIR, { recursive: true });
-    }
+    ensureDir(DB_DIR);
+    ensureDir(CROPS_DIR);
 }
 
 /**
@@ -23,14 +19,7 @@ function ensureCropsDir(): void {
 export function saveCropPreview(cropId: string | number, base64Data: string): string {
     ensureCropsDir();
 
-    // Extract the base64 content and mime type
-    const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!matches) {
-        throw new Error('Invalid base64 image data');
-    }
-
-    const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-    const base64Content = matches[2];
+    const { extension, base64Content } = parseBase64Image(base64Data);
     const fileName = `${cropId}.${extension}`;
     const filePath = path.join(CROPS_DIR, fileName);
 
@@ -81,6 +70,27 @@ export function cropPreviewExists(fileName?: string | null): boolean {
     if (!fileName) return false;
     const filePath = path.join(CROPS_DIR, fileName);
     return fs.existsSync(filePath);
+}
+
+/**
+ * Delete all crops associated with an image ID from DB and disk preview files
+ */
+export function deleteCropsForImage(imageId: string): number {
+    const db = readDb();
+    if (!db.crops || db.crops.length === 0) return 0;
+
+    const cropsToDelete = db.crops.filter(c => c.imageId === imageId);
+    if (cropsToDelete.length === 0) return 0;
+
+    for (const crop of cropsToDelete) {
+        if (crop.imageDataPath) {
+            deleteCropPreview(crop.imageDataPath);
+        }
+    }
+
+    db.crops = db.crops.filter(c => c.imageId !== imageId);
+    writeDb(db);
+    return cropsToDelete.length;
 }
 
 function attachImageData(crop?: Crop | null): Crop | null {

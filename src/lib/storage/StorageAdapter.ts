@@ -59,7 +59,7 @@ export class StorageAdapter implements IStorageAdapter {
         throw new Error('StorageAdapter.getCrop() must be implemented');
     }
 
-    async saveCrops(imageId: string, crops: Crop[]): Promise<SaveCropsResponse & { success?: boolean; imageCreated?: boolean }> {
+    async saveCrops(imageId: string, crops: Partial<Crop>[]): Promise<SaveCropsResponse & { success?: boolean; count?: number; imageCreated?: boolean }> {
         throw new Error('StorageAdapter.saveCrops() must be implemented');
     }
 
