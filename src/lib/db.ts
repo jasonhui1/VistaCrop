@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Composition, PlacedItem, SavedCanvas, Crop, StoredImage, CanvasStorageAdapter, CreateCanvasResponse, OperationSuccessResponse } from '../types.ts';
+import type { Composition, PlacedItem, SavedCanvas, Crop, StoredImage, CanvasStorageAdapter, CreateCanvasResponse, OperationSuccessResponse } from '../types';
 
 export interface DbData {
     crops: Crop[];

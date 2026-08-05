@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import type { ImageStorageAdapter, StoredImage, OperationSuccessResponse } from '../types.ts';
-import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils.ts';
+import type { ImageStorageAdapter, StoredImage, OperationSuccessResponse } from '../types';
+import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils';
 
 export interface ImageMeta {
     path: string;
@@ -215,7 +215,7 @@ export class DbImageStorageAdapter implements ImageStorageAdapter {
     async deleteImage(imageId: string, deleteCrops: boolean = false): Promise<OperationSuccessResponse & { cropsDeleted?: number }> {
         let cropsDeleted = 0;
         if (deleteCrops) {
-            const { deleteCropsForImage } = await import('./cropDb.ts');
+            const { deleteCropsForImage } = await import('./cropDb');
             cropsDeleted = deleteCropsForImage(imageId);
         }
         const deleted = deleteImageFile(imageId);

@@ -1,7 +1,7 @@
-import { StorageAdapter } from './StorageAdapter.ts';
-import { DbCanvasStorageAdapter } from '../db.ts';
-import { DbImageStorageAdapter } from '../imageDb.ts';
-import { DbCropStorageAdapter } from '../cropDb.ts';
+import { StorageAdapter } from './StorageAdapter';
+import { DbCanvasStorageAdapter } from '../db';
+import { DbImageStorageAdapter } from '../imageDb';
+import { DbCropStorageAdapter } from '../cropDb';
 import type {
     Crop,
     Composition,
@@ -11,7 +11,7 @@ import type {
     SaveCropsResponse,
     CreateCanvasResponse,
     OperationSuccessResponse
-} from '../../types.ts';
+} from '../../types';
 
 export class JsonStorageAdapter extends StorageAdapter {
     private canvasAdapter = new DbCanvasStorageAdapter();

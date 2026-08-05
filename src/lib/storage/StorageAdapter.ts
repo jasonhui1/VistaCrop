@@ -8,7 +8,7 @@ import type {
     CreateCanvasResponse,
     OperationSuccessResponse,
     StorageAdapter as IStorageAdapter
-} from '../../types.ts';
+} from '../../types';
 
 export class StorageAdapter implements IStorageAdapter {
     async listCanvases(): Promise<SavedCanvas[]> {

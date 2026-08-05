@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import type { CropStorageAdapter, Crop, SaveCropsResponse, OperationSuccessResponse } from '../types.ts';
-import { readDb, writeDb } from './db.ts';
-import { getImageMeta, saveImageFile } from './imageDb.ts';
-import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils.ts';
+import type { CropStorageAdapter, Crop, SaveCropsResponse, OperationSuccessResponse } from '../types';
+import { readDb, writeDb } from './db';
+import { getImageMeta, saveImageFile } from './imageDb';
+import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils';
 
 // Store crop preview images in a separate folder
 const CROPS_DIR = path.join(DB_DIR, 'crops');

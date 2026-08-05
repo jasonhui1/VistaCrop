@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { StorageAdapter, Composition, PlacedItem, SavedCanvas } from '../types.ts';
-import { createApiClient } from '../utils/api.ts';
+import type { StorageAdapter, Composition, PlacedItem, SavedCanvas } from '../types';
+import { createApiClient } from '../utils/api';
 
 // Auto-save debounce delay in milliseconds
 const AUTO_SAVE_DELAY = 30000;

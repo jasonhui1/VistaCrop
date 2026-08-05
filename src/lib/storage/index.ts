@@ -1,6 +1,6 @@
-import { StorageAdapter } from './StorageAdapter.ts';
-import { JsonStorageAdapter } from './JsonStorageAdapter.ts';
-import { createApiClient } from '../../utils/api.ts';
+import { StorageAdapter } from './StorageAdapter';
+import { JsonStorageAdapter } from './JsonStorageAdapter';
+import { createApiClient } from '../../utils/api';
 
 let activeAdapter: StorageAdapter | null = null;
 
