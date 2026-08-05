@@ -3,17 +3,44 @@
  */
 
 /**
+ * 2D coordinate point [x, y] as percentages or pixels
+ */
+export type Point2D = [number, number];
+
+/**
+ * 2D point coordinate object
+ */
+export interface Point {
+    x: number;
+    y: number;
+}
+
+/**
+ * 2D dimensions object
+ */
+export interface Dimensions {
+    width: number;
+    height: number;
+}
+
+/**
+ * 2D bounding rectangle combining position and dimensions
+ */
+export interface Rect extends Point, Dimensions {}
+
+/**
+ * Supported frame border styles
+ */
+export type BorderStyle = 'none' | 'solid' | 'dashed' | 'manga';
+
+/**
  * Represents an image crop preset / cut object
  */
-export interface Crop {
+export interface Crop extends Rect {
     id: string | number;
     imageId?: string;
     imageData?: string;
     imageDataPath?: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
     originalImageWidth?: number;
     originalImageHeight?: number;
     rotation?: number;
@@ -28,20 +55,16 @@ export interface Crop {
 /**
  * Represents an item placed onto a freeform canvas
  */
-export interface PlacedItem {
+export interface PlacedItem extends Rect {
     id: string | number;
     cropId: string | number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
     rotation?: number;
     frameRotation?: number;
     frameShape?: string;
-    customPoints?: Array<[number, number]>;
+    customPoints?: Point2D[];
     borderWidth?: number;
     borderColor?: string;
-    borderStyle?: 'none' | 'solid' | 'dashed' | 'manga' | string;
+    borderStyle?: BorderStyle;
     cropOffsetX?: number;
     cropOffsetY?: number;
     editingCorners?: boolean;
@@ -81,12 +104,8 @@ export interface Composition {
 /**
  * Panel positioning and bounding rectangle inside a composition
  */
-export interface Panel {
+export interface Panel extends Rect {
     index: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
     ratioX?: number;
     ratioY?: number;
     ratioWidth?: number;
@@ -94,14 +113,9 @@ export interface Panel {
 }
 
 /**
- * Panel ratio within a layout preset definition
+ * Panel ratio within a layout preset definition (values 0-1)
  */
-export interface PanelRatio {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+export interface PanelRatio extends Rect {}
 
 /**
  * Manga panel layout preset configuration
@@ -116,9 +130,7 @@ export interface PanelLayout {
 /**
  * Preset page dimension configuration
  */
-export interface PagePreset {
-    width: number;
-    height: number;
+export interface PagePreset extends Dimensions {
     label: string;
 }
 
@@ -129,7 +141,7 @@ export interface FrameShape {
     id: string;
     name: string;
     icon: string;
-    points: Array<[number, number]>;
+    points: Point2D[];
 }
 
 /**
@@ -140,6 +152,7 @@ export interface FilterPreset {
     name: string;
     filter: string;
     description: string;
+    /** Tailwind CSS background color class for UI badges */
     vibe: string;
 }
 
@@ -169,21 +182,44 @@ export interface SavedCanvas {
 }
 
 /**
+ * Result structure when saving or updating crop records
+ */
+export interface SaveCropsResponse {
+    crops: Crop[];
+    updatedAt: number;
+}
+
+/**
+ * Result structure when creating a canvas
+ */
+export interface CreateCanvasResponse {
+    canvasId: string;
+}
+
+/**
+ * Result structure for general operation success
+ */
+export interface OperationSuccessResponse {
+    success: boolean;
+    message?: string;
+}
+
+/**
  * Interface defining persistence storage operations for crops, canvases, and images
  */
 export interface StorageAdapter {
-    saveCrops(imageId: string, crops: Crop[]): Promise<any>;
+    saveCrops(imageId: string, crops: Crop[]): Promise<SaveCropsResponse>;
     loadAllCrops(): Promise<Crop[]>;
     loadCrops(imageId: string): Promise<Crop[]>;
-    updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>): Promise<any>;
-    deleteCrop(imageId: string, cropId: string | number): Promise<any>;
-    uploadImage(imageId: string, base64Data: string, metadata?: { width?: number; height?: number }): Promise<any>;
+    updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>): Promise<Crop>;
+    deleteCrop(imageId: string, cropId: string | number): Promise<OperationSuccessResponse>;
+    uploadImage(imageId: string, base64Data: string, metadata?: { width?: number; height?: number }): Promise<StoredImage>;
     listImages(): Promise<StoredImage[]>;
     getImage(imageId: string): Promise<StoredImage | null>;
-    deleteImage(imageId: string, deleteCrops?: boolean): Promise<any>;
-    createCanvas(options?: Record<string, any>): Promise<{ canvasId: string }>;
-    saveCanvas(canvasId: string, composition: Composition, placedItems?: PlacedItem[]): Promise<any>;
+    deleteImage(imageId: string, deleteCrops?: boolean): Promise<OperationSuccessResponse>;
+    createCanvas(options?: { name?: string; mode?: string; [key: string]: unknown }): Promise<CreateCanvasResponse>;
+    saveCanvas(canvasId: string, composition: Composition, placedItems?: PlacedItem[]): Promise<OperationSuccessResponse>;
     loadCanvas(canvasId: string): Promise<SavedCanvas | null>;
     listCanvases(): Promise<SavedCanvas[]>;
-    deleteCanvas(canvasId: string): Promise<any>;
+    deleteCanvas(canvasId: string): Promise<OperationSuccessResponse>;
 }
