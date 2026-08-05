@@ -3,11 +3,25 @@
  * Supports configurable basePath (defaults to '/api').
  */
 
+import type {
+    Crop,
+    PlacedItem,
+    Composition,
+    StoredImage,
+    SavedCanvas,
+    SaveCropsResponse,
+    CreateCanvasResponse,
+    OperationSuccessResponse,
+    StorageAdapter
+} from '../types';
+
 export interface ApiClientOptions {
     basePath?: string;
 }
 
-export function createApiClient(basePath: string = '/api') {
+export function createApiClient(basePath: string = '/api'): StorageAdapter & {
+    uploadExportedCanvas(canvasId: string, imageBlob: Blob, options?: { format?: string; [key: string]: unknown }): Promise<OperationSuccessResponse>;
+} {
     const cleanBasePath = basePath.replace(/\/+$/, '');
 
     async function createApiError(response: Response, defaultMessage: string): Promise<Error> {
@@ -23,7 +37,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Save all crops for an image
          */
-        async saveCrops(imageId: string, crops: any[]) {
+        async saveCrops(imageId: string, crops: Partial<Crop>[]): Promise<SaveCropsResponse & { success?: boolean; count?: number; imageCreated?: boolean }> {
             const response = await fetch(`${cleanBasePath}/images/${imageId}/crops`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -39,7 +53,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Load all crops from all images
          */
-        async loadAllCrops() {
+        async loadAllCrops(): Promise<Crop[]> {
             const response = await fetch(`${cleanBasePath}/crops`);
 
             if (!response.ok) {
@@ -53,7 +67,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Load all crops for an image
          */
-        async loadCrops(imageId: string) {
+        async loadCrops(imageId: string): Promise<Crop[]> {
             const response = await fetch(`${cleanBasePath}/images/${imageId}/crops`);
 
             if (!response.ok) {
@@ -66,9 +80,17 @@ export function createApiClient(basePath: string = '/api') {
         },
 
         /**
+         * Get a single crop by ID
+         */
+        async getCrop(cropId: string | number): Promise<Crop | null> {
+            const crops = await this.loadAllCrops();
+            return crops.find(c => String(c.id) === String(cropId)) || null;
+        },
+
+        /**
          * Update a single crop
          */
-        async updateCrop(imageId: string, cropId: string, updates: Record<string, any>) {
+        async updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>): Promise<Crop> {
             const response = await fetch(`${cleanBasePath}/images/${imageId}/crops/${cropId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -84,7 +106,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Delete a single crop
          */
-        async deleteCrop(imageId: string, cropId: string) {
+        async deleteCrop(imageId: string, cropId: string | number): Promise<OperationSuccessResponse> {
             const response = await fetch(`${cleanBasePath}/images/${imageId}/crops/${cropId}`, {
                 method: 'DELETE'
             });
@@ -102,7 +124,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Upload an image to the server
          */
-        async uploadImage(imageId: string, base64Data: string, metadata: Record<string, any> = {}) {
+        async uploadImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}): Promise<StoredImage> {
             const response = await fetch(`${cleanBasePath}/images/${imageId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -116,9 +138,16 @@ export function createApiClient(basePath: string = '/api') {
         },
 
         /**
+         * Save an image (alias for uploadImage)
+         */
+        async saveImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}): Promise<StoredImage & { success?: boolean; path?: string }> {
+            return this.uploadImage(imageId, base64Data, metadata);
+        },
+
+        /**
          * List all stored images (metadata only)
          */
-        async listImages() {
+        async listImages(): Promise<StoredImage[]> {
             const response = await fetch(`${cleanBasePath}/images`);
 
             if (!response.ok) {
@@ -130,7 +159,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Get a stored image by ID
          */
-        async getImage(imageId: string) {
+        async getImage(imageId: string): Promise<StoredImage | null> {
             const response = await fetch(`${cleanBasePath}/images/${imageId}`);
 
             if (!response.ok) {
@@ -143,7 +172,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Delete a stored image
          */
-        async deleteImage(imageId: string, deleteCrops: boolean = false) {
+        async deleteImage(imageId: string, deleteCrops: boolean = false): Promise<OperationSuccessResponse & { cropsDeleted?: number }> {
             const url = deleteCrops
                 ? `${cleanBasePath}/images/${imageId}?deleteCrops=true`
                 : `${cleanBasePath}/images/${imageId}`;
@@ -165,7 +194,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Create a new canvas and get its ID from the server
          */
-        async createCanvas(options: Record<string, any> = {}) {
+        async createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}): Promise<CreateCanvasResponse> {
             const response = await fetch(`${cleanBasePath}/canvas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -181,7 +210,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Save canvas composition and placed items
          */
-        async saveCanvas(canvasId: string, composition: Record<string, any>, placedItems: any[]) {
+        async saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = []): Promise<OperationSuccessResponse> {
             const response = await fetch(`${cleanBasePath}/canvas/${canvasId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -195,9 +224,16 @@ export function createApiClient(basePath: string = '/api') {
         },
 
         /**
+         * Get a single canvas by ID (alias for loadCanvas)
+         */
+        async getCanvas(canvasId: string): Promise<SavedCanvas | null> {
+            return this.loadCanvas(canvasId);
+        },
+
+        /**
          * Load a canvas composition
          */
-        async loadCanvas(canvasId: string) {
+        async loadCanvas(canvasId: string): Promise<SavedCanvas | null> {
             const response = await fetch(`${cleanBasePath}/canvas/${canvasId}`);
 
             if (!response.ok) {
@@ -210,7 +246,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * List all canvases
          */
-        async listCanvases() {
+        async listCanvases(): Promise<SavedCanvas[]> {
             const response = await fetch(`${cleanBasePath}/canvas`);
 
             if (!response.ok) {
@@ -222,7 +258,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Delete a canvas
          */
-        async deleteCanvas(canvasId: string) {
+        async deleteCanvas(canvasId: string): Promise<OperationSuccessResponse> {
             const response = await fetch(`${cleanBasePath}/canvas/${canvasId}`, {
                 method: 'DELETE'
             });
@@ -240,7 +276,7 @@ export function createApiClient(basePath: string = '/api') {
         /**
          * Upload exported canvas as an image
          */
-        async uploadExportedCanvas(canvasId: string, imageBlob: Blob, options: Record<string, any> = {}) {
+        async uploadExportedCanvas(canvasId: string, imageBlob: Blob, options: { format?: string; [key: string]: unknown } = {}): Promise<OperationSuccessResponse> {
             const formData = new FormData();
             formData.append('image', imageBlob, `export-${Date.now()}.${options.format || 'png'}`);
 
@@ -258,62 +294,74 @@ export function createApiClient(basePath: string = '/api') {
 }
 
 // Standalone functions with default basePath = '/api'
-export async function saveCrops(imageId: string, crops: any[], basePath: string = '/api') {
+export async function saveCrops(imageId: string, crops: Partial<Crop>[], basePath: string = '/api'): Promise<SaveCropsResponse & { success?: boolean; count?: number; imageCreated?: boolean }> {
     return createApiClient(basePath).saveCrops(imageId, crops);
 }
 
-export async function loadAllCrops(basePath: string = '/api') {
+export async function loadAllCrops(basePath: string = '/api'): Promise<Crop[]> {
     return createApiClient(basePath).loadAllCrops();
 }
 
-export async function loadCrops(imageId: string, basePath: string = '/api') {
+export async function loadCrops(imageId: string, basePath: string = '/api'): Promise<Crop[]> {
     return createApiClient(basePath).loadCrops(imageId);
 }
 
-export async function updateCrop(imageId: string, cropId: string, updates: Record<string, any>, basePath: string = '/api') {
+export async function getCrop(cropId: string | number, basePath: string = '/api'): Promise<Crop | null> {
+    return createApiClient(basePath).getCrop(cropId);
+}
+
+export async function updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>, basePath: string = '/api'): Promise<Crop> {
     return createApiClient(basePath).updateCrop(imageId, cropId, updates);
 }
 
-export async function deleteCrop(imageId: string, cropId: string, basePath: string = '/api') {
+export async function deleteCrop(imageId: string, cropId: string | number, basePath: string = '/api'): Promise<OperationSuccessResponse> {
     return createApiClient(basePath).deleteCrop(imageId, cropId);
 }
 
-export async function uploadImage(imageId: string, base64Data: string, metadata: Record<string, any> = {}, basePath: string = '/api') {
+export async function uploadImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}, basePath: string = '/api'): Promise<StoredImage> {
     return createApiClient(basePath).uploadImage(imageId, base64Data, metadata);
 }
 
-export async function listImages(basePath: string = '/api') {
+export async function saveImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}, basePath: string = '/api'): Promise<StoredImage & { success?: boolean; path?: string }> {
+    return createApiClient(basePath).saveImage(imageId, base64Data, metadata);
+}
+
+export async function listImages(basePath: string = '/api'): Promise<StoredImage[]> {
     return createApiClient(basePath).listImages();
 }
 
-export async function getImage(imageId: string, basePath: string = '/api') {
+export async function getImage(imageId: string, basePath: string = '/api'): Promise<StoredImage | null> {
     return createApiClient(basePath).getImage(imageId);
 }
 
-export async function deleteImage(imageId: string, deleteCrops: boolean = false, basePath: string = '/api') {
+export async function deleteImage(imageId: string, deleteCrops: boolean = false, basePath: string = '/api'): Promise<OperationSuccessResponse & { cropsDeleted?: number }> {
     return createApiClient(basePath).deleteImage(imageId, deleteCrops);
 }
 
-export async function createCanvas(options: Record<string, any> = {}, basePath: string = '/api') {
+export async function createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}, basePath: string = '/api'): Promise<CreateCanvasResponse> {
     return createApiClient(basePath).createCanvas(options);
 }
 
-export async function saveCanvas(canvasId: string, composition: Record<string, any>, placedItems: any[], basePath: string = '/api') {
+export async function saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = [], basePath: string = '/api'): Promise<OperationSuccessResponse> {
     return createApiClient(basePath).saveCanvas(canvasId, composition, placedItems);
 }
 
-export async function loadCanvas(canvasId: string, basePath: string = '/api') {
+export async function getCanvas(canvasId: string, basePath: string = '/api'): Promise<SavedCanvas | null> {
+    return createApiClient(basePath).getCanvas(canvasId);
+}
+
+export async function loadCanvas(canvasId: string, basePath: string = '/api'): Promise<SavedCanvas | null> {
     return createApiClient(basePath).loadCanvas(canvasId);
 }
 
-export async function listCanvases(basePath: string = '/api') {
+export async function listCanvases(basePath: string = '/api'): Promise<SavedCanvas[]> {
     return createApiClient(basePath).listCanvases();
 }
 
-export async function deleteCanvas(canvasId: string, basePath: string = '/api') {
+export async function deleteCanvas(canvasId: string, basePath: string = '/api'): Promise<OperationSuccessResponse> {
     return createApiClient(basePath).deleteCanvas(canvasId);
 }
 
-export async function uploadExportedCanvas(canvasId: string, imageBlob: Blob, options: Record<string, any> = {}, basePath: string = '/api') {
+export async function uploadExportedCanvas(canvasId: string, imageBlob: Blob, options: { format?: string; [key: string]: unknown } = {}, basePath: string = '/api'): Promise<OperationSuccessResponse> {
     return createApiClient(basePath).uploadExportedCanvas(canvasId, imageBlob, options);
 }

@@ -207,19 +207,34 @@ export interface OperationSuccessResponse {
 /**
  * Interface defining persistence storage operations for crops, canvases, and images
  */
-export interface StorageAdapter {
-    saveCrops(imageId: string, crops: Crop[]): Promise<SaveCropsResponse>;
-    loadAllCrops(): Promise<Crop[]>;
-    loadCrops(imageId: string): Promise<Crop[]>;
-    updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>): Promise<Crop>;
-    deleteCrop(imageId: string, cropId: string | number): Promise<OperationSuccessResponse>;
-    uploadImage(imageId: string, base64Data: string, metadata?: { width?: number; height?: number }): Promise<StoredImage>;
-    listImages(): Promise<StoredImage[]>;
-    getImage(imageId: string): Promise<StoredImage | null>;
-    deleteImage(imageId: string, deleteCrops?: boolean): Promise<OperationSuccessResponse>;
+export interface CanvasStorageAdapter {
+    listCanvases(): Promise<SavedCanvas[]>;
+    getCanvas(canvasId: string): Promise<SavedCanvas | null>;
+    loadCanvas(canvasId: string): Promise<SavedCanvas | null>;
     createCanvas(options?: { name?: string; mode?: string; [key: string]: unknown }): Promise<CreateCanvasResponse>;
     saveCanvas(canvasId: string, composition: Composition, placedItems?: PlacedItem[]): Promise<OperationSuccessResponse>;
-    loadCanvas(canvasId: string): Promise<SavedCanvas | null>;
-    listCanvases(): Promise<SavedCanvas[]>;
     deleteCanvas(canvasId: string): Promise<OperationSuccessResponse>;
 }
+
+export interface ImageStorageAdapter {
+    listImages(): Promise<StoredImage[]>;
+    getImage(imageId: string): Promise<StoredImage | null>;
+    uploadImage(imageId: string, base64Data: string, metadata?: { width?: number; height?: number }): Promise<StoredImage>;
+    saveImage(imageId: string, base64Data: string, metadata?: { width?: number; height?: number }): Promise<StoredImage & { success?: boolean; path?: string }>;
+    deleteImage(imageId: string, deleteCrops?: boolean): Promise<OperationSuccessResponse & { cropsDeleted?: number }>;
+}
+
+export interface CropStorageAdapter {
+    loadAllCrops(): Promise<Crop[]>;
+    loadCrops(imageId: string): Promise<Crop[]>;
+    getCrop(cropId: string | number): Promise<Crop | null>;
+    saveCrops(imageId: string, crops: Partial<Crop>[]): Promise<SaveCropsResponse & { success?: boolean; count?: number; imageCreated?: boolean }>;
+    updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>): Promise<Crop>;
+    deleteCrop(imageId: string, cropId: string | number): Promise<OperationSuccessResponse>;
+}
+
+/**
+ * Interface defining persistence storage operations for crops, canvases, and images
+ */
+export interface StorageAdapter extends CanvasStorageAdapter, ImageStorageAdapter, CropStorageAdapter {}
+

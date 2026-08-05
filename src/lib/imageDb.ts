@@ -1,12 +1,25 @@
 import fs from 'fs';
 import path from 'path';
+import type { ImageStorageAdapter, StoredImage, OperationSuccessResponse } from '../types.ts';
+
+export interface ImageMeta {
+    path: string;
+    width?: number | null;
+    height?: number | null;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface ImageDbData {
+    images: Record<string, ImageMeta>;
+}
 
 // Store image mapping in a separate file
 const DB_DIR = path.join(process.cwd(), 'data');
 const IMAGE_DB_FILE = path.join(DB_DIR, 'imageDb.json');
 const IMAGES_DIR = path.join(DB_DIR, 'images');
 
-function ensureImageDb() {
+function ensureImageDb(): void {
     if (!fs.existsSync(DB_DIR)) {
         fs.mkdirSync(DB_DIR, { recursive: true });
     }
@@ -20,9 +33,8 @@ function ensureImageDb() {
 
 /**
  * Read the image database
- * @returns {{ images: Record<string, { path: string, width?: number, height?: number, createdAt: number, updatedAt: number }> }}
  */
-export function readImageDb() {
+export function readImageDb(): ImageDbData {
     ensureImageDb();
     try {
         const content = fs.readFileSync(IMAGE_DB_FILE, 'utf-8');
@@ -35,27 +47,23 @@ export function readImageDb() {
 /**
  * Write to the image database
  */
-export function writeImageDb(data) {
+export function writeImageDb(data: ImageDbData): void {
     ensureImageDb();
     fs.writeFileSync(IMAGE_DB_FILE, JSON.stringify(data, null, 2));
 }
 
 /**
  * Get image metadata by ID
- * @param {string} imageId 
- * @returns {{ path: string, width?: number, height?: number, createdAt: number, updatedAt: number } | null}
  */
-export function getImageMeta(imageId) {
+export function getImageMeta(imageId: string): ImageMeta | null {
     const db = readImageDb();
     return db.images[imageId] || null;
 }
 
 /**
  * Get the full file path for an image
- * @param {string} imageId 
- * @returns {string | null}
  */
-export function getImageFilePath(imageId) {
+export function getImageFilePath(imageId: string): string | null {
     const meta = getImageMeta(imageId);
     if (!meta) return null;
     return path.join(IMAGES_DIR, meta.path);
@@ -63,12 +71,12 @@ export function getImageFilePath(imageId) {
 
 /**
  * Save an image file and create mapping
- * @param {string} imageId 
- * @param {string} base64Data - Base64 data URL (e.g., "data:image/png;base64,...")
- * @param {{ width?: number, height?: number }} metadata
- * @returns {{ path: string }}
  */
-export function saveImage(imageId, base64Data, metadata = {}) {
+export function saveImageFile(
+    imageId: string,
+    base64Data: string,
+    metadata: { width?: number; height?: number } = {}
+): { path: string } {
     ensureImageDb();
 
     // Extract the base64 content and mime type
@@ -100,12 +108,12 @@ export function saveImage(imageId, base64Data, metadata = {}) {
     return { path: fileName };
 }
 
+export { saveImageFile as saveImage };
+
 /**
  * Load an image as base64 data URL
- * @param {string} imageId 
- * @returns {string | null} Base64 data URL or null if not found
  */
-export function loadImageAsDataUrl(imageId) {
+export function loadImageAsDataUrl(imageId: string): string | null {
     const meta = getImageMeta(imageId);
     if (!meta) return null;
 
@@ -124,10 +132,8 @@ export function loadImageAsDataUrl(imageId) {
 
 /**
  * Delete an image file and its mapping
- * @param {string} imageId 
- * @returns {boolean} True if deleted, false if not found
  */
-export function deleteImage(imageId) {
+export function deleteImageFile(imageId: string): boolean {
     const db = readImageDb();
     const meta = db.images[imageId];
 
@@ -146,11 +152,12 @@ export function deleteImage(imageId) {
     return true;
 }
 
+export { deleteImageFile as deleteImage };
+
 /**
  * List all images (metadata only)
- * @returns {Array<{ id: string, width?: number, height?: number, createdAt: number, updatedAt: number }>}
  */
-export function listImages() {
+export function listImagesMeta(): Array<{ id: string; width?: number | null; height?: number | null; createdAt: number; updatedAt: number }> {
     const db = readImageDb();
     return Object.entries(db.images).map(([id, meta]) => ({
         id,
@@ -159,4 +166,68 @@ export function listImages() {
         createdAt: meta.createdAt,
         updatedAt: meta.updatedAt
     }));
+}
+
+export { listImagesMeta as listImages };
+
+/**
+ * Image Storage Adapter class implementing ImageStorageAdapter for image operations
+ */
+export class DbImageStorageAdapter implements ImageStorageAdapter {
+    async listImages(): Promise<StoredImage[]> {
+        const images = listImagesMeta();
+        return images.map(img => ({
+            id: img.id,
+            width: img.width || undefined,
+            height: img.height || undefined,
+            createdAt: img.createdAt,
+            updatedAt: img.updatedAt
+        }));
+    }
+
+    async getImage(imageId: string): Promise<StoredImage | null> {
+        const meta = getImageMeta(imageId);
+        if (!meta) return null;
+
+        const dataUrl = loadImageAsDataUrl(imageId);
+        if (!dataUrl) return null;
+
+        return {
+            id: imageId,
+            data: dataUrl,
+            width: meta.width || undefined,
+            height: meta.height || undefined,
+            createdAt: meta.createdAt,
+            updatedAt: meta.updatedAt
+        };
+    }
+
+    async uploadImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}): Promise<StoredImage> {
+        const result = saveImageFile(imageId, base64Data, metadata);
+        return {
+            id: imageId,
+            data: base64Data,
+            width: metadata.width,
+            height: metadata.height,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+    }
+
+    async saveImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}): Promise<StoredImage & { success: boolean; path: string }> {
+        const result = saveImageFile(imageId, base64Data, metadata);
+        return {
+            success: true,
+            id: imageId,
+            path: result.path
+        };
+    }
+
+    async deleteImage(imageId: string, deleteCrops: boolean = false): Promise<OperationSuccessResponse & { cropsDeleted?: number }> {
+        const deleted = deleteImageFile(imageId);
+        if (!deleted) {
+            return { success: false, cropsDeleted: 0 };
+        }
+        return { success: true };
+    }
 }

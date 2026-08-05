@@ -1,4 +1,6 @@
-export const FILTERS = [
+import { FilterPreset } from '../types';
+
+export const FILTERS: FilterPreset[] = [
     {
         id: 'normal',
         name: 'Normal',
@@ -62,4 +64,27 @@ export const FILTERS = [
         description: 'Clear, modern transparency',
         vibe: 'bg-cyan-200'
     }
-]
+];
+
+/**
+ * Get a filter preset by ID
+ */
+export function getFilterPreset(id?: string): FilterPreset | undefined {
+    if (!id) return undefined;
+    return FILTERS.find(f => f.id === id);
+}
+
+/**
+ * Get CSS filter string for a filter ID
+ */
+export function getFilterCss(id?: string): string {
+    const preset = getFilterPreset(id);
+    return preset ? preset.filter : 'none';
+}
+
+/**
+ * Get all available filter presets
+ */
+export function getFilterList(): FilterPreset[] {
+    return FILTERS;
+}

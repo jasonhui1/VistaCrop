@@ -3,25 +3,27 @@
  * Defines preset manga panel layouts with position/size ratios
  */
 
+import { PagePreset, PanelLayout, Panel, Composition, PanelAssignment } from '../types';
+
 // Default page dimensions (in pixels at 150 DPI for web preview)
-export const PAGE_PRESETS = {
+export const PAGE_PRESETS: Record<string, PagePreset> = {
     A4_PORTRAIT: { width: 1240, height: 1754, label: 'A4 Portrait' },
     A4_LANDSCAPE: { width: 1754, height: 1240, label: 'A4 Landscape' },
     LETTER_PORTRAIT: { width: 1275, height: 1650, label: 'Letter Portrait' },
     LETTER_LANDSCAPE: { width: 1650, height: 1275, label: 'Letter Landscape' },
     SQUARE: { width: 1500, height: 1500, label: 'Square' },
     CUSTOM: { width: 1200, height: 1600, label: 'Custom' }
-}
+};
 
 // Default gutter size between panels (as ratio of page width)
-export const DEFAULT_GUTTER = 0.02
+export const DEFAULT_GUTTER = 0.02;
 
 /**
  * Panel layout definitions
  * Each panel is defined by { x, y, width, height } as ratios (0-1)
  * relative to the content area (page minus margins)
  */
-export const PANEL_LAYOUTS = {
+export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
     // Single panel - full page
     'single': {
         id: 'single',
@@ -156,33 +158,38 @@ export const PANEL_LAYOUTS = {
             { x: 0.52, y: 0.69, width: 0.48, height: 0.31 }
         ]
     }
-}
+};
 
 /**
  * Get list of all available layouts
  */
-export function getLayoutList() {
-    return Object.values(PANEL_LAYOUTS)
+export function getLayoutList(): PanelLayout[] {
+    return Object.values(PANEL_LAYOUTS);
 }
 
 /**
  * Get a specific layout by ID
  */
-export function getLayout(layoutId) {
-    return PANEL_LAYOUTS[layoutId] || PANEL_LAYOUTS['single']
+export function getLayout(layoutId: string): PanelLayout {
+    return PANEL_LAYOUTS[layoutId] || PANEL_LAYOUTS['single'];
 }
 
 /**
  * Calculate actual pixel positions for panels given page dimensions and margin
- * @param {Object} layout - The layout definition
- * @param {number} pageWidth - Page width in pixels
- * @param {number} pageHeight - Page height in pixels
- * @param {number} margin - Margin in pixels (applied to all sides)
- * @returns {Array} Array of panel objects with pixel positions
+ * @param layout - The layout definition
+ * @param pageWidth - Page width in pixels
+ * @param pageHeight - Page height in pixels
+ * @param margin - Margin in pixels (applied to all sides)
+ * @returns Array of panel objects with pixel positions
  */
-export function calculatePanelPositions(layout, pageWidth, pageHeight, margin = 40) {
-    const contentWidth = pageWidth - (margin * 2)
-    const contentHeight = pageHeight - (margin * 2)
+export function calculatePanelPositions(
+    layout: PanelLayout,
+    pageWidth: number,
+    pageHeight: number,
+    margin: number = 40
+): Panel[] {
+    const contentWidth = pageWidth - (margin * 2);
+    const contentHeight = pageHeight - (margin * 2);
 
     return layout.panels.map((panel, index) => ({
         index,
@@ -195,15 +202,18 @@ export function calculatePanelPositions(layout, pageWidth, pageHeight, margin = 
         ratioY: panel.y,
         ratioWidth: panel.width,
         ratioHeight: panel.height
-    }))
+    }));
 }
 
 /**
  * Create an empty composition state
  */
-export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_PORTRAIT') {
-    const layout = getLayout(layoutId)
-    const page = PAGE_PRESETS[pagePreset]
+export function createEmptyComposition(
+    layoutId: string = 'single',
+    pagePreset: string = 'A4_PORTRAIT'
+): Composition {
+    const layout = getLayout(layoutId);
+    const page = PAGE_PRESETS[pagePreset] || PAGE_PRESETS.A4_PORTRAIT;
 
     return {
         id: Date.now(),
@@ -224,46 +234,50 @@ export function createEmptyComposition(layoutId = 'single', pagePreset = 'A4_POR
         })),
         createdAt: Date.now(),
         updatedAt: Date.now()
-    }
+    };
 }
 
 /**
  * Update a panel assignment in a composition
  */
-export function updatePanelAssignment(composition, panelIndex, updates) {
+export function updatePanelAssignment(
+    composition: Composition,
+    panelIndex: number,
+    updates: Partial<PanelAssignment>
+): Composition {
     return {
         ...composition,
         assignments: composition.assignments.map((assignment, idx) =>
             idx === panelIndex ? { ...assignment, ...updates } : assignment
         ),
         updatedAt: Date.now()
-    }
+    };
 }
 
 /**
  * Clear a panel assignment
  */
-export function clearPanelAssignment(composition, panelIndex) {
+export function clearPanelAssignment(composition: Composition, panelIndex: number): Composition {
     return updatePanelAssignment(composition, panelIndex, {
         cropId: null,
         zoom: 1,
         offsetX: 0,
         offsetY: 0
-    })
+    });
 }
 
 /**
  * Change the layout of a composition (preserves assignments where possible)
  */
-export function changeCompositionLayout(composition, newLayoutId) {
-    const newLayout = getLayout(newLayoutId)
-    const currentAssignments = composition.assignments
+export function changeCompositionLayout(composition: Composition, newLayoutId: string): Composition {
+    const newLayout = getLayout(newLayoutId);
+    const currentAssignments = composition.assignments;
 
     // Create new assignments, preserving crops where panel indices match
-    const newAssignments = newLayout.panels.map((_, index) => {
-        const existing = currentAssignments[index]
+    const newAssignments: PanelAssignment[] = newLayout.panels.map((_, index) => {
+        const existing = currentAssignments[index];
         if (existing) {
-            return { ...existing, panelIndex: index }
+            return { ...existing, panelIndex: index };
         }
         return {
             panelIndex: index,
@@ -271,13 +285,13 @@ export function changeCompositionLayout(composition, newLayoutId) {
             zoom: 1,
             offsetX: 0,
             offsetY: 0
-        }
-    })
+        };
+    });
 
     return {
         ...composition,
         layoutId: newLayoutId,
         assignments: newAssignments,
         updatedAt: Date.now()
-    }
+    };
 }

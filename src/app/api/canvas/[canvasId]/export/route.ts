@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 
-export async function POST(request, { params }) {
+export async function POST(
+    request: Request,
+    { params }: { params: Promise<{ canvasId: string }> }
+) {
     const { canvasId } = await params;
     const formData = await request.formData();
-    const file = formData.get('image');
+    const file = formData.get('image') as File | null;
 
     if (!file) {
         return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });

@@ -4,8 +4,10 @@
  * Each shape is defined as an array of [x%, y%] points for clip-path polygon
  */
 
+import { Point2D, FrameShape, PlacedItem } from '../types';
+
 // Shape presets - each shape is defined by polygon points as percentages
-export const FRAME_SHAPES = {
+export const FRAME_SHAPES: Record<string, FrameShape> = {
     // Standard rectangle
     rectangle: {
         id: 'rectangle',
@@ -272,100 +274,108 @@ export const FRAME_SHAPES = {
             [38, 35]
         ]
     }
-}
+};
 
 /**
  * Get clip-path CSS value for a shape or custom points
- * @param {string} shapeId - The shape ID
- * @param {Array} customPoints - Optional custom points array [[x%, y%], ...]
- * @returns {string} CSS clip-path polygon value
+ * @param shapeId - The shape ID
+ * @param customPoints - Optional custom points array [[x%, y%], ...]
+ * @returns CSS clip-path polygon value
  */
-export function getClipPath(shapeId, customPoints = null) {
-    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points
+export function getClipPath(shapeId: string, customPoints: Point2D[] | null = null): string {
+    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
 
     const pointsStr = points
         .map(([x, y]) => `${x}% ${y}%`)
-        .join(', ')
+        .join(', ');
 
-    return `polygon(${pointsStr})`
+    return `polygon(${pointsStr})`;
 }
 
 /**
  * Get SVG polygon points string for a shape (for border rendering)
- * @param {string} shapeId - The shape ID
- * @param {number} width - Container width
- * @param {number} height - Container height
- * @returns {string} SVG points attribute value
+ * @param shapeId - The shape ID
+ * @param width - Container width
+ * @param height - Container height
+ * @returns SVG points attribute value
  */
-export function getSvgPoints(shapeId, width, height) {
-    const shape = FRAME_SHAPES[shapeId]
-    if (!shape) return ''
+export function getSvgPoints(shapeId: string, width: number, height: number): string {
+    const shape = FRAME_SHAPES[shapeId];
+    if (!shape) return '';
 
     return shape.points
         .map(([xPct, yPct]) => `${(xPct / 100) * width},${(yPct / 100) * height}`)
-        .join(' ')
+        .join(' ');
 }
 
 /**
  * Get canvas path for a shape (for export rendering)
- * @param {CanvasRenderingContext2D} ctx - Canvas context
- * @param {string} shapeId - The shape ID
- * @param {number} x - Top-left X position
- * @param {number} y - Top-left Y position
- * @param {number} width - Width
- * @param {number} height - Height
- * @param {Array} customPoints - Optional custom points array [[x%, y%], ...]
+ * @param ctx - Canvas context
+ * @param shapeId - The shape ID
+ * @param x - Top-left X position
+ * @param y - Top-left Y position
+ * @param width - Width
+ * @param height - Height
+ * @param customPoints - Optional custom points array [[x%, y%], ...]
  */
-export function drawShapePath(ctx, shapeId, x, y, width, height, customPoints = null) {
-    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points
+export function drawShapePath(
+    ctx: CanvasRenderingContext2D,
+    shapeId: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    customPoints: Point2D[] | null = null
+): void {
+    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
 
-    ctx.beginPath()
+    ctx.beginPath();
     points.forEach(([xPct, yPct], index) => {
-        const px = x + (xPct / 100) * width
-        const py = y + (yPct / 100) * height
+        const px = x + (xPct / 100) * width;
+        const py = y + (yPct / 100) * height;
         if (index === 0) {
-            ctx.moveTo(px, py)
+            ctx.moveTo(px, py);
         } else {
-            ctx.lineTo(px, py)
+            ctx.lineTo(px, py);
         }
-    })
-    ctx.closePath()
+    });
+    ctx.closePath();
 }
 
 /**
  * Get list of all available shapes
- * @returns {Array} Array of shape objects
+ * @returns Array of shape objects
  */
-export function getShapeList() {
-    return Object.values(FRAME_SHAPES)
+export function getShapeList(): FrameShape[] {
+    return Object.values(FRAME_SHAPES);
 }
 
 /**
  * Get a shape by ID
- * @param {string} shapeId - Shape ID
- * @returns {Object|null} Shape object or null
+ * @param shapeId - Shape ID
+ * @returns Shape object or null
  */
-export function getShape(shapeId) {
-    return FRAME_SHAPES[shapeId] || null
+export function getShape(shapeId: string): FrameShape | null {
+    return FRAME_SHAPES[shapeId] || null;
 }
 
 /**
  * Get default rectangle points (4 corners)
- * @returns {Array} Default rectangle points [[0,0], [100,0], [100,100], [0,100]]
+ * @returns Default rectangle points [[0,0], [100,0], [100,100], [0,100]]
  */
-export function getDefaultPoints() {
-    return [[0, 0], [100, 0], [100, 100], [0, 100]]
+export function getDefaultPoints(): Point2D[] {
+    return [[0, 0], [100, 0], [100, 100], [0, 100]];
 }
 
 /**
  * Get the effective points for an item (custom points or preset shape points)
- * @param {Object} item - The item with optional customPoints and frameShape
- * @returns {Array} The points array to use
+ * @param item - The item with optional customPoints and frameShape
+ * @returns The points array to use
  */
-export function getEffectivePoints(item) {
+export function getEffectivePoints(item: Partial<PlacedItem>): Point2D[] {
     if (item.customPoints && item.customPoints.length >= 3) {
-        return item.customPoints
+        return item.customPoints;
     }
-    const shape = FRAME_SHAPES[item.frameShape || 'rectangle']
-    return shape ? shape.points : FRAME_SHAPES.rectangle.points
+    const shape = FRAME_SHAPES[item.frameShape || 'rectangle'];
+    return shape ? shape.points : FRAME_SHAPES.rectangle.points;
 }

@@ -1,0 +1,106 @@
+import { useEffect, useCallback } from 'react';
+
+/**
+ * Arguments passed to onNudge handler
+ */
+export interface KeyboardNudgeArgs {
+    dx: number;
+    dy: number;
+}
+
+/**
+ * Configuration options for useKeyboardShortcuts hook
+ */
+export interface UseKeyboardShortcutsOptions {
+    onDelete?: () => void;
+    onUndo?: () => void;
+    onRedo?: () => void;
+    onSave?: () => void;
+    onNudge?: (nudge: KeyboardNudgeArgs) => void;
+    enabled?: boolean;
+}
+
+/**
+ * Custom hook for keyboard shortcuts in the composer
+ * 
+ * @param options - Shortcut handlers and enabled flag
+ */
+export function useKeyboardShortcuts({
+    onDelete,
+    onUndo,
+    onRedo,
+    onSave,
+    onNudge,
+    enabled = true
+}: UseKeyboardShortcutsOptions): void {
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (!enabled) return;
+
+        // Don't trigger if user is typing in an input/textarea
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+            return;
+        }
+
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
+
+        // Ctrl+S - Save
+        if (isCtrlOrMeta && key === 's') {
+            e.preventDefault();
+            onSave?.();
+            return;
+        }
+
+        // Ctrl+Z - Undo
+        if (isCtrlOrMeta && key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            onUndo?.();
+            return;
+        }
+
+        // Ctrl+Y or Ctrl+Shift+Z - Redo
+        if (isCtrlOrMeta && (key === 'y' || (key === 'z' && e.shiftKey))) {
+            e.preventDefault();
+            onRedo?.();
+            return;
+        }
+
+        // Delete or Backspace - Delete selected item
+        if ((e.key === 'Delete' || e.key === 'Backspace') && !isCtrlOrMeta) {
+            e.preventDefault();
+            onDelete?.();
+            return;
+        }
+
+        // Arrow keys - Nudge selected item
+        const nudgeAmount = e.shiftKey ? 10 : 1;
+        switch (e.key) {
+            case 'ArrowUp':
+                e.preventDefault();
+                onNudge?.({ dx: 0, dy: -nudgeAmount });
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                onNudge?.({ dx: 0, dy: nudgeAmount });
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                onNudge?.({ dx: -nudgeAmount, dy: 0 });
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                onNudge?.({ dx: nudgeAmount, dy: 0 });
+                break;
+        }
+    }, [enabled, onDelete, onUndo, onRedo, onSave, onNudge]);
+
+    useEffect(() => {
+        if (!enabled) return;
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [enabled, handleKeyDown]);
+}
+
+export default useKeyboardShortcuts;

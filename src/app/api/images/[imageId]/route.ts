@@ -5,7 +5,10 @@ import { getStorageAdapter } from '@/lib/storage';
  * GET /api/images/{imageId}
  * Retrieve a stored image by ID (returns base64 data URL)
  */
-export async function GET(request, { params }) {
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ imageId: string }> }
+) {
     const { imageId } = await params;
     const storage = getStorageAdapter();
     const image = await storage.getImage(imageId);
@@ -21,7 +24,10 @@ export async function GET(request, { params }) {
  * POST /api/images/{imageId}
  * Upload/save an image
  */
-export async function POST(request, { params }) {
+export async function POST(
+    request: Request,
+    { params }: { params: Promise<{ imageId: string }> }
+) {
     const { imageId } = await params;
     const body = await request.json();
     const { data, width, height } = body;
@@ -34,8 +40,9 @@ export async function POST(request, { params }) {
         const storage = getStorageAdapter();
         const result = await storage.saveImage(imageId, data, { width, height });
         return NextResponse.json(result);
-    } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Upload failed';
+        return NextResponse.json({ error: message }, { status: 400 });
     }
 }
 
@@ -43,7 +50,10 @@ export async function POST(request, { params }) {
  * DELETE /api/images/{imageId}
  * Delete an image and optionally its associated crops
  */
-export async function DELETE(request, { params }) {
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ imageId: string }> }
+) {
     const { imageId } = await params;
     const { searchParams } = new URL(request.url);
     const deleteCrops = searchParams.get('deleteCrops') === 'true';

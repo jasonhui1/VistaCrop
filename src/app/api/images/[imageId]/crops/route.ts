@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getStorageAdapter } from '@/lib/storage';
 
-export async function GET(request, { params }) {
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ imageId: string }> }
+) {
     const { imageId } = await params;
     const storage = getStorageAdapter();
     const crops = await storage.loadCrops(imageId);
     return NextResponse.json({ crops });
 }
 
-export async function POST(request, { params }) {
+export async function POST(
+    request: Request,
+    { params }: { params: Promise<{ imageId: string }> }
+) {
     const { imageId } = await params;
     const body = await request.json();
     const { crops } = body;
@@ -21,7 +27,8 @@ export async function POST(request, { params }) {
         const storage = getStorageAdapter();
         const result = await storage.saveCrops(imageId, crops);
         return NextResponse.json(result);
-    } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to save crops';
+        return NextResponse.json({ error: message }, { status: 400 });
     }
 }

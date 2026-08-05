@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getStorageAdapter } from '@/lib/storage';
 
-export async function GET(request, { params }) {
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ canvasId: string }> }
+) {
     const { canvasId } = await params;
     const storage = getStorageAdapter();
     const canvas = await storage.getCanvas(canvasId);
@@ -13,7 +16,10 @@ export async function GET(request, { params }) {
     return NextResponse.json(canvas);
 }
 
-export async function PUT(request, { params }) {
+export async function PUT(
+    request: Request,
+    { params }: { params: Promise<{ canvasId: string }> }
+) {
     const { canvasId } = await params;
     const body = await request.json();
     const storage = getStorageAdapter();
@@ -21,12 +27,16 @@ export async function PUT(request, { params }) {
     try {
         const updated = await storage.saveCanvas(canvasId, body.composition, body.placedItems);
         return NextResponse.json(updated);
-    } catch (error) {
-        return NextResponse.json({ error: error.message || 'Canvas not found' }, { status: 404 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Canvas not found';
+        return NextResponse.json({ error: message }, { status: 404 });
     }
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ canvasId: string }> }
+) {
     const { canvasId } = await params;
     const storage = getStorageAdapter();
     await storage.deleteCanvas(canvasId);
