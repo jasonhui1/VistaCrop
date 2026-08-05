@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, DragEvent, MouseEvent, CSSProperties } from 'react'
 import { Composition, Crop, PlacedItem, Point2D, BorderStyle, PhoneStyle } from '../types'
 import { getClipPath, FRAME_SHAPES } from '../utils/frameShapes'
-import { getCropById, getFilterStyle } from '../utils/canvasUtils'
+import { getCropById, getFilterStyle, idsEqual } from '../utils/canvasUtils'
 import RotatableImage from './RotatableImage'
 import PhoneMockup from './PhoneMockup'
 
@@ -511,7 +511,7 @@ const PlacedItemComponent = memo(function PlacedItemComponent({
         overflow: 'hidden'
     }
 
-    const isEditingCorners = isSelected && !item.editingCorners
+    const isEditingCorners = isSelected && !!item.editingCorners
 
     const imageContent = (
         <RotatableImage
@@ -712,7 +712,7 @@ function FreeformCanvas({
             const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
 
             if (type === 'rotate') {
-                const crop = crops.find(c => String(c.id) === String(item.cropId))
+                const crop = getCropById(crops, item.cropId)
                 const currentRotation = item.rotation ?? crop?.rotation ?? 0
                 setImageRotation(currentRotation)
                 setDragState({ ...baseDragState, startAngle, centerX, centerY })
@@ -750,7 +750,7 @@ function FreeformCanvas({
 
         if (dragState.type === 'rotate') {
             const { centerX = 0, centerY = 0, startAngle = 0, startItem } = dragState
-            const crop = crops.find(c => String(c.id) === String(startItem.cropId))
+            const crop = getCropById(crops, startItem.cropId)
             const initialAngle = startItem.rotation ?? crop?.rotation ?? 0
             const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
             let newRotation = initialAngle + (currentAngle - startAngle)
@@ -777,13 +777,13 @@ function FreeformCanvas({
 
         if (dragState.type === 'crop-pan') {
             const { startItem } = dragState
-            const crop = crops.find(c => String(c.id) === String(startItem.cropId))
+            const crop = getCropById(crops, startItem.cropId)
             if (!crop) return
 
             const screenDeltaX = e.clientX - dragState.startX
             const screenDeltaY = e.clientY - dragState.startY
 
-            const item = placedItems.find(i => String(i.id) === String(dragState.itemId))
+            const item = placedItems.find(i => idsEqual(i.id, dragState.itemId))
             if (!item) return
             const itemDisplayWidth = (item.width / composition.pageWidth) * rect.width
             const itemDisplayHeight = (item.height / composition.pageHeight) * rect.height
@@ -810,7 +810,7 @@ function FreeformCanvas({
 
         if (dragState.type.startsWith('resize-')) {
             const corner = dragState.type.split('-')[1] as CornerType
-            const crop = crops.find(c => String(c.id) === String(dragState.startItem.cropId))
+            const crop = getCropById(crops, dragState.startItem.cropId)
             if (!crop) return
 
             const aspectRatio = crop.width / crop.height
@@ -826,7 +826,7 @@ function FreeformCanvas({
         }
 
         if (dragState.type === 'corner' && dragState.cornerIndex !== undefined) {
-            const item = placedItems.find(i => String(i.id) === String(dragState.itemId))
+            const item = placedItems.find(i => idsEqual(i.id, dragState.itemId))
             if (!item) return
 
             const currentPoints = item.customPoints ||
@@ -984,10 +984,10 @@ function FreeformCanvas({
                         const crop = getCropById(crops, item.cropId)
                         if (!crop) return null
 
-                        const isSelected = String(selectedItemId) === String(item.id)
-                        const isDraggingImageRotation = dragState?.type === 'rotate' && String(dragState?.itemId) === String(item.id)
-                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && String(dragState?.itemId) === String(item.id)
-                        const isDraggingCropPan = dragState?.type === 'crop-pan' && String(dragState?.itemId) === String(item.id)
+                        const isSelected = idsEqual(selectedItemId, item.id)
+                        const isDraggingImageRotation = dragState?.type === 'rotate' && idsEqual(dragState?.itemId, item.id)
+                        const isDraggingFrameRotation = dragState?.type === 'frame-rotate' && idsEqual(dragState?.itemId, item.id)
+                        const isDraggingCropPan = dragState?.type === 'crop-pan' && idsEqual(dragState?.itemId, item.id)
                         const currentRotation = isDraggingImageRotation ? imageRotation : (item.rotation ?? crop.rotation ?? 0)
                         const currentFrameRotation = isDraggingFrameRotation ? frameRotation : item.frameRotation
                         const currentCropOffset = isDraggingCropPan ? cropOffset : null

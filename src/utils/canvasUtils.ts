@@ -7,6 +7,10 @@ export function getFilterStyle(filterName?: string): string {
     return filter ? filter.filter : 'none'
 }
 
+export function idsEqual(a?: string | number | null, b?: string | number | null): boolean {
+    return String(a) === String(b)
+}
+
 export function getCropById(crops: Crop[], cropId: string | number): Crop | undefined {
-    return crops.find(c => String(c.id) === String(cropId))
+    return crops.find(c => idsEqual(c.id, cropId))
 }

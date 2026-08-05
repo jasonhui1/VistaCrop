@@ -23,11 +23,11 @@ export class StorageAdapter implements IStorageAdapter {
         return this.getCanvas(canvasId);
     }
 
-    async createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}): Promise<CreateCanvasResponse> {
+    async createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}): Promise<CreateCanvasResponse & Partial<SavedCanvas>> {
         throw new Error('StorageAdapter.createCanvas() must be implemented');
     }
 
-    async saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = []): Promise<OperationSuccessResponse> {
+    async saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = []): Promise<OperationSuccessResponse & Partial<SavedCanvas>> {
         throw new Error('StorageAdapter.saveCanvas() must be implemented');
     }
 
