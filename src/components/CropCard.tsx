@@ -29,7 +29,7 @@ function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
     // Get CSS filter string from filter name
     const getFilterStyle = useCallback((filterName?: string) => {
         const filter = FILTERS.find(f => f.id === filterName)
-        return filter ? filter.css : 'none'
+        return filter ? filter.filter : 'none'
     }, [])
 
     const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
