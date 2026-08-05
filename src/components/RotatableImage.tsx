@@ -1,28 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState, CSSProperties } from 'react'
 import { getImage } from '../utils/api'
+import { Crop } from '../types'
 
-// Constants for display calculations
-const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavailable
+const DEFAULT_IMAGE_DIMENSION = 1000
 
-export interface CropData {
-    id: number | string
-    imageId?: string
-    imageData: string
-    x?: number
-    y?: number
-    width: number
-    height: number
-    originalImageWidth?: number
-    originalImageHeight?: number
-    rotation?: number
-    tags?: string[]
-    notes?: string
-    sourceRotation?: number
-    filter?: string
-}
+export type CropData = Crop
 
 export interface RotatableImageProps {
-    crop: CropData
+    crop: Crop
     currentRotation: number
     isRotating: boolean
     filterCss?: string
@@ -34,13 +19,6 @@ export interface RotatableImageProps {
     isPanning?: boolean
 }
 
-/**
- * RotatableImage - Shared component for rendering an image with rotation support
- * 
- * Used by both CropCard (gallery view) and FreeformCanvas (composer view)
- * Uses pixel-based calculations for proper transform-origin positioning
- * Includes lazy loading for original image when rotation is applied
- */
 const RotatableImage = memo(function RotatableImage({
     crop,
     currentRotation,
@@ -55,12 +33,9 @@ const RotatableImage = memo(function RotatableImage({
 }: RotatableImageProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
-
-    // Lazy loading state for original image
     const [originalImage, setOriginalImage] = useState<string | null>(null)
     const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
 
-    // Track container size with ResizeObserver
     useEffect(() => {
         if (!containerRef.current) return
 
@@ -74,14 +49,11 @@ const RotatableImage = memo(function RotatableImage({
         }
 
         updateSize()
-
         const resizeObserver = new ResizeObserver(updateSize)
         resizeObserver.observe(containerRef.current)
-
         return () => resizeObserver.disconnect()
     }, [])
 
-    // Lazy load original image when rotation or panning offset is applied
     useEffect(() => {
         const needsOriginalImage = currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0
         const imageId = crop.imageId
@@ -103,7 +75,43 @@ const RotatableImage = memo(function RotatableImage({
         }
     }, [currentRotation, cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
 
-    // Corner handle style (reusable)
+    const showOriginalImage = Boolean(originalImage && (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0))
+
+    const displayData = useMemo(() => {
+        const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
+        const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
+        const cropW = crop.width || DEFAULT_IMAGE_DIMENSION
+        const cropH = crop.height || DEFAULT_IMAGE_DIMENSION
+
+        const cWidth = containerSize.width || cropW
+        const cHeight = containerSize.height || cropH
+
+        const scaleX = cWidth / cropW
+        const scaleY = cHeight / cropH
+        const scale = (scaleX + scaleY) / 2
+
+        const displayedOrigWidth = origW * scale
+        const displayedOrigHeight = origH * scale
+
+        const cropX = crop.x || 0
+        const cropY = crop.y || 0
+
+        const offsetX = -cropX * scale + cropOffsetX
+        const offsetY = -cropY * scale + cropOffsetY
+
+        const cropCenterX = offsetX + (cropX + cropW / 2) * scale
+        const cropCenterY = offsetY + (cropY + cropH / 2) * scale
+
+        return {
+            displayedOrigWidth,
+            displayedOrigHeight,
+            offsetX,
+            offsetY,
+            cropCenterX,
+            cropCenterY
+        }
+    }, [crop, containerSize, cropOffsetX, cropOffsetY])
+
     const cornerHandleStyle: CSSProperties = {
         position: 'absolute',
         width: 8,
@@ -123,7 +131,6 @@ const RotatableImage = memo(function RotatableImage({
                 zIndex: 1
             }}
         >
-            {/* Loading indicator */}
             {isLoadingOriginal && (
                 <div style={{
                     position: 'absolute',
@@ -145,10 +152,8 @@ const RotatableImage = memo(function RotatableImage({
                 </div>
             )}
 
-            {/* When rotating or panning with original image available, show original behind selection */}
             {showOriginalImage ? (
                 <>
-                    {/* Dark overlay - hide when editing corners or just panning */}
                     {!hideRotationOverlay && currentRotation !== 0 && (
                         <div
                             style={{
@@ -161,18 +166,15 @@ const RotatableImage = memo(function RotatableImage({
                         />
                     )}
 
-                    {/* Selection box that clips the rotated/panned original image */}
                     <div
                         style={{
                             position: 'absolute',
                             inset: containerInset,
                             overflow: 'hidden',
-                            // Only show selection styling when rotating and not hiding overlay
                             ...((hideRotationOverlay || currentRotation === 0) ? {} : {
                                 outline: '2px solid #a855f7',
                                 boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
                             }),
-                            // Show panning indicator border
                             ...(isPanning ? {
                                 outline: '2px solid var(--accent-secondary, #10b981)',
                                 boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.3)'
@@ -180,7 +182,6 @@ const RotatableImage = memo(function RotatableImage({
                             zIndex: 2
                         }}
                     >
-                        {/* Original image that rotates/pans - using PIXEL values */}
                         <div
                             style={{
                                 position: 'absolute',
@@ -188,16 +189,13 @@ const RotatableImage = memo(function RotatableImage({
                                 top: 0,
                                 width: displayData.displayedOrigWidth,
                                 height: displayData.displayedOrigHeight,
-                                // Use translate for GPU-accelerated positioning, combined with rotation
                                 transform: currentRotation !== 0
                                     ? `translate(${displayData.offsetX}px, ${displayData.offsetY}px) rotate(${-currentRotation}deg)`
                                     : `translate(${displayData.offsetX}px, ${displayData.offsetY}px)`,
                                 transformOrigin: currentRotation !== 0
                                     ? `${displayData.cropCenterX - displayData.offsetX}px ${displayData.cropCenterY - displayData.offsetY}px`
                                     : undefined,
-                                // No transition during active rotation or panning for instant feedback
                                 transition: (isRotating || isPanning) ? 'none' : 'transform 0.15s ease-out',
-                                // Use will-change for GPU acceleration during active panning/rotation
                                 willChange: (isPanning || isRotating) ? 'transform' : 'auto'
                             }}
                         >
@@ -214,7 +212,6 @@ const RotatableImage = memo(function RotatableImage({
                             />
                         </div>
 
-                        {/* Corner handles inside selection - hide when editing custom corners or panning */}
                         {showCornerHandles && !hideRotationOverlay && !isPanning && currentRotation !== 0 && (
                             <>
                                 <div style={{ ...cornerHandleStyle, top: -2, left: -2 }} />
@@ -226,7 +223,6 @@ const RotatableImage = memo(function RotatableImage({
                     </div>
                 </>
             ) : (
-                /* Normal view - just the cropped image */
                 <img
                     src={crop.imageData}
                     alt=""

@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Enable if you need to use the app directory (default in v13+)
+    webpack: (config, { isServer }) => {
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                fs: false,
+                path: false
+            };
+        }
+        return config;
+    }
 };
 
 export default nextConfig;
