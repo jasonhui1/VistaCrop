@@ -1,8 +1,38 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, CSSProperties } from 'react'
 import { getImage } from '../utils/api'
 
 // Constants for display calculations
 const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavailable
+
+export interface CropData {
+    id: number | string
+    imageId?: string
+    imageData: string
+    x?: number
+    y?: number
+    width: number
+    height: number
+    originalImageWidth?: number
+    originalImageHeight?: number
+    rotation?: number
+    tags?: string[]
+    notes?: string
+    sourceRotation?: number
+    filter?: string
+}
+
+export interface RotatableImageProps {
+    crop: CropData
+    currentRotation: number
+    isRotating: boolean
+    filterCss?: string
+    containerInset?: number
+    showCornerHandles?: boolean
+    hideRotationOverlay?: boolean
+    cropOffsetX?: number
+    cropOffsetY?: number
+    isPanning?: boolean
+}
 
 /**
  * RotatableImage - Shared component for rendering an image with rotation support
@@ -10,14 +40,6 @@ const DEFAULT_IMAGE_DIMENSION = 1000 // fallback when original dimensions unavai
  * Used by both CropCard (gallery view) and FreeformCanvas (composer view)
  * Uses pixel-based calculations for proper transform-origin positioning
  * Includes lazy loading for original image when rotation is applied
- * 
- * @param {Object} crop - The crop data object containing image info
- * @param {number} currentRotation - Current rotation angle in degrees
- * @param {boolean} isRotating - Whether user is currently dragging to rotate
- * @param {string} filterCss - CSS filter string to apply (optional, defaults to 'none')
- * @param {number} containerInset - Inset in pixels for selection box (0 for freeform, 12 for CropCard)
- * @param {boolean} showCornerHandles - Whether to show corner handles on selection box
- * @param {boolean} hideRotationOverlay - Whether to hide the rotation overlay (e.g., when editing corners)
  */
 const RotatableImage = memo(function RotatableImage({
     crop,
@@ -30,12 +52,12 @@ const RotatableImage = memo(function RotatableImage({
     cropOffsetX = 0,
     cropOffsetY = 0,
     isPanning = false
-}) {
-    const containerRef = useRef(null)
+}: RotatableImageProps) {
+    const containerRef = useRef<HTMLDivElement>(null)
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
 
     // Lazy loading state for original image
-    const [originalImage, setOriginalImage] = useState(null)
+    const [originalImage, setOriginalImage] = useState<string | null>(null)
     const [isLoadingOriginal, setIsLoadingOriginal] = useState(false)
 
     // Track container size with ResizeObserver
@@ -65,7 +87,7 @@ const RotatableImage = memo(function RotatableImage({
             const loadImage = async () => {
                 setIsLoadingOriginal(true)
                 try {
-                    const imageData = await getImage(crop.imageId)
+                    const imageData = await getImage(crop.imageId!)
                     if (imageData && imageData.data) {
                         setOriginalImage(imageData.data)
                     }
@@ -123,7 +145,7 @@ const RotatableImage = memo(function RotatableImage({
             const loadImage = async () => {
                 setIsLoadingOriginal(true)
                 try {
-                    const imageData = await getImage(crop.imageId)
+                    const imageData = await getImage(crop.imageId!)
                     if (imageData && imageData.data) {
                         setOriginalImage(imageData.data)
                     }
@@ -138,7 +160,7 @@ const RotatableImage = memo(function RotatableImage({
     }, [cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
 
     // Corner handle style (reusable)
-    const cornerHandleStyle = {
+    const cornerHandleStyle: CSSProperties = {
         position: 'absolute',
         width: 8,
         height: 8,
@@ -236,7 +258,7 @@ const RotatableImage = memo(function RotatableImage({
                             }}
                         >
                             <img
-                                src={originalImage}
+                                src={originalImage!}
                                 alt=""
                                 style={{
                                     width: '100%',

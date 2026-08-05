@@ -1,6 +1,13 @@
 import CropCard from './CropCard'
+import { CropData } from './RotatableImage'
 
-function GalleryView({ crops, onUpdateCrop, onDeleteCrop }) {
+export interface GalleryViewProps {
+    crops: CropData[]
+    onUpdateCrop: (id: number | string, updates: Partial<CropData>) => void
+    onDeleteCrop: (id: number | string) => void
+}
+
+function GalleryView({ crops, onUpdateCrop, onDeleteCrop }: GalleryViewProps) {
     if (crops.length === 0) {
         return (
             <div className="glass-card flex-1 flex flex-col items-center justify-center gap-6">

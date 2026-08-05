@@ -1,43 +1,49 @@
-import { memo, useCallback, useRef, useState } from 'react'
-import RotatableImage from './RotatableImage'
+import { memo, useCallback, useRef, useState, KeyboardEvent, ChangeEvent, MouseEvent } from 'react'
+import RotatableImage, { CropData } from './RotatableImage'
 import { FILTERS } from '../utils/filters'
 
 // Constants for rotation
 const ROTATION_EDGE_THRESHOLD = 40 // pixels from edge that triggers rotation mode
 const SELECTION_BOX_INSET = 12 // pixels of padding around selection box
 
-function CropCard({ crop, onUpdate, onDelete }) {
+export interface CropCardProps {
+    crop: CropData
+    onUpdate: (updates: Partial<CropData>) => void
+    onDelete: () => void
+}
+
+function CropCard({ crop, onUpdate, onDelete }: CropCardProps) {
     const [tagInput, setTagInput] = useState('')
     const [isRotating, setIsRotating] = useState(false)
     const [imageRotation, setImageRotation] = useState(crop.rotation || 0)
-    const containerRef = useRef(null)
+    const containerRef = useRef<HTMLDivElement>(null)
     const initialRotationRef = useRef({ angle: 0, startAngle: 0 })
 
     // Get CSS filter string from filter name
-    const getFilterStyle = useCallback((filterName) => {
+    const getFilterStyle = useCallback((filterName?: string) => {
         const filter = FILTERS.find(f => f.id === filterName)
         return filter ? filter.css : 'none'
     }, [])
 
-    const handleTagKeyDown = (e) => {
+    const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && tagInput.trim()) {
             e.preventDefault()
-            const newTags = [...crop.tags, tagInput.trim()]
+            const newTags = [...(crop.tags || []), tagInput.trim()]
             onUpdate({ tags: newTags })
             setTagInput('')
         }
     }
 
-    const handleRemoveTag = (index) => {
-        const newTags = crop.tags.filter((_, i) => i !== index)
+    const handleRemoveTag = (index: number) => {
+        const newTags = (crop.tags || []).filter((_, i) => i !== index)
         onUpdate({ tags: newTags })
     }
 
-    const handleNotesChange = (e) => {
+    const handleNotesChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
         onUpdate({ notes: e.target.value })
     }
 
-    const getMousePosition = useCallback((e) => {
+    const getMousePosition = useCallback((e: MouseEvent<HTMLDivElement>) => {
         if (!containerRef.current) return { x: 0, y: 0 }
         const rect = containerRef.current.getBoundingClientRect()
         return {
@@ -46,7 +52,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
         }
     }, [])
 
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
         if (!containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
         const pos = getMousePosition(e)
@@ -61,7 +67,6 @@ function CropCard({ crop, onUpdate, onDelete }) {
             pos.y < ROTATION_EDGE_THRESHOLD || pos.y > rect.height - ROTATION_EDGE_THRESHOLD
 
         if (isOutsideInner) {
-
             // Start rotation mode
             const angleToMouse = Math.atan2(
                 pos.y - centerY,
@@ -77,7 +82,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
         }
     }
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
         if (!isRotating || !containerRef.current) return
 
         const rect = containerRef.current.getBoundingClientRect()
@@ -147,7 +152,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
                 )}
 
                 {/* Source rotation indicator - shows if crop was taken at an angle */}
-                {crop.sourceRotation && crop.sourceRotation !== 0 && (
+                {crop.sourceRotation !== undefined && crop.sourceRotation !== 0 && (
                     <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white flex items-center gap-1 z-10">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -199,7 +204,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
                     </label>
 
                     {/* Tag chips */}
-                    {crop.tags.length > 0 && (
+                    {crop.tags && crop.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {crop.tags.map((tag, index) => (
                                 <span key={index} className="tag-chip">
@@ -237,7 +242,7 @@ function CropCard({ crop, onUpdate, onDelete }) {
                         Notes
                     </label>
                     <textarea
-                        value={crop.notes}
+                        value={crop.notes || ''}
                         onChange={handleNotesChange}
                         placeholder="Add observations about this detail..."
                         rows={3}

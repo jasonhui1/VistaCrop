@@ -1,11 +1,14 @@
+import { ReactNode, CSSProperties } from 'react'
 import { memo } from 'react'
 
-/**
- * PhoneMockup Component - Renders a phone frame around content
- * Creates a realistic phone bezel effect with the image as the screen
- * When landscape=true, buttons are repositioned to sides (phone held sideways)
- */
-const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', style = 'modern', landscape = false }) {
+export interface PhoneMockupProps {
+    children?: ReactNode
+    color?: string
+    style?: 'modern' | 'classic' | string
+    landscape?: boolean
+}
+
+const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', style = 'modern', landscape = false }: PhoneMockupProps) {
     // Phone frame proportions (relative to container)
     const bezelWidth = style === 'modern' ? 3 : 6 // percentage
     const topBezel = style === 'modern' ? 6 : 12 // percentage  
