@@ -1,11 +1,18 @@
 import { memo } from 'react'
 import { FRAME_SHAPES, getShapeList } from '../../utils/frameShapes'
+import { PlacedItem, BorderStyle } from '../../types'
+
+export interface SelectedItemControlsProps {
+    selectedItem: PlacedItem | null | undefined
+    onUpdateItem: (id: string | number, updates: Partial<PlacedItem>) => void
+    onDeleteItem: (id: string | number) => void
+}
 
 /**
  * Selected item controls component for the right sidebar
  * Contains frame shape, border, and style controls
  */
-function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
+function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: SelectedItemControlsProps) {
     if (!selectedItem) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center py-8">
@@ -135,7 +142,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                         onClick={() => {
                             const shape = FRAME_SHAPES[selectedItem.frameShape || 'rectangle'] || FRAME_SHAPES.rectangle
                             onUpdateItem(selectedItem.id, {
-                                customPoints: shape.points.map(p => [...p]),
+                                customPoints: shape.points.map(p => [...p] as [number, number]),
                                 editingCorners: true
                             })
                         }}
@@ -181,7 +188,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                                 )}
                             </button>
                             <button
-                                onClick={() => onUpdateItem(selectedItem.id, { customPoints: null, editingCorners: false })}
+                                onClick={() => onUpdateItem(selectedItem.id, { customPoints: undefined, editingCorners: false })}
                                 className="px-2 py-1.5 text-xs rounded bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-red-400 transition-colors"
                                 title="Reset to preset shape"
                             >
@@ -198,12 +205,12 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
             <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
                 <label className="text-xs text-[var(--text-muted)] block mb-1">Border Style</label>
                 <div className="grid grid-cols-4 gap-1 mb-2">
-                    {[
+                    {([
                         { id: 'solid', label: '━', title: 'Solid' },
                         { id: 'manga', label: '▰', title: 'Manga Double' },
                         { id: 'dashed', label: '┅', title: 'Dashed' },
                         { id: 'none', label: '○', title: 'None' }
-                    ].map((style) => (
+                    ] as { id: BorderStyle; label: string; title: string }[]).map((style) => (
                         <button
                             key={style.id}
                             onClick={() => onUpdateItem(selectedItem.id, { borderStyle: style.id })}
@@ -307,7 +314,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }) {
                 <label className="text-xs text-[var(--text-muted)]">Fit:</label>
                 <select
                     value={selectedItem.objectFit || 'contain'}
-                    onChange={(e) => onUpdateItem(selectedItem.id, { objectFit: e.target.value })}
+                    onChange={(e) => onUpdateItem(selectedItem.id, { objectFit: e.target.value as PlacedItem['objectFit'] })}
                     className="text-xs py-1 flex-1"
                 >
                     <option value="contain">Contain</option>

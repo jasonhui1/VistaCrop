@@ -1,4 +1,32 @@
-import { memo, useState } from 'react'
+import { memo, useState, MouseEvent } from 'react'
+import { CanvasMode, SavedCanvas } from '../../types'
+
+export interface CanvasToolbarProps {
+    mode: CanvasMode
+    layoutName: string
+    itemCount: number
+    panelCount: number
+    editingCanvasSize: boolean
+    onToggleEditCanvasSize: () => void
+    onClear: () => void
+    canUndo: boolean
+    canRedo: boolean
+    onUndo: () => void
+    onRedo: () => void
+    canvasId: string | number | null
+    isSaving: boolean
+    isLoading: boolean
+    savedCanvases: SavedCanvas[]
+    showLoadMenu: boolean
+    onToggleLoadMenu: () => void
+    onFetchCanvases: () => void
+    onLoadCanvas: (canvasId: string) => void
+    onDeleteCanvas: (canvasId: string) => void
+    onSave: () => void
+    onExport: () => void
+    hasUnsavedChanges: boolean
+    lastSavedAt: number | null
+}
 
 /**
  * Canvas toolbar component for Composer view
@@ -30,16 +58,15 @@ function CanvasToolbar({
     onSave,
     onExport,
     // Auto-save indicator
-    hasUnsavedChanges,
-    lastSavedAt
-}) {
-    const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+    hasUnsavedChanges
+}: CanvasToolbarProps) {
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null)
 
-    const handleDeleteClick = (e, canvasIdToDelete) => {
+    const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>, canvasIdToDelete: string | number) => {
         e.stopPropagation()
         if (deleteConfirmId === canvasIdToDelete) {
             // Confirmed - actually delete
-            onDeleteCanvas(canvasIdToDelete)
+            onDeleteCanvas(String(canvasIdToDelete))
             setDeleteConfirmId(null)
         } else {
             // First click - show confirmation
@@ -155,7 +182,7 @@ function CanvasToolbar({
                                         className={`flex items-center justify-between px-3 py-2 text-xs hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-color)] last:border-b-0 ${canvas.id === canvasId ? 'bg-[var(--accent-primary)]/10' : ''}`}
                                     >
                                         <button
-                                            onClick={() => onLoadCanvas(canvas.id)}
+                                            onClick={() => onLoadCanvas(String(canvas.id))}
                                             className={`flex-1 text-left ${canvas.id === canvasId ? 'text-[var(--accent-primary)]' : 'text-[var(--text-secondary)]'}`}
                                         >
                                             <div className="font-medium truncate">

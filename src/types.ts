@@ -20,6 +20,8 @@ export type BorderStyle = 'none' | 'solid' | 'dashed' | 'manga';
 
 export type PhoneStyle = 'modern' | 'classic';
 
+export type CanvasMode = 'freeform' | 'panels';
+
 export interface Crop {
     id: string | number;
     imageId?: string;
@@ -56,6 +58,7 @@ export interface PlacedItem extends Rect {
     phoneMockup?: boolean;
     phoneColor?: string;
     phoneStyle?: PhoneStyle;
+    objectFit?: 'contain' | 'cover' | 'fill';
 }
 
 export interface PanelAssignment {

@@ -1,5 +1,21 @@
-import { memo } from 'react'
+import { memo, DragEvent } from 'react'
 import SelectedItemControls from './SelectedItemControls'
+import { CanvasMode, Crop, PlacedItem } from '../../types'
+
+export type RightSidebarTab = 'crops' | 'selected'
+
+export interface RightSidebarProps {
+    isOpen: boolean
+    onToggle: () => void
+    activeTab: RightSidebarTab
+    onTabChange: (tab: RightSidebarTab) => void
+    mode: CanvasMode
+    selectedItem: PlacedItem | null | undefined
+    crops: Crop[]
+    onUpdateItem: (id: string | number, updates: Partial<PlacedItem>) => void
+    onDeleteItem: (id: string | number) => void
+    onCropDragStart: (e: DragEvent<HTMLDivElement>, crop: Crop) => void
+}
 
 /**
  * Right sidebar component for Composer view
@@ -16,7 +32,7 @@ function RightSidebar({
     onUpdateItem,
     onDeleteItem,
     onCropDragStart
-}) {
+}: RightSidebarProps) {
     return (
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
             {/* Sidebar Toggle */}
