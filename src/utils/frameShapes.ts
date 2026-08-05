@@ -299,11 +299,15 @@ export function getClipPath(shapeId: string, customPoints: Point2D[] | null = nu
  * @param height - Container height
  * @returns SVG points attribute value
  */
-export function getSvgPoints(shapeId: string, width: number, height: number): string {
-    const shape = FRAME_SHAPES[shapeId];
-    if (!shape) return '';
+export function getSvgPoints(
+    shapeId: string,
+    width: number,
+    height: number,
+    customPoints: Point2D[] | null = null
+): string {
+    const points = customPoints || FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
 
-    return shape.points
+    return points
         .map(([xPct, yPct]) => `${(xPct / 100) * width},${(yPct / 100) * height}`)
         .join(' ');
 }

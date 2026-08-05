@@ -13,6 +13,7 @@ export interface ExportCanvasParams {
     crops: Crop[];
     mode: 'panels' | 'freeform' | string;
     placedItems?: PlacedItem[];
+    basePath?: string;
 }
 
 /**
@@ -122,13 +123,14 @@ async function drawRotatedItem(
     x: number,
     y: number,
     width: number,
-    height: number
+    height: number,
+    basePath: string = '/api'
 ): Promise<void> {
     const rotation = item.rotation ?? crop.rotation ?? 0;
 
     try {
         if (!crop.imageId) throw new Error('No imageId on crop');
-        const originalImageData = await getImage(crop.imageId);
+        const originalImageData = await getImage(crop.imageId, basePath);
         if (!originalImageData?.data) throw new Error('No original image data');
 
         const origImg = new Image();
@@ -234,7 +236,8 @@ async function drawNonRotatedItem(
 async function exportFreeformMode(
     ctx: CanvasRenderingContext2D,
     placedItems: PlacedItem[],
-    crops: Crop[]
+    crops: Crop[],
+    basePath: string = '/api'
 ): Promise<void> {
     for (const item of placedItems) {
         const crop = crops.find(c => String(c.id) === String(item.cropId));
@@ -252,7 +255,7 @@ async function exportFreeformMode(
 
         // Draw the image (with or without rotation)
         if (rotation !== 0 && crop.imageId) {
-            await drawRotatedItem(ctx, item, crop, x, y, width, height);
+            await drawRotatedItem(ctx, item, crop, x, y, width, height, basePath);
         } else {
             await drawNonRotatedItem(ctx, crop, x, y, width, height);
         }
@@ -272,7 +275,8 @@ export async function exportCanvas({
     panels,
     crops,
     mode,
-    placedItems = []
+    placedItems = [],
+    basePath = '/api'
 }: ExportCanvasParams): Promise<void> {
     const canvas = document.createElement('canvas');
     canvas.width = composition.pageWidth;
@@ -287,7 +291,7 @@ export async function exportCanvas({
     if (mode === 'panels') {
         await exportPanelMode(ctx, composition, panels, crops);
     } else {
-        await exportFreeformMode(ctx, placedItems, crops);
+        await exportFreeformMode(ctx, placedItems, crops, basePath);
     }
 
     // Trigger download
