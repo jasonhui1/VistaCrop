@@ -13,7 +13,11 @@
     }
   },
   "files": [
-    "src"
+    "src",
+    "!src/app",
+    "!src/App.tsx",
+    "!src/assets",
+    "!src/index.css"
   ],
   "scripts": {
     "dev": "next dev",

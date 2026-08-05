@@ -35,3 +35,6 @@ public/uploads/
 # TypeScript build info
 *.tsbuildinfo
 
+
+# TypeScript incremental build cache
+*.tsbuildinfo

@@ -10,6 +10,9 @@ const SERVER_ENTRYPOINT = path.join(SRC_ROOT, 'server.ts');
 
 const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
 
+const clientGraph = collectModuleGraph(CLIENT_ENTRYPOINT);
+const serverGraph = collectModuleGraph(SERVER_ENTRYPOINT);
+
 /** The first directive prologue entry of a module, or null when it has none. */
 function leadingDirective(file) {
     const source = fs.readFileSync(file, 'utf8');
@@ -32,7 +35,7 @@ test('the exports map resolves both entrypoints, types included, from source', (
     }
 });
 
-test('the package deep-imports nothing beyond the two entrypoints', () => {
+test('the manifest offers no legacy main/types fallback around the exports map', () => {
     assert.equal(manifest.main, undefined);
     assert.equal(manifest.types, undefined);
 });
@@ -48,18 +51,30 @@ test('React is a peer dependency so the consumer owns the only copy', () => {
     }
 });
 
-test('an install from a git ref ships the source files the consumer transpiles', () => {
+test('an install from a git ref ships every source file the consumer transpiles', () => {
     assert.ok(
         manifest.files?.includes('src'),
         `Expected "src" in the packed files, got: ${JSON.stringify(manifest.files)}`
     );
 
-    const { visited } = collectModuleGraph(CLIENT_ENTRYPOINT);
-    for (const file of visited) {
+    // The demo app shares the src tree with the library but is excluded from
+    // the tarball, so nothing either entrypoint reaches may live under it.
+    const excluded = manifest.files
+        .filter((pattern) => pattern.startsWith('!'))
+        .map((pattern) => pattern.slice(1).replace(/^src\/?/, ''));
+
+    for (const file of [...clientGraph.visited, ...serverGraph.visited]) {
+        const relative = relativeToSrc(file);
         assert.ok(
-            relativeToSrc(file).length > 0 && !relativeToSrc(file).startsWith('..'),
-            `${file} is reachable from the entrypoint but lives outside the packed src tree`
+            relative.length > 0 && !relative.startsWith('..'),
+            `${file} is reachable from an entrypoint but lives outside the packed src tree`
         );
+        for (const prefix of excluded) {
+            assert.ok(
+                relative !== prefix && !relative.startsWith(`${prefix}/`),
+                `${relative} is reachable from an entrypoint but excluded from the tarball by "!src/${prefix}"`
+            );
+        }
     }
 });
 
@@ -72,12 +87,11 @@ test('the client entrypoint declares the client boundary for its consumers', () 
 });
 
 test('the server entrypoint is not reachable from the client entrypoint', () => {
-    const { visited } = collectModuleGraph(CLIENT_ENTRYPOINT);
     const serverModules = [SERVER_ENTRYPOINT, path.join(SRC_ROOT, 'lib', 'storage', 'server.ts')];
 
     for (const serverModule of serverModules) {
         assert.ok(
-            !visited.has(serverModule),
+            !clientGraph.visited.has(serverModule),
             `${relativeToSrc(serverModule)} must stay out of the client module graph`
         );
     }

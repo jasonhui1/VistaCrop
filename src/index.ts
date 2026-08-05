@@ -1,9 +1,7 @@
 /**
  * Public API surface for VistaCrop.
  *
- * The directive declares the client boundary here rather than in each view, so
- * a consumer can import from a server component without knowing which
- * internals are stateful (#204).
+ * The directive holds the client boundary for every export below (#204).
  */
 'use client';
 
