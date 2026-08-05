@@ -31,3 +31,7 @@ build/
 # Local Data
 data/
 public/uploads/
+
+# TypeScript build info
+*.tsbuildinfo
+
