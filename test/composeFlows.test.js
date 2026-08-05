@@ -3,21 +3,25 @@ import assert from 'node:assert/strict';
 import {
     CROP_ID,
     CROP_IMAGE_DATA,
+    PAGE_MARGIN,
     PAGE_WIDTH,
     PAGE_HEIGHT,
-    buttonLabelled,
-    buttonTitled,
-    clickElement,
-    dragFrom,
     dropCropAt,
+    dropCropOnPanel,
     itemBox,
     itemRotation,
     mountComposer,
     selectItem,
-    settle,
-    stubBoundingRect,
+    stubPageBox,
     toScreen
 } from './helpers/composerHarness.mjs';
+import {
+    buttonLabelled,
+    buttonTitled,
+    clickElement,
+    dragFrom,
+    settle
+} from './helpers/domHarness.mjs';
 import { callsTo, recordCanvasWork, withImmediateImageLoading } from './helpers/canvasStubs.mjs';
 
 // Where the tests drop the crop, and the box the composer gives it there:
@@ -38,6 +42,17 @@ function assertBox(actual, expected, flow) {
     }
 }
 
+/** Compares drawing arguments, which carry floating-point scaling noise. */
+function assertNumbersClose(actual, expected, message) {
+    assert.equal(actual.length, expected.length, `${message} (expected ${expected.length} arguments)`);
+    for (const [index, value] of expected.entries()) {
+        assert.ok(
+            Math.abs(actual[index] - value) < 0.01,
+            `${message} (argument ${index}: expected ${value}, got ${actual[index]})`
+        );
+    }
+}
+
 function placedItem(container) {
     return container.querySelector('.freeform-item');
 }
@@ -47,7 +62,7 @@ async function placeCrop(harness, flow) {
     await dropCropAt(harness.canvas, CROP_ID, DROP_POINT.x, DROP_POINT.y);
     const item = placedItem(harness.container);
     assert.ok(item, `${flow}: expected a freeform item after dropping a crop`);
-    stubBoundingRect(item, PLACED_BOX);
+    stubPageBox(item, PLACED_BOX);
     return item;
 }
 
@@ -250,6 +265,78 @@ test('undo/redo: steps back and forward through resizing and rotating', async ()
     harness.cleanup();
 });
 
+// The default 'single' layout is one panel filling the page inside its margin.
+const SINGLE_PANEL_BOX = {
+    x: PAGE_MARGIN,
+    y: PAGE_MARGIN,
+    width: PAGE_WIDTH - PAGE_MARGIN * 2,
+    height: PAGE_HEIGHT - PAGE_MARGIN * 2
+};
+
+/** Switches the composer to panel mode and returns its one empty panel. */
+async function switchToPanels(harness, flow) {
+    await clickElement(buttonLabelled(harness.container, 'Panels'));
+
+    const panels = [...harness.container.querySelectorAll('.composer-panel')];
+    assert.equal(panels.length, 1, `${flow}: expected the single layout to render one panel`);
+    assert.ok(
+        panels[0].classList.contains('panel-slot-empty'),
+        `${flow}: expected the panel to start empty`
+    );
+    return panels[0];
+}
+
+test('panels: dropping a crop into a panel fills that slot', async () => {
+    const harness = await mountComposer();
+    const panel = await switchToPanels(harness, 'panels');
+
+    await dropCropOnPanel(panel, CROP_ID);
+
+    const filled = harness.container.querySelector('.composer-panel');
+    assert.ok(
+        filled.classList.contains('panel-slot-filled'),
+        'panels: expected the panel to be marked filled after the drop'
+    );
+    assert.ok(
+        filled.querySelector(`img[src="${CROP_IMAGE_DATA}"]`),
+        'panels: expected the dropped crop to render inside the panel'
+    );
+
+    harness.cleanup();
+});
+
+test('panels: exporting draws the assigned crop across its panel', async () => {
+    const harness = await mountComposer();
+    const panel = await switchToPanels(harness, 'panels');
+    await dropCropOnPanel(panel, CROP_ID);
+
+    const { contexts, downloads } = await recordCanvasWork(() =>
+        withImmediateImageLoading(async () => {
+            await clickElement(buttonLabelled(harness.container, 'Export'));
+            await settle();
+        })
+    );
+
+    assert.deepEqual(
+        callsTo(contexts, 'rect').map((call) => call.args),
+        [[SINGLE_PANEL_BOX.x, SINGLE_PANEL_BOX.y, SINGLE_PANEL_BOX.width, SINGLE_PANEL_BOX.height]],
+        'panels: expected the draw to be clipped to the panel'
+    );
+
+    const drawImageCalls = callsTo(contexts, 'drawImage');
+    assert.equal(drawImageCalls.length, 1, `panels: expected one image draw, got ${drawImageCalls.length}`);
+    // The square stub image is scaled to cover the panel and drawn from its centre.
+    assertNumbersClose(
+        drawImageCalls[0].args.slice(1),
+        [-837, -837, 1674, 1674],
+        'panels: expected the crop scaled to cover the panel'
+    );
+
+    assert.equal(downloads.length, 1, `panels: expected one download, got ${downloads.length}`);
+
+    harness.cleanup();
+});
+
 test('export: draws the placed item onto a page-sized canvas and downloads a PNG', async () => {
     const harness = await mountComposer();
     await placeCrop(harness, 'export');
@@ -278,7 +365,7 @@ test('export: draws the placed item onto a page-sized canvas and downloads a PNG
     const drawImageCalls = callsTo(contexts, 'drawImage');
     assert.equal(drawImageCalls.length, 1, `export: expected one image draw, got ${drawImageCalls.length}`);
     // The 100x100 stub image is letterboxed into the item's 2:1 box.
-    assert.deepEqual(
+    assertNumbersClose(
         drawImageCalls[0].args.slice(1),
         [232.5, 122.5, 155, 155],
         'export: expected the crop drawn centred inside the placed item box'

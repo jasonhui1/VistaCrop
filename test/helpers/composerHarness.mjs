@@ -1,10 +1,6 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { act } from 'react';
 import { ComposerView, StorageAdapterProvider } from '../../src/index.ts';
-
-// React only lets `act` drive its scheduler when the environment opts in.
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+import { cropDropEvent, dispatchDrop, dragFrom, mountComponent, stubBoundingRect } from './domHarness.mjs';
 
 /**
  * The composer's default page is A4 portrait; the harness renders it at half
@@ -13,6 +9,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
  */
 export const PAGE_WIDTH = 1240;
 export const PAGE_HEIGHT = 1754;
+export const PAGE_MARGIN = 40;
 const PAGE_SCALE = 0.5;
 
 /** A crop twice as wide as it is tall, so aspect-ratio slips are visible. */
@@ -50,66 +47,30 @@ export function toScreen(pageX, pageY) {
     return { clientX: pageX * PAGE_SCALE, clientY: pageY * PAGE_SCALE };
 }
 
-/** The screen rectangle a page-unit box occupies at the harness's scale. */
-function toScreenRect({ x, y, width, height }) {
-    return {
+/** Gives an element the screen rectangle its page-unit box occupies. */
+export function stubPageBox(element, { x, y, width, height }) {
+    stubBoundingRect(element, {
         left: x * PAGE_SCALE,
         top: y * PAGE_SCALE,
         width: width * PAGE_SCALE,
         height: height * PAGE_SCALE
-    };
-}
-
-/** jsdom has no layout engine, so every measured element needs its box supplied. */
-export function stubBoundingRect(element, pageBox) {
-    const { left, top, width, height } = toScreenRect(pageBox);
-    element.getBoundingClientRect = () => ({
-        left,
-        top,
-        width,
-        height,
-        right: left + width,
-        bottom: top + height,
-        x: left,
-        y: top,
-        toJSON() {}
-    });
-}
-
-/** Lets queued promises and the hook's deferred flag updates settle. */
-export async function settle() {
-    await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
     });
 }
 
 export async function mountComposer() {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    const harness = await mountComponent(
+        React.createElement(
+            StorageAdapterProvider,
+            { adapter: ADAPTER },
+            React.createElement(ComposerView, { crops: [CROP] })
+        )
+    );
 
-    await act(async () => {
-        root.render(
-            React.createElement(
-                StorageAdapterProvider,
-                { adapter: ADAPTER },
-                React.createElement(ComposerView, { crops: [CROP] })
-            )
-        );
-    });
-
-    const canvas = container.querySelector('.freeform-canvas');
+    const canvas = harness.container.querySelector('.freeform-canvas');
     if (!canvas) throw new Error('ComposerView did not render a freeform canvas');
-    stubBoundingRect(canvas, { x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT });
+    stubPageBox(canvas, { x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT });
 
-    return {
-        container,
-        canvas,
-        cleanup() {
-            act(() => root.unmount());
-            container.remove();
-        }
-    };
+    return { ...harness, canvas };
 }
 
 /** The item's page-unit box, read back from the percentages it renders with. */
@@ -129,65 +90,17 @@ export function itemRotation(itemElement) {
     return match ? parseFloat(match[1]) : 0;
 }
 
-/** Drops a crop onto the canvas at a point given in page units. */
+/** Drops a crop onto the freeform canvas at a point given in page units. */
 export async function dropCropAt(canvas, cropId, pageX, pageY) {
-    const event = new window.MouseEvent('drop', {
-        bubbles: true,
-        cancelable: true,
-        ...toScreen(pageX, pageY)
-    });
-    Object.defineProperty(event, 'dataTransfer', {
-        value: {
-            dropEffect: 'none',
-            getData: (type) => (type === 'application/crop-id' ? String(cropId) : '')
-        }
-    });
-
-    await act(async () => {
-        canvas.dispatchEvent(event);
-    });
+    await dispatchDrop(canvas, cropDropEvent(cropId, toScreen(pageX, pageY)));
 }
 
-export async function clickElement(element) {
-    await act(async () => {
-        element.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    });
-}
-
-/**
- * Presses on `element`, moves the pointer to each waypoint and releases —
- * the shape every canvas transform (move, resize, rotate) is driven by.
- */
-export async function dragFrom(element, start, ...waypoints) {
-    await act(async () => {
-        element.dispatchEvent(new window.MouseEvent('mousedown', {
-            bubbles: true,
-            cancelable: true,
-            ...start
-        }));
-    });
-
-    for (const point of waypoints) {
-        await act(async () => {
-            window.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, ...point }));
-        });
-    }
-
-    await act(async () => {
-        window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
-    });
+/** Drops a crop onto a panel, which places by slot rather than by position. */
+export async function dropCropOnPanel(panel, cropId) {
+    await dispatchDrop(panel, cropDropEvent(cropId, { clientX: 0, clientY: 0 }));
 }
 
 /** The canvas selects on press, so a pointer press anywhere on the item selects it. */
 export async function selectItem(itemElement, pageX, pageY) {
     await dragFrom(itemElement, toScreen(pageX, pageY));
-}
-
-export function buttonTitled(container, title) {
-    return container.querySelector(`button[title^="${title}"]`);
-}
-
-export function buttonLabelled(container, label) {
-    return [...container.querySelectorAll('button')]
-        .find((button) => button.textContent.trim().startsWith(label));
 }

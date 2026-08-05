@@ -1,10 +1,14 @@
-/** jsdom never fires load events for `new Image()`, so drive them by hand. */
-export async function withImmediateImageLoading(run) {
+/**
+ * jsdom never fires load events for `new Image()`, so drive them by hand.
+ * Every image loaded during `run` reports `size`, which callers that measure
+ * the loaded image need to be able to state.
+ */
+export async function withImmediateImageLoading(run, size = { width: 100, height: 100 }) {
     const RealImage = globalThis.Image;
     class ImmediateImage {
         constructor() {
-            this.width = 100;
-            this.height = 100;
+            this.width = size.width;
+            this.height = size.height;
             this.onload = null;
             this.onerror = null;
         }
