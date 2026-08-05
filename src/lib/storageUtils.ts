@@ -3,9 +3,7 @@ import path from 'path';
 
 export const DB_DIR = path.join(process.cwd(), 'data');
 
-/**
- * Ensure a directory exists on disk
- */
+
 export function ensureDir(dirPath: string): void {
     if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
@@ -18,9 +16,7 @@ export interface ParsedBase64Image {
     base64Content: string;
 }
 
-/**
- * Extract image extension, mime type, and raw base64 data from a data URL string
- */
+
 export function parseBase64Image(base64Data: string): ParsedBase64Image {
     const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!matches) {

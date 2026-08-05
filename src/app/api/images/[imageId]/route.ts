@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getStorageAdapter } from '@/lib/storage';
 
-/**
- * GET /api/images/{imageId}
- * Retrieve a stored image by ID (returns base64 data URL)
- */
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ imageId: string }> }
@@ -20,10 +17,7 @@ export async function GET(
     return NextResponse.json(image);
 }
 
-/**
- * POST /api/images/{imageId}
- * Upload/save an image
- */
+
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ imageId: string }> }
@@ -46,10 +40,7 @@ export async function POST(
     }
 }
 
-/**
- * DELETE /api/images/{imageId}
- * Delete an image and optionally its associated crops
- */
+
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ imageId: string }> }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import ImageUploader from './components/ImageUploader'
 import CanvasView from './components/CanvasView'
 import GalleryView from './components/GalleryView'
@@ -6,28 +6,24 @@ import ComposerView from './components/ComposerView'
 import { saveCrops, loadAllCrops, updateCrop, deleteCrop, uploadImage, getImage } from './utils/api'
 
 function App() {
-  const [view, setView] = useState('canvas') // 'canvas', 'gallery', or 'composer'
+  const [view, setView] = useState('canvas')
   const [uploadedImage, setUploadedImage] = useState(null)
   const [imageId, setImageId] = useState(null)
   const [crops, setCrops] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Use ref to avoid stale closure issues
   const imageIdRef = useRef(null)
 
-  // Load all crops on app mount
   useEffect(() => {
     async function loadSavedCrops() {
       try {
         const allCrops = await loadAllCrops()
         if (allCrops.length > 0) {
           setCrops(allCrops)
-          // Get the imageId from the first crop
           const firstCropImageId = allCrops[0].imageId
           if (firstCropImageId) {
             imageIdRef.current = firstCropImageId
             setImageId(firstCropImageId)
-            // Fetch the original image from the server
             try {
               const imageData = await getImage(firstCropImageId)
               if (imageData && imageData.data) {
@@ -49,15 +45,13 @@ function App() {
   }, [])
 
   const handleImageUpload = async (imageDataUrl) => {
-    // Generate a unique imageId for this upload session
     const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     imageIdRef.current = newImageId
     setImageId(newImageId)
     setUploadedImage(imageDataUrl)
-    setCrops([]) // Clear crops for new image
+    setCrops([])
     setView('canvas')
 
-    // Upload the image to the server immediately
     try {
       await uploadImage(newImageId, imageDataUrl)
       console.log(`Uploaded image: ${newImageId}`)
@@ -66,9 +60,7 @@ function App() {
     }
   }
 
-  // Helper to save crops to the server - groups by imageId to avoid duplicates
   const saveToServer = useCallback(async (cropsToSave) => {
-    // Group crops by their imageId
     const cropsByImageId = {}
     for (const crop of cropsToSave) {
       const cropImageId = crop.imageId || imageIdRef.current
@@ -79,7 +71,6 @@ function App() {
       cropsByImageId[cropImageId].push(crop)
     }
 
-    // Save each group to its respective imageId
     try {
       for (const [imgId, imgCrops] of Object.entries(cropsByImageId)) {
         await saveCrops(imgId, imgCrops)
@@ -93,9 +84,8 @@ function App() {
   const handleAddCrop = async (cropData) => {
     const newCrop = {
       id: Date.now(),
-      imageId: imageIdRef.current, // Tag with current image
+      imageId: imageIdRef.current,
       imageData: cropData.imageData,
-      // Note: originalImage is not stored in the crop - it's fetched separately via imageId
       x: cropData.x,
       y: cropData.y,
       width: cropData.width,
@@ -111,7 +101,6 @@ function App() {
     const updatedCrops = [...crops, newCrop]
     setCrops(updatedCrops)
 
-    // Save to server immediately
     await saveToServer(updatedCrops)
   }
 
@@ -124,7 +113,6 @@ function App() {
     )
     setCrops(updatedCrops)
 
-    // Use granular update API
     try {
       const cropImageId = crop.imageId || imageIdRef.current
       if (cropImageId) {
@@ -141,7 +129,6 @@ function App() {
     const updatedCrops = crops.filter(c => c.id !== id)
     setCrops(updatedCrops)
 
-    // Use granular delete API
     try {
       const cropImageId = crop?.imageId || imageIdRef.current
       if (cropImageId) {
@@ -155,7 +142,6 @@ function App() {
 
   return (
     <div className="vista-crop h-screen flex flex-col bg-[var(--bg-primary)] overflow-hidden">
-      {/* Header */}
       <header className="glass-card px-4 py-2 flex items-center justify-between border-b border-[var(--border-color)] rounded-none">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -166,7 +152,6 @@ function App() {
           <h1 className="text-lg font-bold gradient-text">Art Detail Studio</h1>
         </div>
 
-        {/* View Toggle */}
         <div className="flex items-center gap-2 bg-[var(--bg-tertiary)] rounded-xl p-1">
           <button
             onClick={() => setView('canvas')}
@@ -217,11 +202,9 @@ function App() {
           </button>
         </div>
 
-        {/* Upload Button */}
         <ImageUploader onImageUpload={handleImageUpload} />
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 p-4 min-h-0 flex flex-col">
         {view === 'canvas' ? (
           <CanvasView

@@ -17,10 +17,7 @@ export interface RightSidebarProps {
     onCropDragStart: (e: DragEvent<HTMLDivElement>, crop: Crop) => void
 }
 
-/**
- * Right sidebar component for Composer view
- * Contains tabs for Crops list and Selected item controls
- */
+
 function RightSidebar({
     isOpen,
     onToggle,
@@ -35,7 +32,7 @@ function RightSidebar({
 }: RightSidebarProps) {
     return (
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-l border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
-            {/* Sidebar Toggle */}
+            {}
             <button
                 onClick={onToggle}
                 className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
@@ -48,7 +45,7 @@ function RightSidebar({
 
             {isOpen && (
                 <div className="overflow-y-auto flex-1 flex flex-col">
-                    {/* Tab buttons */}
+                    {}
                     <div className="flex border-b border-[var(--border-color)]">
                         <button
                             onClick={() => onTabChange('crops')}
@@ -73,9 +70,9 @@ function RightSidebar({
                         </button>
                     </div>
 
-                    {/* Tab Content - Both rendered but hidden with CSS to preserve scroll */}
+                    {}
                     <div className="flex-1 overflow-hidden flex flex-col">
-                        {/* Selected Item Controls */}
+                        {}
                         <div
                             className="p-3 flex-1 overflow-y-auto"
                             style={{ display: activeTab === 'selected' ? 'block' : 'none' }}
@@ -89,7 +86,7 @@ function RightSidebar({
                             )}
                         </div>
 
-                        {/* Crops List */}
+                        {}
                         <div
                             className="p-3 flex-1 overflow-y-auto"
                             style={{ display: activeTab === 'crops' ? 'block' : 'none' }}

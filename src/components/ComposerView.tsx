@@ -22,19 +22,13 @@ export interface ComposerViewProps {
     adapter?: StorageAdapter
 }
 
-/**
- * ComposerView - Main composition view for creating manga-style page layouts
- * Supports both panel-based layouts and freeform placement
- */
+
 function ComposerView({ crops, adapter }: ComposerViewProps) {
-    // === MODE STATE ===
     const [mode, setMode] = useState<CanvasMode>('freeform')
 
-    // === COMPOSITION STATE ===
     const [composition, setComposition] = useState<Composition>(() => createEmptyComposition())
     const [selectedPanelIndex, setSelectedPanelIndex] = useState<number | null>(null)
 
-    // === FREEFORM STATE (with undo/redo) ===
     const {
         state: placedItems,
         setState: setPlacedItems,
@@ -48,13 +42,11 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
     } = useUndoRedo<PlacedItem[]>([])
     const [selectedItemId, setSelectedItemId] = useState<string | number | null>(null)
 
-    // === UI STATE ===
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
     const [editingCanvasSize, setEditingCanvasSize] = useState(false)
     const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('crops')
 
-    // === CANVAS PERSISTENCE ===
     const handleLoadState = useCallback((canvasData: SavedCanvas) => {
         if (canvasData.composition) setComposition(canvasData.composition)
         if (canvasData.placedItems) resetPlacedItems(canvasData.placedItems)
@@ -71,7 +63,6 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         adapter
     })
 
-    // === DERIVED STATE ===
     const currentLayout = useMemo(() => getLayout(composition.layoutId), [composition.layoutId])
 
     const panels = useMemo(() =>
@@ -92,7 +83,6 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         ? composition.assignments[selectedPanelIndex]
         : null
 
-    // === COMPOSITION HANDLERS ===
     const handleLayoutChange = useCallback((layoutId: string) => {
         setComposition(prev => changeCompositionLayout(prev, layoutId))
         setSelectedPanelIndex(null)
@@ -128,7 +118,6 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         }))
     }, [])
 
-    // === PANEL MODE HANDLERS ===
     const handleDropCropToPanel = useCallback((panelIndex: number, cropId: string | number) => {
         setComposition(prev => updatePanelAssignment(prev, panelIndex, { cropId }))
     }, [])
@@ -141,7 +130,6 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         setComposition(prev => updatePanelAssignment(prev, panelIndex, { zoom }))
     }, [])
 
-    // === FREEFORM MODE HANDLERS ===
     const handleDropCropToFreeform = useCallback((cropId: string | number, x: number, y: number) => {
         const crop = crops.find(c => c.id === cropId)
         if (!crop) return
@@ -216,12 +204,10 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         e.dataTransfer.effectAllowed = 'copy'
     }, [])
 
-    // === EXPORT HANDLER ===
     const handleExport = useCallback(async () => {
         await exportCanvas({ composition, panels, crops, mode, placedItems })
     }, [composition, panels, crops, mode, placedItems])
 
-    // === KEYBOARD SHORTCUTS ===
     useKeyboardShortcuts({
         enabled: mode === 'freeform',
         onDelete: () => selectedItemId && handleDeleteItem(selectedItemId),
@@ -231,10 +217,9 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
         onNudge: handleNudge
     })
 
-    // === RENDER ===
     return (
         <div className="glass-card flex-1 flex overflow-hidden">
-            {/* Left Sidebar */}
+            {}
             <LeftSidebar
                 isOpen={leftSidebarOpen}
                 onToggle={() => setLeftSidebarOpen(!leftSidebarOpen)}
@@ -246,9 +231,9 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
                 onPagePresetChange={handlePagePresetChange}
             />
 
-            {/* Main Canvas Area */}
+            {}
             <div className="flex-1 flex flex-col p-2 overflow-hidden">
-                {/* Toolbar */}
+                {}
                 <CanvasToolbar
                     mode={mode}
                     layoutName={currentLayout.name}
@@ -276,7 +261,7 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
                     lastSavedAt={persistence.lastSavedAt}
                 />
 
-                {/* Canvas Container */}
+                {}
                 <div className="flex-1 flex items-center justify-center bg-[var(--bg-tertiary)] rounded-lg p-2 min-h-0">
                     {mode === 'panels' ? (
                         <PageCanvas
@@ -304,7 +289,7 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
                     )}
                 </div>
 
-                {/* Panel Controls (panel mode) */}
+                {}
                 {mode === 'panels' && selectedPanelIndex !== null && selectedAssignment && (
                     <div className="mt-4 p-4 bg-[var(--bg-tertiary)] rounded-xl flex items-center gap-6">
                         <span className="text-sm font-medium text-[var(--text-secondary)]">
@@ -335,7 +320,7 @@ function ComposerView({ crops, adapter }: ComposerViewProps) {
                 )}
             </div>
 
-            {/* Right Sidebar */}
+            {}
             <RightSidebar
                 isOpen={rightSidebarOpen}
                 onToggle={() => setRightSidebarOpen(!rightSidebarOpen)}

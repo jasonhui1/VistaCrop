@@ -1,7 +1,4 @@
-/**
- * Export utility for ComposerView canvas
- * Handles rendering placed items and panels to a downloadable PNG
- */
+
 import { getFilterCss } from './filters';
 import { drawShapePath } from './frameShapes';
 import { getImage } from './api';
@@ -16,9 +13,7 @@ export interface ExportCanvasParams {
     basePath?: string;
 }
 
-/**
- * Export canvas in panel mode
- */
+
 async function exportPanelMode(
     ctx: CanvasRenderingContext2D,
     composition: Composition,
@@ -66,9 +61,7 @@ async function exportPanelMode(
     }
 }
 
-/**
- * Draw border around a placed item
- */
+
 function drawItemBorder(
     ctx: CanvasRenderingContext2D,
     item: PlacedItem,
@@ -94,7 +87,6 @@ function drawItemBorder(
     ctx.stroke();
     ctx.restore();
 
-    // Draw inner manga-style border
     if (borderStyle === 'manga') {
         const insetAmount = (Math.max(borderWidth, 4) / Math.min(width, height)) * 100;
         ctx.save();
@@ -111,9 +103,7 @@ function drawItemBorder(
     }
 }
 
-/**
- * Draw item with rotation using original image
- */
+
 async function drawRotatedItem(
     ctx: CanvasRenderingContext2D,
     item: PlacedItem,
@@ -168,7 +158,6 @@ async function drawRotatedItem(
         ctx.restore();
     } catch (error) {
         console.error('Failed to load original image for export:', error);
-        // Fallback: draw cropped image without rotation
         if (crop.imageData) {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -182,9 +171,7 @@ async function drawRotatedItem(
     }
 }
 
-/**
- * Draw item without rotation (using cropped preview)
- */
+
 async function drawNonRotatedItem(
     ctx: CanvasRenderingContext2D,
     crop: Crop,
@@ -225,9 +212,7 @@ async function drawNonRotatedItem(
     ctx.restore();
 }
 
-/**
- * Export canvas in freeform mode
- */
+
 async function exportFreeformMode(
     ctx: CanvasRenderingContext2D,
     placedItems: PlacedItem[],
@@ -244,11 +229,9 @@ async function exportFreeformMode(
 
         ctx.save();
 
-        // Apply polygon clipping for the frame shape
         drawShapePath(ctx, shapeId, x, y, width, height, item.customPoints || null);
         ctx.clip();
 
-        // Draw the image (with or without rotation)
         if (rotation !== 0 && crop.imageId) {
             await drawRotatedItem(ctx, item, crop, basePath);
         } else {
@@ -257,14 +240,11 @@ async function exportFreeformMode(
 
         ctx.restore();
 
-        // Draw border on top
         drawItemBorder(ctx, item, shapeId);
     }
 }
 
-/**
- * Export the canvas to a PNG file and trigger download
- */
+
 export async function exportCanvas({
     composition,
     panels,
@@ -279,7 +259,6 @@ export async function exportCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Fill background
     ctx.fillStyle = composition.backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -289,7 +268,6 @@ export async function exportCanvas({
         await exportFreeformMode(ctx, placedItems, crops, basePath);
     }
 
-    // Trigger download
     const link = document.createElement('a');
     link.download = `manga-page-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');

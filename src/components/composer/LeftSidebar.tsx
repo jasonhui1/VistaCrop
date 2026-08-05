@@ -13,10 +13,7 @@ export interface LeftSidebarProps {
     onPagePresetChange: (presetKey: string) => void
 }
 
-/**
- * Left sidebar component for Composer view
- * Contains mode toggle, layout selection, page settings, and tips
- */
+
 function LeftSidebar({
     isOpen,
     onToggle,
@@ -31,7 +28,7 @@ function LeftSidebar({
 
     return (
         <div className={`${isOpen ? 'w-48' : 'w-12'} border-r border-[var(--border-color)] overflow-y-auto flex flex-col transition-all duration-200`}>
-            {/* Sidebar Toggle */}
+            {}
             <button
                 onClick={onToggle}
                 className="p-3 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-center"
@@ -44,7 +41,7 @@ function LeftSidebar({
 
             {isOpen && (
                 <div className="p-3 flex flex-col gap-4">
-                    {/* Mode Toggle */}
+                    {}
                     <div>
                         <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                             Mode
@@ -71,7 +68,7 @@ function LeftSidebar({
                         </div>
                     </div>
 
-                    {/* Panel Layouts (only in panel mode) */}
+                    {}
                     {mode === 'panels' && (
                         <>
                             <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
@@ -117,7 +114,7 @@ function LeftSidebar({
                         </>
                     )}
 
-                    {/* Page Settings */}
+                    {}
                     <div>
                         <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                             Page Size
@@ -133,7 +130,7 @@ function LeftSidebar({
                         </select>
                     </div>
 
-                    {/* Background Color */}
+                    {}
                     <div>
                         <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
                             Background
@@ -154,7 +151,7 @@ function LeftSidebar({
                         </div>
                     </div>
 
-                    {/* Freeform tips */}
+                    {}
                     {mode === 'freeform' && (
                         <div className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] p-3 rounded-lg">
                             <p className="font-medium text-[var(--text-secondary)] mb-1">Freeform Mode</p>

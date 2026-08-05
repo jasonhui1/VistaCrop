@@ -15,7 +15,6 @@ export interface ImageDbData {
     images: Record<string, ImageMeta>;
 }
 
-// Store image mapping in a separate file
 const IMAGE_DB_FILE = path.join(DB_DIR, 'imageDb.json');
 const IMAGES_DIR = path.join(DB_DIR, 'images');
 
@@ -27,9 +26,7 @@ function ensureImageDb(): void {
     }
 }
 
-/**
- * Read the image database
- */
+
 export function readImageDb(): ImageDbData {
     ensureImageDb();
     try {
@@ -40,34 +37,26 @@ export function readImageDb(): ImageDbData {
     }
 }
 
-/**
- * Write to the image database
- */
+
 export function writeImageDb(data: ImageDbData): void {
     ensureImageDb();
     fs.writeFileSync(IMAGE_DB_FILE, JSON.stringify(data, null, 2));
 }
 
-/**
- * Get image metadata by ID
- */
+
 export function getImageMeta(imageId: string): ImageMeta | null {
     const db = readImageDb();
     return db.images[imageId] || null;
 }
 
-/**
- * Get the full file path for an image
- */
+
 export function getImageFilePath(imageId: string): string | null {
     const meta = getImageMeta(imageId);
     if (!meta) return null;
     return path.join(IMAGES_DIR, meta.path);
 }
 
-/**
- * Save an image file and create mapping
- */
+
 export function saveImageFile(
     imageId: string,
     base64Data: string,
@@ -79,11 +68,9 @@ export function saveImageFile(
     const fileName = `${imageId}.${extension}`;
     const filePath = path.join(IMAGES_DIR, fileName);
 
-    // Write image file
     const buffer = Buffer.from(base64Content, 'base64');
     fs.writeFileSync(filePath, buffer);
 
-    // Update database
     const db = readImageDb();
     db.images[imageId] = {
         path: fileName,
@@ -99,9 +86,7 @@ export function saveImageFile(
 
 export { saveImageFile as saveImage };
 
-/**
- * Load an image as base64 data URL
- */
+
 export function loadImageAsDataUrl(imageId: string): string | null {
     const meta = getImageMeta(imageId);
     if (!meta) return null;
@@ -112,29 +97,24 @@ export function loadImageAsDataUrl(imageId: string): string | null {
     const buffer = fs.readFileSync(filePath);
     const base64 = buffer.toString('base64');
 
-    // Determine mime type from extension
     const ext = path.extname(meta.path).slice(1).toLowerCase();
     const mimeType = ext === 'jpg' ? 'jpeg' : ext;
 
     return `data:image/${mimeType};base64,${base64}`;
 }
 
-/**
- * Delete an image file and its mapping
- */
+
 export function deleteImageFile(imageId: string): boolean {
     const db = readImageDb();
     const meta = db.images[imageId];
 
     if (!meta) return false;
 
-    // Delete file
     const filePath = path.join(IMAGES_DIR, meta.path);
     if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
     }
 
-    // Remove from database
     delete db.images[imageId];
     writeImageDb(db);
 
@@ -143,9 +123,7 @@ export function deleteImageFile(imageId: string): boolean {
 
 export { deleteImageFile as deleteImage };
 
-/**
- * List all images (metadata only)
- */
+
 export function listImagesMeta(): Array<{ id: string; width?: number | null; height?: number | null; createdAt: number; updatedAt: number }> {
     const db = readImageDb();
     return Object.entries(db.images).map(([id, meta]) => ({
@@ -159,9 +137,7 @@ export function listImagesMeta(): Array<{ id: string; width?: number | null; hei
 
 export { listImagesMeta as listImages };
 
-/**
- * Image Storage Adapter class implementing ImageStorageAdapter for image operations
- */
+
 export class DbImageStorageAdapter implements ImageStorageAdapter {
     async listImages(): Promise<StoredImage[]> {
         const images = listImagesMeta();

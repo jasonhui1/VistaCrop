@@ -17,14 +17,11 @@ export async function POST(
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Ensure public/uploads directory exists
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // Generate filename
-    // Use original name if available, or generate one
     const originalName = file.name || 'export.png';
     const fileName = `canvas-${canvasId}-${Date.now()}-${originalName}`;
     const filePath = path.join(uploadDir, fileName);

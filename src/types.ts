@@ -1,6 +1,4 @@
-/**
- * Shared TypeScript type definitions for VistaCrop
- */
+
 
 export type Point2D = [number, number];
 

@@ -6,7 +6,7 @@ export const FILTERS: FilterPreset[] = [
         name: 'Normal',
         filter: 'none',
         description: 'No filter',
-        vibe: 'bg-gray-500' // tailwind color class for the badge/button
+        vibe: 'bg-gray-500'
     },
     {
         id: 'vintage',
@@ -66,25 +66,19 @@ export const FILTERS: FilterPreset[] = [
     }
 ];
 
-/**
- * Get a filter preset by ID
- */
+
 export function getFilterPreset(id?: string): FilterPreset | undefined {
     if (!id) return undefined;
     return FILTERS.find(f => f.id === id);
 }
 
-/**
- * Get CSS filter string for a filter ID
- */
+
 export function getFilterCss(id?: string): string {
     const preset = getFilterPreset(id);
     return preset ? preset.filter : 'none';
 }
 
-/**
- * Get all available filter presets
- */
+
 export function getFilterList(): FilterPreset[] {
     return FILTERS;
 }

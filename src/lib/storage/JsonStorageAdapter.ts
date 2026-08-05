@@ -18,9 +18,6 @@ export class JsonStorageAdapter extends StorageAdapter {
     private imageAdapter = new DbImageStorageAdapter();
     private cropAdapter = new DbCropStorageAdapter();
 
-    // ============================================================================
-    // CANVAS CRUD
-    // ============================================================================
 
     override async listCanvases(): Promise<SavedCanvas[]> {
         return this.canvasAdapter.listCanvases();
@@ -46,9 +43,6 @@ export class JsonStorageAdapter extends StorageAdapter {
         return this.canvasAdapter.deleteCanvas(canvasId);
     }
 
-    // ============================================================================
-    // CROP CRUD
-    // ============================================================================
 
     override async loadAllCrops(): Promise<Crop[]> {
         return this.cropAdapter.loadAllCrops();
@@ -74,9 +68,6 @@ export class JsonStorageAdapter extends StorageAdapter {
         return this.cropAdapter.deleteCrop(imageId, cropId);
     }
 
-    // ============================================================================
-    // IMAGE CRUD
-    // ============================================================================
 
     override async listImages(): Promise<StoredImage[]> {
         return this.imageAdapter.listImages();

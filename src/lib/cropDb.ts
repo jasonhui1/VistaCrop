@@ -5,7 +5,6 @@ import { readDb, writeDb } from './db.ts';
 import { getImageMeta, saveImageFile } from './imageDb.ts';
 import { DB_DIR, ensureDir, parseBase64Image } from './storageUtils.ts';
 
-// Store crop preview images in a separate folder
 const CROPS_DIR = path.join(DB_DIR, 'crops');
 
 function ensureCropsDir(): void {
@@ -13,9 +12,7 @@ function ensureCropsDir(): void {
     ensureDir(CROPS_DIR);
 }
 
-/**
- * Save a crop preview image to file
- */
+
 export function saveCropPreview(cropId: string | number, base64Data: string): string {
     ensureCropsDir();
 
@@ -23,16 +20,13 @@ export function saveCropPreview(cropId: string | number, base64Data: string): st
     const fileName = `${cropId}.${extension}`;
     const filePath = path.join(CROPS_DIR, fileName);
 
-    // Write image file
     const buffer = Buffer.from(base64Content, 'base64');
     fs.writeFileSync(filePath, buffer);
 
     return fileName;
 }
 
-/**
- * Load a crop preview image as base64 data URL
- */
+
 export function loadCropPreview(fileName: string): string | null {
     ensureCropsDir();
 
@@ -42,16 +36,13 @@ export function loadCropPreview(fileName: string): string | null {
     const buffer = fs.readFileSync(filePath);
     const base64 = buffer.toString('base64');
 
-    // Determine mime type from extension
     const ext = path.extname(fileName).slice(1).toLowerCase();
     const mimeType = ext === 'jpg' ? 'jpeg' : ext;
 
     return `data:image/${mimeType};base64,${base64}`;
 }
 
-/**
- * Delete a crop preview file
- */
+
 export function deleteCropPreview(fileName?: string | null): boolean {
     if (!fileName) return false;
 
@@ -63,18 +54,14 @@ export function deleteCropPreview(fileName?: string | null): boolean {
     return false;
 }
 
-/**
- * Check if a crop preview file exists
- */
+
 export function cropPreviewExists(fileName?: string | null): boolean {
     if (!fileName) return false;
     const filePath = path.join(CROPS_DIR, fileName);
     return fs.existsSync(filePath);
 }
 
-/**
- * Delete all crops associated with an image ID from DB and disk preview files
- */
+
 export function deleteCropsForImage(imageId: string): number {
     const db = readDb();
     if (!db.crops || db.crops.length === 0) return 0;
@@ -109,9 +96,7 @@ interface CropInput extends Partial<Crop> {
     originalImage?: string;
 }
 
-/**
- * Crop Storage Adapter class implementing CropStorageAdapter for crop operations
- */
+
 export class DbCropStorageAdapter implements CropStorageAdapter {
     async loadAllCrops(): Promise<Crop[]> {
         const db = readDb();

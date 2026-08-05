@@ -8,10 +8,7 @@ export interface SelectedItemControlsProps {
     onDeleteItem: (id: string | number) => void
 }
 
-/**
- * Selected item controls component for the right sidebar
- * Contains frame shape, border, and style controls
- */
+
 function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: SelectedItemControlsProps) {
     if (!selectedItem) {
         return (
@@ -28,7 +25,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
 
     return (
         <div className="space-y-2">
-            {/* Phone Mockup Toggle */}
+            {}
             <div>
                 <label className="text-xs text-[var(--text-muted)] block mb-1">Phone Mockup</label>
                 <div className="flex items-center gap-2 mb-2">
@@ -95,7 +92,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
                 )}
             </div>
 
-            {/* Frame Shape Selector */}
+            {}
             <div>
                 <label className="text-xs text-[var(--text-muted)] block mb-1">Frame Shape</label>
                 <div className="grid grid-cols-4 gap-1">
@@ -114,7 +111,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
                     ))}
                 </div>
 
-                {/* More shapes toggle */}
+                {}
                 <details className="mt-1">
                     <summary className="text-xs text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-secondary)]">
                         More shapes...
@@ -136,7 +133,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
                     </div>
                 </details>
 
-                {/* Corner customization controls */}
+                {}
                 {!selectedItem.customPoints ? (
                     <button
                         onClick={() => {
@@ -201,7 +198,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
                 )}
             </div>
 
-            {/* Border & Style Controls */}
+            {}
             <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
                 <label className="text-xs text-[var(--text-muted)] block mb-1">Border Style</label>
                 <div className="grid grid-cols-4 gap-1 mb-2">
@@ -259,7 +256,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
                 </div>
             </div>
 
-            {/* Frame Rotation Control */}
+            {}
             <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
                 <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-[var(--text-muted)]">Frame Rotation</label>
@@ -289,7 +286,7 @@ function SelectedItemControls({ selectedItem, onUpdateItem, onDeleteItem }: Sele
                 </div>
             </div>
 
-            {/* Crop Position Control */}
+            {}
             {((selectedItem.cropOffsetX ?? 0) !== 0 || (selectedItem.cropOffsetY ?? 0) !== 0) && (
                 <div className="mt-2 pt-2 border-t border-[var(--border-color)]">
                     <div className="flex items-center justify-between mb-1">

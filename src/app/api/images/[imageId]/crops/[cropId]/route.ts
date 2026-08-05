@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getStorageAdapter } from '@/lib/storage';
 
-/**
- * GET /api/images/{imageId}/crops/{cropId}
- * Get a single crop with its preview image data
- */
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ imageId: string; cropId: string }> }

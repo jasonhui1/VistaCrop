@@ -8,7 +8,6 @@ export interface DbData {
     images: StoredImage[];
 }
 
-// Store data in the project root under /data
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
 
@@ -27,7 +26,6 @@ export function readDb(): DbData {
     try {
         return JSON.parse(fileContent);
     } catch {
-        // If JSON is corrupt, return empty structure
         return { crops: [], canvases: [], images: [] };
     }
 }
@@ -37,9 +35,7 @@ export function writeDb(data: DbData): void {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-/**
- * DB Storage adapter implementing CanvasStorageAdapter for composition CRUD
- */
+
 export class DbCanvasStorageAdapter implements CanvasStorageAdapter {
     async listCanvases(): Promise<SavedCanvas[]> {
         const db = readDb();

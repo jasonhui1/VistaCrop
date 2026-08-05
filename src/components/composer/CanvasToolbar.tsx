@@ -28,10 +28,7 @@ export interface CanvasToolbarProps {
     lastSavedAt: number | null
 }
 
-/**
- * Canvas toolbar component for Composer view
- * Contains mode info, action buttons (clear, edit size, undo/redo), and save/load/export
- */
+
 function CanvasToolbar({
     mode,
     layoutName,
@@ -40,12 +37,10 @@ function CanvasToolbar({
     editingCanvasSize,
     onToggleEditCanvasSize,
     onClear,
-    // Undo/Redo
     canUndo,
     canRedo,
     onUndo,
     onRedo,
-    // Save/Load
     canvasId,
     isSaving,
     isLoading,
@@ -57,7 +52,6 @@ function CanvasToolbar({
     onDeleteCanvas,
     onSave,
     onExport,
-    // Auto-save indicator
     hasUnsavedChanges
 }: CanvasToolbarProps) {
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null)
@@ -65,13 +59,10 @@ function CanvasToolbar({
     const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>, canvasIdToDelete: string | number) => {
         e.stopPropagation()
         if (deleteConfirmId === canvasIdToDelete) {
-            // Confirmed - actually delete
             onDeleteCanvas(String(canvasIdToDelete))
             setDeleteConfirmId(null)
         } else {
-            // First click - show confirmation
             setDeleteConfirmId(canvasIdToDelete)
-            // Reset after 3 seconds
             setTimeout(() => setDeleteConfirmId(null), 3000)
         }
     }
@@ -93,7 +84,7 @@ function CanvasToolbar({
             </div>
 
             <div className="flex items-center gap-2">
-                {/* Undo/Redo buttons */}
+                {}
                 {mode === 'freeform' && (
                     <>
                         <button
@@ -146,7 +137,7 @@ function CanvasToolbar({
                     </button>
                 )}
 
-                {/* Load Button with Dropdown */}
+                {}
                 <div className="relative">
                     <button
                         onClick={() => {

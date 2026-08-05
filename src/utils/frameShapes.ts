@@ -1,14 +1,8 @@
-/**
- * Frame Shapes Utility
- * Defines polygon shapes for manga-style irregular panel frames
- * Each shape is defined as an array of [x%, y%] points for clip-path polygon
- */
+
 
 import { Point2D, FrameShape, PlacedItem } from '../types';
 
-// Shape presets - each shape is defined by polygon points as percentages
 export const FRAME_SHAPES: Record<string, FrameShape> = {
-    // Standard rectangle
     rectangle: {
         id: 'rectangle',
         name: 'Rectangle',
@@ -21,7 +15,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Diagonal cuts - manga action style
     'diagonal-tr': {
         id: 'diagonal-tr',
         name: 'Diagonal TR',
@@ -70,7 +63,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Double diagonal - dramatic action
     'diagonal-double': {
         id: 'diagonal-double',
         name: 'Double Diagonal',
@@ -83,7 +75,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Parallelograms
     'parallelogram-right': {
         id: 'parallelogram-right',
         name: 'Slant Right',
@@ -108,7 +99,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Trapezoids
     'trapezoid-top': {
         id: 'trapezoid-top',
         name: 'Trapezoid Top',
@@ -133,7 +123,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Pentagon - dynamic action panel
     pentagon: {
         id: 'pentagon',
         name: 'Pentagon',
@@ -147,7 +136,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Hexagon
     hexagon: {
         id: 'hexagon',
         name: 'Hexagon',
@@ -162,7 +150,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Arrow shapes - directional emphasis
     'arrow-right': {
         id: 'arrow-right',
         name: 'Arrow Right',
@@ -189,7 +176,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Notched corners - dramatic impact
     'notch-tr': {
         id: 'notch-tr',
         name: 'Notch TR',
@@ -216,7 +202,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Triangle
     triangle: {
         id: 'triangle',
         name: 'Triangle',
@@ -228,7 +213,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Diamond
     diamond: {
         id: 'diamond',
         name: 'Diamond',
@@ -241,7 +225,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Chevron shapes
     'chevron-right': {
         id: 'chevron-right',
         name: 'Chevron Right',
@@ -256,7 +239,6 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
         ]
     },
 
-    // Explosion/burst - manga impact
     burst: {
         id: 'burst',
         name: 'Burst',
@@ -276,9 +258,7 @@ export const FRAME_SHAPES: Record<string, FrameShape> = {
     }
 };
 
-/**
- * Helper to resolve polygon points for a shape or custom points fallback
- */
+
 function resolvePoints(shapeId: string, customPoints: Point2D[] | null = null): Point2D[] {
     if (customPoints && customPoints.length >= 3) {
         return customPoints;
@@ -286,12 +266,7 @@ function resolvePoints(shapeId: string, customPoints: Point2D[] | null = null): 
     return FRAME_SHAPES[shapeId]?.points || FRAME_SHAPES.rectangle.points;
 }
 
-/**
- * Get clip-path CSS value for a shape or custom points
- * @param shapeId - The shape ID
- * @param customPoints - Optional custom points array [[x%, y%], ...]
- * @returns CSS clip-path polygon value
- */
+
 export function getClipPath(shapeId: string, customPoints: Point2D[] | null = null): string {
     const points = resolvePoints(shapeId, customPoints);
 
@@ -302,13 +277,7 @@ export function getClipPath(shapeId: string, customPoints: Point2D[] | null = nu
     return `polygon(${pointsStr})`;
 }
 
-/**
- * Get SVG polygon points string for a shape (for border rendering)
- * @param shapeId - The shape ID
- * @param width - Container width
- * @param height - Container height
- * @returns SVG points attribute value
- */
+
 export function getSvgPoints(
     shapeId: string,
     width: number,
@@ -322,16 +291,7 @@ export function getSvgPoints(
         .join(' ');
 }
 
-/**
- * Get canvas path for a shape (for export rendering)
- * @param ctx - Canvas context
- * @param shapeId - The shape ID
- * @param x - Top-left X position
- * @param y - Top-left Y position
- * @param width - Width
- * @param height - Height
- * @param customPoints - Optional custom points array [[x%, y%], ...]
- */
+
 export function drawShapePath(
     ctx: CanvasRenderingContext2D,
     shapeId: string,
@@ -356,36 +316,22 @@ export function drawShapePath(
     ctx.closePath();
 }
 
-/**
- * Get list of all available shapes
- * @returns Array of shape objects
- */
+
 export function getShapeList(): FrameShape[] {
     return Object.values(FRAME_SHAPES);
 }
 
-/**
- * Get a shape by ID
- * @param shapeId - Shape ID
- * @returns Shape object or null
- */
+
 export function getShape(shapeId: string): FrameShape | null {
     return FRAME_SHAPES[shapeId] || null;
 }
 
-/**
- * Get default rectangle points (4 corners)
- * @returns Default rectangle points [[0,0], [100,0], [100,100], [0,100]]
- */
+
 export function getDefaultPoints(): Point2D[] {
     return [[0, 0], [100, 0], [100, 100], [0, 100]];
 }
 
-/**
- * Get the effective points for an item (custom points or preset shape points)
- * @param item - The item with optional customPoints and frameShape
- * @returns The points array to use
- */
+
 export function getEffectivePoints(item: Partial<PlacedItem>): Point2D[] {
     if (item.customPoints && item.customPoints.length >= 3) {
         return item.customPoints;

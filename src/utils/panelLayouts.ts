@@ -1,11 +1,7 @@
-/**
- * Panel Layout Utilities
- * Defines preset manga panel layouts with position/size ratios
- */
+
 
 import { PagePreset, PanelLayout, Panel, Composition, PanelAssignment } from '../types';
 
-// Default page dimensions (in pixels at 150 DPI for web preview)
 export const PAGE_PRESETS: Record<string, PagePreset> = {
     A4_PORTRAIT: { width: 1240, height: 1754, label: 'A4 Portrait' },
     A4_LANDSCAPE: { width: 1754, height: 1240, label: 'A4 Landscape' },
@@ -15,16 +11,10 @@ export const PAGE_PRESETS: Record<string, PagePreset> = {
     CUSTOM: { width: 1200, height: 1600, label: 'Custom' }
 };
 
-// Default gutter size between panels (as ratio of page width)
 export const DEFAULT_GUTTER = 0.02;
 
-/**
- * Panel layout definitions
- * Each panel is defined by { x, y, width, height } as ratios (0-1)
- * relative to the content area (page minus margins)
- */
+
 export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
-    // Single panel - full page
     'single': {
         id: 'single',
         name: 'Single',
@@ -34,7 +24,6 @@ export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
         ]
     },
 
-    // 2-panel layouts
     '2-horizontal': {
         id: '2-horizontal',
         name: '2 Horizontal',
@@ -54,7 +43,6 @@ export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
         ]
     },
 
-    // 3-panel layouts
     '3-top-heavy': {
         id: '3-top-heavy',
         name: '3 Top Heavy',
@@ -96,7 +84,6 @@ export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
         ]
     },
 
-    // 4-panel layouts
     '4-grid': {
         id: '4-grid',
         name: '4 Grid',
@@ -131,7 +118,6 @@ export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
         ]
     },
 
-    // 6-panel layouts
     '6-grid': {
         id: '6-grid',
         name: '6 Grid',
@@ -160,28 +146,17 @@ export const PANEL_LAYOUTS: Record<string, PanelLayout> = {
     }
 };
 
-/**
- * Get list of all available layouts
- */
+
 export function getLayoutList(): PanelLayout[] {
     return Object.values(PANEL_LAYOUTS);
 }
 
-/**
- * Get a specific layout by ID
- */
+
 export function getLayout(layoutId: string): PanelLayout {
     return PANEL_LAYOUTS[layoutId] || PANEL_LAYOUTS['single'];
 }
 
-/**
- * Calculate actual pixel positions for panels given page dimensions and margin
- * @param layout - The layout definition
- * @param pageWidth - Page width in pixels
- * @param pageHeight - Page height in pixels
- * @param margin - Margin in pixels (applied to all sides)
- * @returns Array of panel objects with pixel positions
- */
+
 export function calculatePanelPositions(
     layout: PanelLayout,
     pageWidth: number,
@@ -197,7 +172,6 @@ export function calculatePanelPositions(
         y: margin + (panel.y * contentHeight),
         width: panel.width * contentWidth,
         height: panel.height * contentHeight,
-        // Keep original ratios for reference
         ratioX: panel.x,
         ratioY: panel.y,
         ratioWidth: panel.width,
@@ -205,9 +179,7 @@ export function calculatePanelPositions(
     }));
 }
 
-/**
- * Create an empty composition state
- */
+
 export function createEmptyComposition(
     layoutId: string = 'single',
     pagePreset: string = 'A4_PORTRAIT'
@@ -224,7 +196,6 @@ export function createEmptyComposition(
         pageHeight: page.height,
         margin: 40,
         backgroundColor: '#1a1a1a',
-        // Array of { panelIndex, cropId, zoom, offsetX, offsetY }
         assignments: layout.panels.map((_, index) => ({
             panelIndex: index,
             cropId: null,
@@ -237,9 +208,7 @@ export function createEmptyComposition(
     };
 }
 
-/**
- * Update a panel assignment in a composition
- */
+
 export function updatePanelAssignment(
     composition: Composition,
     panelIndex: number,
@@ -254,9 +223,7 @@ export function updatePanelAssignment(
     };
 }
 
-/**
- * Clear a panel assignment
- */
+
 export function clearPanelAssignment(composition: Composition, panelIndex: number): Composition {
     return updatePanelAssignment(composition, panelIndex, {
         cropId: null,
@@ -266,14 +233,11 @@ export function clearPanelAssignment(composition: Composition, panelIndex: numbe
     });
 }
 
-/**
- * Change the layout of a composition (preserves assignments where possible)
- */
+
 export function changeCompositionLayout(composition: Composition, newLayoutId: string): Composition {
     const newLayout = getLayout(newLayoutId);
     const currentAssignments = composition.assignments;
 
-    // Create new assignments, preserving crops where panel indices match
     const newAssignments: PanelAssignment[] = newLayout.panels.map((_, index) => {
         const existing = currentAssignments[index];
         if (existing) {

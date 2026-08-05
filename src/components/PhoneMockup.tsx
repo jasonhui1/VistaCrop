@@ -8,7 +8,6 @@ export interface PhoneMockupProps {
     landscape?: boolean
 }
 
-// Layout style map generator for phone elements
 function getElementStyle(type: 'notch' | 'speaker' | 'homeIndicator' | 'homeButton' | 'power' | 'volUp' | 'volDown', landscape: boolean, color: string): CSSProperties {
     switch (type) {
         case 'notch':
@@ -165,13 +164,11 @@ function getElementStyle(type: 'notch' | 'speaker' | 'homeIndicator' | 'homeButt
 }
 
 const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', style = 'modern', landscape = false }: PhoneMockupProps) {
-    // Phone frame proportions (relative to container)
-    const bezelWidth = style === 'modern' ? 3 : 6 // percentage
-    const topBezel = style === 'modern' ? 6 : 12 // percentage  
-    const bottomBezel = style === 'modern' ? 6 : 12 // percentage
-    const cornerRadius = style === 'modern' ? 12 : 8 // percentage
+    const bezelWidth = style === 'modern' ? 3 : 6
+    const topBezel = style === 'modern' ? 6 : 12
+    const bottomBezel = style === 'modern' ? 6 : 12
+    const cornerRadius = style === 'modern' ? 12 : 8
 
-    // Swap padding for landscape mode
     const padding = landscape
         ? `${bezelWidth}% ${bottomBezel}% ${bezelWidth}% ${topBezel}%`
         : `${topBezel}% ${bezelWidth}% ${bottomBezel}% ${bezelWidth}%`
@@ -195,10 +192,10 @@ const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', sty
                 boxSizing: 'border-box'
             }}
         >
-            {/* Modern notch - top for portrait, left for landscape */}
+            {}
             {style === 'modern' && (
                 <div style={getElementStyle('notch', landscape, color)}>
-                    {/* Camera dot */}
+                    {}
                     <div
                         style={{
                             width: '8px',
@@ -211,12 +208,12 @@ const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', sty
                 </div>
             )}
 
-            {/* Classic phone speaker */}
+            {}
             {style === 'classic' && (
                 <div style={getElementStyle('speaker', landscape, color)} />
             )}
 
-            {/* Screen area */}
+            {}
             <div
                 style={{
                     flex: 1,
@@ -229,17 +226,17 @@ const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', sty
                 {children}
             </div>
 
-            {/* Modern home indicator - bottom for portrait, right for landscape */}
+            {}
             {style === 'modern' && (
                 <div style={getElementStyle('homeIndicator', landscape, color)} />
             )}
 
-            {/* Classic home button */}
+            {}
             {style === 'classic' && (
                 <div style={getElementStyle('homeButton', landscape, color)} />
             )}
 
-            {/* Side buttons */}
+            {}
             <div style={getElementStyle('power', landscape, color)} />
             <div style={getElementStyle('volUp', landscape, color)} />
             <div style={getElementStyle('volDown', landscape, color)} />
