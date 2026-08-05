@@ -13,8 +13,6 @@ export type { GalleryViewProps } from './components/GalleryView';
 
 export * from './types';
 
-// The `StorageAdapter` *type* comes from './types'; the base class stays in
-// './lib/storage' so the two names do not collide on this entrypoint.
 export { StorageAdapterProvider, useStorageAdapter } from './lib/storage';
 export type { StorageAdapterProviderProps } from './lib/storage';
 
