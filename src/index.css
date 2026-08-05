@@ -22,17 +22,9 @@
   }
 
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  #root {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
 
   /* Glass morphism card effect */
   .glass-card {
