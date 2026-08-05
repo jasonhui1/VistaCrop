@@ -1,19 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import ImageUploader from './components/ImageUploader'
-import CanvasView from './components/CanvasView'
-import GalleryView from './components/GalleryView'
-import ComposerView from './components/ComposerView'
+import { CanvasView, GalleryView, ComposerView, Crop, CropData } from './index'
 import { saveCrops, loadAllCrops, updateCrop, deleteCrop, uploadImage, getImage } from './utils/api'
 
+type View = 'canvas' | 'gallery' | 'composer'
+
 function App() {
-  const [view, setView] = useState('canvas') // 'canvas', 'gallery', or 'composer'
-  const [uploadedImage, setUploadedImage] = useState(null)
-  const [imageId, setImageId] = useState(null)
-  const [crops, setCrops] = useState([])
+  const [view, setView] = useState<View>('canvas')
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [imageId, setImageId] = useState<string | null>(null)
+  const [crops, setCrops] = useState<Crop[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Use ref to avoid stale closure issues
-  const imageIdRef = useRef(null)
+  const imageIdRef = useRef<string | null>(null)
 
   // Load all crops on app mount
   useEffect(() => {
@@ -48,7 +48,7 @@ function App() {
     loadSavedCrops()
   }, [])
 
-  const handleImageUpload = async (imageDataUrl) => {
+  const handleImageUpload = async (imageDataUrl: string) => {
     // Generate a unique imageId for this upload session
     const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     imageIdRef.current = newImageId
@@ -67,9 +67,9 @@ function App() {
   }
 
   // Helper to save crops to the server - groups by imageId to avoid duplicates
-  const saveToServer = useCallback(async (cropsToSave) => {
+  const saveToServer = useCallback(async (cropsToSave: Crop[]) => {
     // Group crops by their imageId
-    const cropsByImageId = {}
+    const cropsByImageId: Record<string, Crop[]> = {}
     for (const crop of cropsToSave) {
       const cropImageId = crop.imageId || imageIdRef.current
       if (!cropImageId) continue
@@ -90,10 +90,10 @@ function App() {
     }
   }, [])
 
-  const handleAddCrop = async (cropData) => {
-    const newCrop = {
+  const handleAddCrop = async (cropData: CropData) => {
+    const newCrop: Crop = {
       id: Date.now(),
-      imageId: imageIdRef.current, // Tag with current image
+      imageId: imageIdRef.current ?? undefined, // Tag with current image
       imageData: cropData.imageData,
       // Note: originalImage is not stored in the crop - it's fetched separately via imageId
       x: cropData.x,
@@ -115,7 +115,7 @@ function App() {
     await saveToServer(updatedCrops)
   }
 
-  const handleUpdateCrop = async (id, updates) => {
+  const handleUpdateCrop = async (id: string | number, updates: Partial<Crop>) => {
     const crop = crops.find(c => c.id === id)
     if (!crop) return
 
@@ -136,7 +136,7 @@ function App() {
     }
   }
 
-  const handleDeleteCrop = async (id) => {
+  const handleDeleteCrop = async (id: string | number) => {
     const crop = crops.find(c => c.id === id)
     const updatedCrops = crops.filter(c => c.id !== id)
     setCrops(updatedCrops)
