@@ -45,7 +45,7 @@ interface SelectionRect {
   centerY: number
 }
 
-export function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
+function CanvasView({ image, onAddCrop, onImageUpload }: CanvasViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLImageElement>(null)
   const [isDragging, setIsDragging] = useState(false)
