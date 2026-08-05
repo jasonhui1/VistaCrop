@@ -1,32 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { exportCanvas } from '../src/utils/exportCanvas.ts';
-
-/** jsdom never fires load events for `new Image()`, so drive them by hand. */
-async function withImmediateImageLoading(run) {
-    const RealImage = globalThis.Image;
-    class ImmediateImage {
-        constructor() {
-            this.width = 100;
-            this.height = 100;
-            this.onload = null;
-            this.onerror = null;
-        }
-        set src(value) {
-            this._src = value;
-            queueMicrotask(() => this.onload?.());
-        }
-        get src() {
-            return this._src;
-        }
-    }
-    globalThis.Image = ImmediateImage;
-    try {
-        return await run();
-    } finally {
-        globalThis.Image = RealImage;
-    }
-}
+import { withImmediateImageLoading } from './helpers/composerHarness.mjs';
 
 const composition = {
     pageWidth: 200,
