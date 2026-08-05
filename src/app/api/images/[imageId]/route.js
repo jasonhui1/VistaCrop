@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb } from '@/lib/db';
-import { getImageMeta, saveImage, loadImageAsDataUrl, deleteImage } from '@/lib/imageDb';
+import { getStorageAdapter } from '@/lib/storage';
 
 /**
  * GET /api/images/{imageId}
@@ -8,25 +7,14 @@ import { getImageMeta, saveImage, loadImageAsDataUrl, deleteImage } from '@/lib/
  */
 export async function GET(request, { params }) {
     const { imageId } = await params;
+    const storage = getStorageAdapter();
+    const image = await storage.getImage(imageId);
 
-    const meta = getImageMeta(imageId);
-    if (!meta) {
+    if (!image) {
         return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
-    const dataUrl = loadImageAsDataUrl(imageId);
-    if (!dataUrl) {
-        return NextResponse.json({ error: 'Image file not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-        id: imageId,
-        data: dataUrl,
-        width: meta.width,
-        height: meta.height,
-        createdAt: meta.createdAt,
-        updatedAt: meta.updatedAt
-    });
+    return NextResponse.json(image);
 }
 
 /**
@@ -43,12 +31,9 @@ export async function POST(request, { params }) {
     }
 
     try {
-        const result = saveImage(imageId, data, { width, height });
-        return NextResponse.json({
-            success: true,
-            imageId,
-            path: result.path
-        });
+        const storage = getStorageAdapter();
+        const result = await storage.saveImage(imageId, data, { width, height });
+        return NextResponse.json(result);
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 400 });
     }
@@ -63,23 +48,12 @@ export async function DELETE(request, { params }) {
     const { searchParams } = new URL(request.url);
     const deleteCrops = searchParams.get('deleteCrops') === 'true';
 
-    // Delete image file
-    const deleted = deleteImage(imageId);
-    if (!deleted) {
+    const storage = getStorageAdapter();
+    const result = await storage.deleteImage(imageId, deleteCrops);
+
+    if (!result.success) {
         return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
-    // Optionally delete associated crops from main db
-    let cropsDeleted = 0;
-    if (deleteCrops) {
-        const db = readDb();
-        if (db.crops) {
-            const initialCropsLength = db.crops.length;
-            db.crops = db.crops.filter(c => c.imageId !== imageId);
-            cropsDeleted = initialCropsLength - db.crops.length;
-            writeDb(db);
-        }
-    }
-
-    return NextResponse.json({ success: true, cropsDeleted });
+    return NextResponse.json(result);
 }

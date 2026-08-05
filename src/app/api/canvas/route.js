@@ -1,27 +1,15 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb } from '@/lib/db';
+import { getStorageAdapter } from '@/lib/storage';
 
 export async function GET() {
-    const db = readDb();
-    return NextResponse.json(db.canvases || []);
+    const storage = getStorageAdapter();
+    const canvases = await storage.listCanvases();
+    return NextResponse.json(canvases);
 }
 
 export async function POST(request) {
     const body = await request.json();
-    const db = readDb();
-
-    const newCanvas = {
-        id: Date.now().toString(),
-        ...body,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-    };
-
-    // Ensure canvases array exists
-    if (!db.canvases) db.canvases = [];
-
-    db.canvases.push(newCanvas);
-    writeDb(db);
-
-    return NextResponse.json({ canvasId: newCanvas.id, ...newCanvas });
+    const storage = getStorageAdapter();
+    const result = await storage.createCanvas(body);
+    return NextResponse.json(result);
 }
