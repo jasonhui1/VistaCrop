@@ -47,7 +47,7 @@ const RotatableImage = memo(function RotatableImage({
     isRotating,
     filterCss = 'none',
     containerInset = 0,
-    showCornerHandles = true,
+    showCornerHandles = false,
     hideRotationOverlay = false,
     cropOffsetX = 0,
     cropOffsetY = 0,
@@ -74,229 +74,177 @@ const RotatableImage = memo(function RotatableImage({
         }
 
         updateSize()
+        const observer = new ResizeObserver(updateSize)
+        observer.observe(containerRef.current)
 
-        const resizeObserver = new ResizeObserver(updateSize)
-        resizeObserver.observe(containerRef.current)
-
-        return () => resizeObserver.disconnect()
+        return () => observer.disconnect()
     }, [])
 
-    // Lazy load original image when rotation is applied
+    // Dedicated image loader helper
     useEffect(() => {
-        if (currentRotation !== 0 && !originalImage && !isLoadingOriginal && crop.imageId) {
+        const needsOriginalImage = currentRotation !== 0 || isRotating || cropOffsetX !== 0 || cropOffsetY !== 0 || isPanning
+        if (needsOriginalImage && crop.imageId && !originalImage && !isLoadingOriginal) {
+            let isSubscribed = true
             const loadImage = async () => {
                 setIsLoadingOriginal(true)
                 try {
                     const imageData = await getImage(crop.imageId!)
-                    if (imageData && imageData.data) {
+                    if (isSubscribed && imageData && imageData.data) {
                         setOriginalImage(imageData.data)
                     }
                 } catch (error) {
-                    console.error('Failed to lazy-load original image for rotation:', error)
+                    console.error('Failed to load original image for rotation:', error)
                 } finally {
-                    setIsLoadingOriginal(false)
-                }
-            }
-            loadImage()
-        }
-    }, [currentRotation, originalImage, isLoadingOriginal, crop.imageId])
-
-    // Calculate rotation display data (pixel-based)
-    // When hideRotationOverlay is true, we still need the data to render the rotated image correctly
-    // We just hide the overlay UI elements (dark background, selection box, corner handles)
-    // Calculate display data for both rotation and panning
-    const displayData = useMemo(() => {
-        const containerWidth = containerSize.width || 100
-        const containerHeight = containerSize.height || 100
-
-        // Calculate the box dimensions (accounting for inset)
-        const boxWidth = containerWidth - (containerInset * 2)
-        const boxHeight = containerHeight - (containerInset * 2)
-
-        // Scale factors to map crop coordinates to container pixels
-        const scaleX = crop.width > 0 ? boxWidth / crop.width : 1
-        const scaleY = crop.height > 0 ? boxHeight / crop.height : 1
-
-        const origW = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
-        const origH = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
-        const cropX = (crop.x || 0) + cropOffsetX
-        const cropY = (crop.y || 0) + cropOffsetY
-        const cropW = crop.width || 100
-        const cropH = crop.height || 100
-
-        return {
-            displayedOrigWidth: origW * scaleX,
-            displayedOrigHeight: origH * scaleY,
-            offsetX: -cropX * scaleX,
-            offsetY: -cropY * scaleY,
-            cropCenterX: (cropX + cropW / 2) * scaleX,
-            cropCenterY: (cropY + cropH / 2) * scaleY,
-            scaleX,
-            scaleY
-        }
-    }, [containerSize, containerInset, crop.width, crop.height, crop.x, crop.y, crop.originalImageWidth, crop.originalImageHeight, cropOffsetX, cropOffsetY])
-
-    // Determine if we need to show the original image (rotation or panning with offset)
-    const showOriginalImage = (currentRotation !== 0 || cropOffsetX !== 0 || cropOffsetY !== 0) && originalImage
-
-    // For panning preview, also load original image
-    useEffect(() => {
-        if ((cropOffsetX !== 0 || cropOffsetY !== 0) && !originalImage && !isLoadingOriginal && crop.imageId) {
-            const loadImage = async () => {
-                setIsLoadingOriginal(true)
-                try {
-                    const imageData = await getImage(crop.imageId!)
-                    if (imageData && imageData.data) {
-                        setOriginalImage(imageData.data)
+                    if (isSubscribed) {
+                        setIsLoadingOriginal(false)
                     }
-                } catch (error) {
-                    console.error('Failed to lazy-load original image for panning:', error)
-                } finally {
-                    setIsLoadingOriginal(false)
                 }
             }
             loadImage()
+            return () => {
+                isSubscribed = false
+            }
         }
-    }, [cropOffsetX, cropOffsetY, originalImage, isLoadingOriginal, crop.imageId])
+    }, [currentRotation, isRotating, cropOffsetX, cropOffsetY, isPanning, originalImage, isLoadingOriginal, crop.imageId])
 
     // Corner handle style (reusable)
     const cornerHandleStyle: CSSProperties = {
         position: 'absolute',
         width: 8,
         height: 8,
-        backgroundColor: 'white',
+        backgroundColor: '#ec4899',
+        border: '1px solid white',
         borderRadius: '50%',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+        boxShadow: '0 0 4px rgba(0,0,0,0.5)',
+        zIndex: 20
     }
+
+    // Determine effective image dimensions
+    const imgWidth = crop.originalImageWidth || DEFAULT_IMAGE_DIMENSION
+    const imgHeight = crop.originalImageHeight || DEFAULT_IMAGE_DIMENSION
+
+    // Calculate crop relative positions
+    const cropX = crop.x !== undefined ? crop.x : 0
+    const cropY = crop.y !== undefined ? crop.y : 0
+    const cropW = crop.width
+    const cropH = crop.height
+
+    // Calculate scale factor between full image coordinates and rendered container coordinates
+    const displayWidth = containerSize.width || 100
+    const displayHeight = containerSize.height || 100
+    const scale = displayWidth / cropW
+
+    // Calculate the center point of the crop selection in container coordinates
+    const originXInContainer = displayWidth / 2
+    const originYInContainer = displayHeight / 2
+
+    // Calculate the offset from top-left of full image to the center of the crop
+    const cropCenterXInFullImage = cropX + cropW / 2
+    const cropCenterYInFullImage = cropY + cropH / 2
+
+    // Compute scaled dimensions for full image
+    const fullImageScaledWidth = imgWidth * scale
+    const fullImageScaledHeight = imgHeight * scale
+
+    // Compute top-left position of the full image relative to container origin
+    const fullImageLeft = originXInContainer - (cropCenterXInFullImage * scale) + cropOffsetX
+    const fullImageTop = originYInContainer - (cropCenterYInFullImage * scale) + cropOffsetY
+
+    const isRotated = currentRotation !== 0
 
     return (
         <div
             ref={containerRef}
-            style={{
-                position: 'absolute',
-                inset: 0,
-                overflow: 'hidden',
-                zIndex: 1
-            }}
+            className="relative w-full h-full overflow-hidden select-none bg-black/20"
         >
-            {/* Loading indicator */}
-            {isLoadingOriginal && (
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    zIndex: 10
-                }}>
-                    <div style={{
-                        width: 24,
-                        height: 24,
-                        border: '2px solid #a855f7',
-                        borderTopColor: 'transparent',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                    }} />
-                </div>
-            )}
+            {/* Base Crop Image */}
+            <div
+                className="w-full h-full"
+                style={{
+                    filter: filterCss,
+                    opacity: isRotated || cropOffsetX !== 0 || cropOffsetY !== 0 || isPanning ? 0 : 1
+                }}
+            >
+                <img
+                    src={crop.imageData}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                />
+            </div>
 
-            {/* When rotating or panning with original image available, show original behind selection */}
-            {showOriginalImage ? (
-                <>
-                    {/* Dark overlay - hide when editing corners or just panning */}
-                    {!hideRotationOverlay && currentRotation !== 0 && (
+            {/* Rotated Full Image Layer */}
+            {(isRotated || cropOffsetX !== 0 || cropOffsetY !== 0 || isPanning) && (
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        filter: filterCss
+                    }}
+                >
+                    {originalImage ? (
                         <div
                             style={{
                                 position: 'absolute',
-                                inset: 0,
-                                backgroundColor: 'rgba(0,0,0,0.6)',
-                                pointerEvents: 'none',
-                                zIndex: 1
-                            }}
-                        />
-                    )}
-
-                    {/* Selection box that clips the rotated/panned original image */}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            inset: containerInset,
-                            overflow: 'hidden',
-                            // Only show selection styling when rotating and not hiding overlay
-                            ...((hideRotationOverlay || currentRotation === 0) ? {} : {
-                                outline: '2px solid #a855f7',
-                                boxShadow: '0 0 0 4px rgba(168, 85, 247, 0.3), 0 4px 20px rgba(0,0,0,0.5)'
-                            }),
-                            // Show panning indicator border
-                            ...(isPanning ? {
-                                outline: '2px solid var(--accent-secondary, #10b981)',
-                                boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.3)'
-                            } : {}),
-                            zIndex: 2
-                        }}
-                    >
-                        {/* Original image that rotates/pans - using PIXEL values */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                width: displayData.displayedOrigWidth,
-                                height: displayData.displayedOrigHeight,
-                                // Use translate for GPU-accelerated positioning, combined with rotation
-                                transform: currentRotation !== 0
-                                    ? `translate(${displayData.offsetX}px, ${displayData.offsetY}px) rotate(${-currentRotation}deg)`
-                                    : `translate(${displayData.offsetX}px, ${displayData.offsetY}px)`,
-                                transformOrigin: currentRotation !== 0
-                                    ? `${displayData.cropCenterX - displayData.offsetX}px ${displayData.cropCenterY - displayData.offsetY}px`
-                                    : undefined,
-                                // No transition during active rotation or panning for instant feedback
-                                transition: (isRotating || isPanning) ? 'none' : 'transform 0.15s ease-out',
-                                // Use will-change for GPU acceleration during active panning/rotation
-                                willChange: (isPanning || isRotating) ? 'transform' : 'auto'
+                                left: fullImageLeft,
+                                top: fullImageTop,
+                                width: fullImageScaledWidth,
+                                height: fullImageScaledHeight,
+                                transformOrigin: `${cropCenterXInFullImage * scale}px ${cropCenterYInFullImage * scale}px`,
+                                transform: `rotate(${currentRotation}deg)`,
+                                willChange: 'transform'
                             }}
                         >
                             <img
-                                src={originalImage!}
+                                src={originalImage}
                                 alt=""
                                 style={{
                                     width: '100%',
                                     height: '100%',
-                                    filter: filterCss,
-                                    pointerEvents: 'none'
+                                    objectFit: 'fill',
+                                    display: 'block'
                                 }}
                                 draggable={false}
                             />
                         </div>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-black/40 text-white/70 text-xs">
+                            {isLoadingOriginal ? 'Loading high-res...' : 'Rotation unavailable'}
+                        </div>
+                    )}
+                </div>
+            )}
 
-                        {/* Corner handles inside selection - hide when editing custom corners or panning */}
-                        {showCornerHandles && !hideRotationOverlay && !isPanning && currentRotation !== 0 && (
-                            <>
-                                <div style={{ ...cornerHandleStyle, top: -2, left: -2 }} />
-                                <div style={{ ...cornerHandleStyle, top: -2, right: -2 }} />
-                                <div style={{ ...cornerHandleStyle, bottom: -2, left: -2 }} />
-                                <div style={{ ...cornerHandleStyle, bottom: -2, right: -2 }} />
-                            </>
-                        )}
-                    </div>
-                </>
-            ) : (
-                /* Normal view - just the cropped image */
-                <img
-                    src={crop.imageData}
-                    alt=""
+            {/* Selection Box Overlay */}
+            {containerSize.width > 0 && (
+                <div
+                    className="absolute pointer-events-none transition-opacity duration-150"
                     style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        filter: filterCss,
-                        transform: `rotate(${currentRotation}deg)`,
-                        transition: isRotating ? 'none' : 'transform 0.15s ease-out',
-                        pointerEvents: 'none'
+                        left: containerInset,
+                        top: containerInset,
+                        right: containerInset,
+                        bottom: containerInset,
+                        border: isRotating ? '2px solid #8b5cf6' : (isPanning ? '2px solid #ec4899' : '1px solid rgba(255,255,255,0.4)'),
+                        boxShadow: isRotating ? '0 0 12px rgba(139, 92, 246, 0.5)' : (isPanning ? '0 0 12px rgba(236, 72, 153, 0.5)' : 'none'),
+                        borderRadius: 4
                     }}
-                    draggable={false}
-                />
+                >
+                    {showCornerHandles && (
+                        <>
+                            <div style={{ ...cornerHandleStyle, top: -4, left: -4 }} />
+                            <div style={{ ...cornerHandleStyle, top: -4, right: -4 }} />
+                            <div style={{ ...cornerHandleStyle, bottom: -4, left: -4 }} />
+                            <div style={{ ...cornerHandleStyle, bottom: -4, right: -4 }} />
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Rotation Angle Overlay */}
+            {!hideRotationOverlay && (isRotating || isRotated) && (
+                <div className="absolute top-2 left-2 bg-black/75 text-white px-2 py-1 rounded text-xs font-mono backdrop-blur-sm z-30 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                    {Math.round(currentRotation)}°
+                </div>
             )}
         </div>
     )

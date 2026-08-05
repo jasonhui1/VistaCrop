@@ -154,7 +154,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--bg-primary)] overflow-hidden">
+    <div className="vista-crop h-screen flex flex-col bg-[var(--bg-primary)] overflow-hidden">
       {/* Header */}
       <header className="glass-card px-4 py-2 flex items-center justify-between border-b border-[var(--border-color)] rounded-none">
         <div className="flex items-center gap-3">

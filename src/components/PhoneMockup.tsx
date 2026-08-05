@@ -4,256 +4,112 @@ import { memo } from 'react'
 export interface PhoneMockupProps {
     children?: ReactNode
     color?: string
-    style?: 'modern' | 'classic' | string
+    style?: 'modern' | 'classic'
     landscape?: boolean
 }
 
 const PhoneMockup = memo(function PhoneMockup({ children, color = '#1a1a1a', style = 'modern', landscape = false }: PhoneMockupProps) {
     // Phone frame proportions (relative to container)
     const bezelWidth = style === 'modern' ? 3 : 6 // percentage
-    const topBezel = style === 'modern' ? 6 : 12 // percentage  
-    const bottomBezel = style === 'modern' ? 6 : 12 // percentage
-    const cornerRadius = style === 'modern' ? 12 : 8 // percentage
+    const topBezel = style === 'modern' ? 6 : 12 // percentage
+    const bottomBezel = style === 'modern' ? 6 : 14 // percentage
+    const sideBezel = bezelWidth
 
-    // Swap padding for landscape mode
-    const padding = landscape
-        ? `${bezelWidth}% ${bottomBezel}% ${bezelWidth}% ${topBezel}%`
-        : `${topBezel}% ${bezelWidth}% ${bottomBezel}% ${bezelWidth}%`
+    // Corner radius
+    const outerRadius = style === 'modern' ? 44 : 36
+    const screenRadius = style === 'modern' ? 32 : 16
 
     return (
-        <div
-            className="phone-mockup"
-            style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                flexDirection: landscape ? 'row' : 'column',
-                backgroundColor: color,
-                borderRadius: `${cornerRadius}%`,
-                padding: padding,
-                boxShadow: `
-                    0 0 0 2px rgba(255,255,255,0.1),
-                    0 4px 20px rgba(0,0,0,0.5),
-                    inset 0 2px 10px rgba(255,255,255,0.05)
-                `,
-                boxSizing: 'border-box'
-            }}
-        >
-            {/* Modern notch - top for portrait, left for landscape */}
-            {style === 'modern' && (
-                <div
-                    style={landscape ? {
-                        // Landscape: notch on left side
-                        position: 'absolute',
-                        left: '2%',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: '2.5%',
-                        height: '30%',
-                        backgroundColor: '#000',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    } : {
-                        // Portrait: notch on top
-                        position: 'absolute',
-                        top: '2%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '30%',
-                        height: '2.5%',
-                        backgroundColor: '#000',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
-                >
-                    {/* Camera dot */}
-                    <div
-                        style={{
-                            width: '8px',
-                            height: '8px',
-                            backgroundColor: '#1a1a2e',
-                            borderRadius: '50%',
-                            boxShadow: 'inset 0 0 3px rgba(0,100,255,0.5)'
-                        }}
-                    />
-                </div>
-            )}
-
-            {/* Classic phone speaker */}
-            {style === 'classic' && (
-                <div
-                    style={landscape ? {
-                        // Landscape: speaker on left
-                        position: 'absolute',
-                        left: '4%',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: '1%',
-                        height: '15%',
-                        backgroundColor: '#333',
-                        borderRadius: '4px'
-                    } : {
-                        // Portrait: speaker on top
-                        position: 'absolute',
-                        top: '4%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '15%',
-                        height: '1%',
-                        backgroundColor: '#333',
-                        borderRadius: '4px'
-                    }}
-                />
-            )}
-
-            {/* Screen area */}
+        <div className="relative w-full h-full flex items-center justify-center p-4">
+            {/* Main Phone Container */}
             <div
+                className="relative shadow-2xl transition-all duration-300 flex flex-col"
                 style={{
-                    flex: 1,
-                    backgroundColor: '#000',
-                    borderRadius: style === 'modern' ? '4%' : '2%',
-                    overflow: 'hidden',
-                    position: 'relative'
+                    backgroundColor: color,
+                    borderRadius: `${outerRadius}px`,
+                    padding: `${topBezel}% ${sideBezel}% ${bottomBezel}% ${sideBezel}%`,
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.1)',
+                    aspectRatio: landscape ? '19.5/9' : '9/19.5',
+                    maxHeight: '100%',
+                    maxWidth: '100%'
                 }}
             >
-                {children}
+                {/* Dynamic Island / Notch */}
+                {style === 'modern' && !landscape && (
+                    <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[30%] h-[3.5%] bg-black rounded-full z-20 flex items-center justify-end px-2">
+                        {/* Camera lens indicator */}
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#111] border border-[#222] flex items-center justify-center">
+                            <div className="w-1 h-1 rounded-full bg-[#091526]" />
+                        </div>
+                    </div>
+                )}
+
+                {/* Speaker Grille (Classic style) */}
+                {style === 'classic' && !landscape && (
+                    <div className="absolute top-[4%] left-1/2 -translate-x-1/2 w-[20%] h-[1%] bg-[#333] rounded-full z-20" />
+                )}
+
+                {/* Side Buttons - Power/Volume */}
+                {!landscape ? (
+                    <>
+                        {/* Power button (Right) */}
+                        <div
+                            className="absolute -right-[3px] top-[20%] w-[3px] h-[10%] rounded-r-sm"
+                            style={{ backgroundColor: color, filter: 'brightness(0.8)' }}
+                        />
+                        {/* Volume Up (Left) */}
+                        <div
+                            className="absolute -left-[3px] top-[18%] w-[3px] h-[7%] rounded-l-sm"
+                            style={{ backgroundColor: color, filter: 'brightness(0.8)' }}
+                        />
+                        {/* Volume Down (Left) */}
+                        <div
+                            className="absolute -left-[3px] top-[27%] w-[3px] h-[7%] rounded-l-sm"
+                            style={{ backgroundColor: color, filter: 'brightness(0.8)' }}
+                        />
+                    </>
+                ) : (
+                    <>
+                        {/* Power button (Top right in landscape) */}
+                        <div
+                            className="absolute top-[-3px] right-[20%] h-[3px] w-[10%] rounded-t-sm"
+                            style={{ backgroundColor: color, filter: 'brightness(0.8)' }}
+                        />
+                        {/* Volume buttons (Bottom in landscape) */}
+                        <div
+                            className="absolute bottom-[-3px] left-[18%] h-[3px] w-[7%] rounded-b-sm"
+                            style={{ backgroundColor: color, filter: 'brightness(0.8)' }}
+                        />
+                        <div
+                            className="absolute bottom-[-3px] left-[27%] h-[3px] w-[7%] rounded-b-sm"
+                            style={{ backgroundColor: color, filter: 'brightness(0.8)' }}
+                        />
+                    </>
+                )}
+
+                {/* Home Indicator (Modern style) */}
+                {style === 'modern' && (
+                    <div
+                        className={`absolute ${landscape ? 'right-[1.5%] top-1/2 -translate-y-1/2 w-[0.8%] h-[25%]' : 'bottom-[1.5%] left-1/2 -translate-x-1/2 w-[35%] h-[0.8%]'
+                            } bg-white/40 rounded-full z-20`}
+                    />
+                )}
+
+                {/* Home Button (Classic style) */}
+                {style === 'classic' && !landscape && (
+                    <div className="absolute bottom-[2.5%] left-1/2 -translate-x-1/2 w-[10%] aspectRatio-1 rounded-full border-2 border-[#444] z-20" />
+                )}
+
+                {/* Screen Area (Children rendered here) */}
+                <div
+                    className="relative w-full h-full overflow-hidden bg-black flex items-center justify-center"
+                    style={{
+                        borderRadius: `${screenRadius}px`,
+                    }}
+                >
+                    {children}
+                </div>
             </div>
-
-            {/* Modern home indicator - bottom for portrait, right for landscape */}
-            {style === 'modern' && (
-                <div
-                    style={landscape ? {
-                        // Landscape: indicator on right
-                        position: 'absolute',
-                        right: '1.5%',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: '1%',
-                        height: '35%',
-                        backgroundColor: '#555',
-                        borderRadius: '4px'
-                    } : {
-                        // Portrait: indicator on bottom
-                        position: 'absolute',
-                        bottom: '1.5%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '35%',
-                        height: '1%',
-                        backgroundColor: '#555',
-                        borderRadius: '4px'
-                    }}
-                />
-            )}
-
-            {/* Classic home button */}
-            {style === 'classic' && (
-                <div
-                    style={landscape ? {
-                        // Landscape: button on right
-                        position: 'absolute',
-                        right: '3%',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        height: '12%',
-                        aspectRatio: '1',
-                        backgroundColor: '#222',
-                        borderRadius: '50%',
-                        border: '2px solid #333',
-                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
-                    } : {
-                        // Portrait: button on bottom
-                        position: 'absolute',
-                        bottom: '3%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '12%',
-                        aspectRatio: '1',
-                        backgroundColor: '#222',
-                        borderRadius: '50%',
-                        border: '2px solid #333',
-                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
-                    }}
-                />
-            )}
-
-            {/* Side buttons - move to top/bottom in landscape */}
-            {/* Power button */}
-            <div
-                style={landscape ? {
-                    // Landscape: power on top
-                    position: 'absolute',
-                    top: '-2px',
-                    left: '20%',
-                    height: '3px',
-                    width: '8%',
-                    backgroundColor: color,
-                    borderRadius: '2px 2px 0 0',
-                    boxShadow: '0 -1px 3px rgba(0,0,0,0.3)'
-                } : {
-                    // Portrait: power on right
-                    position: 'absolute',
-                    right: '-2px',
-                    top: '20%',
-                    width: '3px',
-                    height: '8%',
-                    backgroundColor: color,
-                    borderRadius: '0 2px 2px 0',
-                    boxShadow: '1px 0 3px rgba(0,0,0,0.3)'
-                }}
-            />
-            {/* Volume up */}
-            <div
-                style={landscape ? {
-                    // Landscape: vol on bottom
-                    position: 'absolute',
-                    bottom: '-2px',
-                    left: '15%',
-                    height: '3px',
-                    width: '5%',
-                    backgroundColor: color,
-                    borderRadius: '0 0 2px 2px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                } : {
-                    // Portrait: vol on left
-                    position: 'absolute',
-                    left: '-2px',
-                    top: '15%',
-                    width: '3px',
-                    height: '5%',
-                    backgroundColor: color,
-                    borderRadius: '2px 0 0 2px',
-                    boxShadow: '-1px 0 3px rgba(0,0,0,0.3)'
-                }}
-            />
-            {/* Volume down */}
-            <div
-                style={landscape ? {
-                    // Landscape: vol on bottom
-                    position: 'absolute',
-                    bottom: '-2px',
-                    left: '25%',
-                    height: '3px',
-                    width: '10%',
-                    backgroundColor: color,
-                    borderRadius: '0 0 2px 2px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                } : {
-                    // Portrait: vol on left
-                    position: 'absolute',
-                    left: '-2px',
-                    top: '25%',
-                    width: '3px',
-                    height: '10%',
-                    backgroundColor: color,
-                    borderRadius: '2px 0 0 2px',
-                    boxShadow: '-1px 0 3px rgba(0,0,0,0.3)'
-                }}
-            />
         </div>
     )
 })
