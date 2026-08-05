@@ -1,5 +1,17 @@
 import { memo } from 'react'
 import { PAGE_PRESETS, getLayoutList } from '../../utils/panelLayouts'
+import { CanvasMode, Composition } from '../../types'
+
+export interface LeftSidebarProps {
+    isOpen: boolean
+    onToggle: () => void
+    mode: CanvasMode
+    onModeChange: (mode: CanvasMode) => void
+    composition: Composition
+    onCompositionChange: (updates: Partial<Composition>) => void
+    onLayoutChange: (layoutId: string) => void
+    onPagePresetChange: (presetKey: string) => void
+}
 
 /**
  * Left sidebar component for Composer view
@@ -14,7 +26,7 @@ function LeftSidebar({
     onCompositionChange,
     onLayoutChange,
     onPagePresetChange
-}) {
+}: LeftSidebarProps) {
     const allLayouts = getLayoutList()
 
     return (

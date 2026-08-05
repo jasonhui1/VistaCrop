@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, DragEvent } from 'react'
 import PageCanvas from './PageCanvas'
 import FreeformCanvas from './FreeformCanvas'
-import { LeftSidebar, RightSidebar, CanvasToolbar } from './composer'
+import { LeftSidebar, RightSidebar, CanvasToolbar, RightSidebarTab } from './composer'
 import { useUndoRedo } from '../hooks/useUndoRedo'
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useKeyboardShortcuts, KeyboardNudgeArgs } from '../hooks/useKeyboardShortcuts'
 import { useCanvasPersistence } from '../hooks/useCanvasPersistence'
 import {
     getLayout,
@@ -15,18 +15,24 @@ import {
     PAGE_PRESETS
 } from '../utils/panelLayouts'
 import { exportCanvas } from '../utils/exportCanvas'
+import { CanvasMode, Composition, Crop, PlacedItem, SavedCanvas, StorageAdapter } from '../types'
+
+export interface ComposerViewProps {
+    crops: Crop[]
+    adapter?: StorageAdapter
+}
 
 /**
  * ComposerView - Main composition view for creating manga-style page layouts
  * Supports both panel-based layouts and freeform placement
  */
-function ComposerView({ crops }) {
+function ComposerView({ crops, adapter }: ComposerViewProps) {
     // === MODE STATE ===
-    const [mode, setMode] = useState('freeform')
+    const [mode, setMode] = useState<CanvasMode>('freeform')
 
     // === COMPOSITION STATE ===
-    const [composition, setComposition] = useState(() => createEmptyComposition())
-    const [selectedPanelIndex, setSelectedPanelIndex] = useState(null)
+    const [composition, setComposition] = useState<Composition>(() => createEmptyComposition())
+    const [selectedPanelIndex, setSelectedPanelIndex] = useState<number | null>(null)
 
     // === FREEFORM STATE (with undo/redo) ===
     const {
@@ -39,20 +45,20 @@ function ComposerView({ crops }) {
         canUndo,
         canRedo,
         reset: resetPlacedItems
-    } = useUndoRedo([])
-    const [selectedItemId, setSelectedItemId] = useState(null)
+    } = useUndoRedo<PlacedItem[]>([])
+    const [selectedItemId, setSelectedItemId] = useState<string | number | null>(null)
 
     // === UI STATE ===
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
     const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
     const [editingCanvasSize, setEditingCanvasSize] = useState(false)
-    const [rightSidebarTab, setRightSidebarTab] = useState('crops')
+    const [rightSidebarTab, setRightSidebarTab] = useState<RightSidebarTab>('crops')
 
     // === CANVAS PERSISTENCE ===
-    const handleLoadState = useCallback((canvasData) => {
+    const handleLoadState = useCallback((canvasData: SavedCanvas) => {
         if (canvasData.composition) setComposition(canvasData.composition)
         if (canvasData.placedItems) resetPlacedItems(canvasData.placedItems)
-        if (canvasData.mode) setMode(canvasData.mode)
+        if (canvasData.mode) setMode(canvasData.mode as CanvasMode)
         setSelectedItemId(null)
         setSelectedPanelIndex(null)
     }, [resetPlacedItems])
@@ -61,7 +67,8 @@ function ComposerView({ crops }) {
         composition,
         placedItems,
         mode,
-        onLoadState: handleLoadState
+        onLoadState: handleLoadState,
+        adapter
     })
 
     // === DERIVED STATE ===
@@ -85,21 +92,13 @@ function ComposerView({ crops }) {
         ? composition.assignments[selectedPanelIndex]
         : null
 
-    // === EFFECTS ===
-    // Auto-switch tab based on selection state
-    // useEffect(() => {
-    //     if (mode === 'freeform') {
-    //         setRightSidebarTab(selectedItemId ? 'selected' : 'crops')
-    //     }
-    // }, [selectedItemId, mode])
-
     // === COMPOSITION HANDLERS ===
-    const handleLayoutChange = useCallback((layoutId) => {
+    const handleLayoutChange = useCallback((layoutId: string) => {
         setComposition(prev => changeCompositionLayout(prev, layoutId))
         setSelectedPanelIndex(null)
     }, [])
 
-    const handlePagePresetChange = useCallback((presetKey) => {
+    const handlePagePresetChange = useCallback((presetKey: string) => {
         const preset = PAGE_PRESETS[presetKey]
         if (preset) {
             setComposition(prev => ({
@@ -112,7 +111,7 @@ function ComposerView({ crops }) {
         }
     }, [])
 
-    const handleCompositionChange = useCallback((updates) => {
+    const handleCompositionChange = useCallback((updates: Partial<Composition>) => {
         setComposition(prev => ({
             ...prev,
             ...updates,
@@ -120,7 +119,7 @@ function ComposerView({ crops }) {
         }))
     }, [])
 
-    const handleUpdatePageSize = useCallback((updates) => {
+    const handleUpdatePageSize = useCallback((updates: { pageWidth?: number; pageHeight?: number }) => {
         setComposition(prev => ({
             ...prev,
             ...updates,
@@ -130,20 +129,20 @@ function ComposerView({ crops }) {
     }, [])
 
     // === PANEL MODE HANDLERS ===
-    const handleDropCropToPanel = useCallback((panelIndex, cropId) => {
+    const handleDropCropToPanel = useCallback((panelIndex: number, cropId: string | number) => {
         setComposition(prev => updatePanelAssignment(prev, panelIndex, { cropId }))
     }, [])
 
-    const handleClearPanel = useCallback((panelIndex) => {
+    const handleClearPanel = useCallback((panelIndex: number) => {
         setComposition(prev => clearPanelAssignment(prev, panelIndex))
     }, [])
 
-    const handlePanelZoom = useCallback((panelIndex, zoom) => {
+    const handlePanelZoom = useCallback((panelIndex: number, zoom: number) => {
         setComposition(prev => updatePanelAssignment(prev, panelIndex, { zoom }))
     }, [])
 
     // === FREEFORM MODE HANDLERS ===
-    const handleDropCropToFreeform = useCallback((cropId, x, y) => {
+    const handleDropCropToFreeform = useCallback((cropId: string | number, x: number, y: number) => {
         const crop = crops.find(c => c.id === cropId)
         if (!crop) return
 
@@ -162,7 +161,7 @@ function ComposerView({ crops }) {
             height = width / cropAspectRatio
         }
 
-        const newItem = {
+        const newItem: PlacedItem = {
             id: Date.now(),
             cropId,
             x: Math.max(0, x - width / 2),
@@ -175,13 +174,13 @@ function ComposerView({ crops }) {
         setSelectedItemId(newItem.id)
     }, [crops, composition.pageWidth, composition.pageHeight, setPlacedItems])
 
-    const handleUpdateItem = useCallback((itemId, updates) => {
+    const handleUpdateItem = useCallback((itemId: string | number, updates: Partial<PlacedItem>) => {
         setPlacedItems(prev => prev.map(item =>
             item.id === itemId ? { ...item, ...updates } : item
         ))
     }, [setPlacedItems])
 
-    const handleUpdateItemSilent = useCallback((itemId, updates) => {
+    const handleUpdateItemSilent = useCallback((itemId: string | number, updates: Partial<PlacedItem>) => {
         setPlacedItemsSilent(prev => prev.map(item =>
             item.id === itemId ? { ...item, ...updates } : item
         ))
@@ -191,7 +190,7 @@ function ComposerView({ crops }) {
         recordPlacedItemsState()
     }, [recordPlacedItemsState])
 
-    const handleDeleteItem = useCallback((itemId) => {
+    const handleDeleteItem = useCallback((itemId: string | number) => {
         setPlacedItems(prev => prev.filter(item => item.id !== itemId))
         if (selectedItemId === itemId) {
             setSelectedItemId(null)
@@ -203,7 +202,7 @@ function ComposerView({ crops }) {
         setSelectedItemId(null)
     }, [setPlacedItems])
 
-    const handleNudge = useCallback(({ dx, dy }) => {
+    const handleNudge = useCallback(({ dx, dy }: KeyboardNudgeArgs) => {
         if (!selectedItemId) return
         setPlacedItems(prev => prev.map(item =>
             item.id === selectedItemId
@@ -212,7 +211,7 @@ function ComposerView({ crops }) {
         ))
     }, [selectedItemId, setPlacedItems])
 
-    const handleCropDragStart = useCallback((e, crop) => {
+    const handleCropDragStart = useCallback((e: DragEvent<HTMLDivElement>, crop: Crop) => {
         e.dataTransfer.setData('application/crop-id', crop.id.toString())
         e.dataTransfer.effectAllowed = 'copy'
     }, [])

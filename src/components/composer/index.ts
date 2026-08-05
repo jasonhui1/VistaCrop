@@ -1,4 +1,5 @@
 export { default as LeftSidebar } from './LeftSidebar'
 export { default as RightSidebar } from './RightSidebar'
+export type { RightSidebarTab } from './RightSidebar'
 export { default as SelectedItemControls } from './SelectedItemControls'
 export { default as CanvasToolbar } from './CanvasToolbar'
