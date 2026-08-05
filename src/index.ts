@@ -11,6 +11,9 @@ export type { CanvasViewProps, CropData } from './components/CanvasView';
 export { default as GalleryView } from './components/GalleryView';
 export type { GalleryViewProps } from './components/GalleryView';
 
+export { default as ImageUploader } from './components/ImageUploader';
+export type { ImageUploaderProps } from './components/ImageUploader';
+
 export * from './types';
 
 export { StorageAdapterProvider, useStorageAdapter } from './lib/storage';

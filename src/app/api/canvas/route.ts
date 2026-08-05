@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStorageAdapter } from '@/lib/storage/server';
+import { getStorageAdapter } from '@/server';
 
 export async function GET() {
     const storage = getStorageAdapter();

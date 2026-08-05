@@ -4,8 +4,10 @@
  */
 import { getFilterCss } from './filters';
 import { drawShapePath } from './frameShapes';
-import { getImage } from './api';
-import type { Composition, Panel, Crop, PlacedItem } from '../types';
+import type { Composition, Panel, Crop, PlacedItem, StorageAdapter } from '../types';
+
+/** The slice of the storage adapter an export needs: original images for rotated items. */
+type ExportImageSource = Pick<StorageAdapter, 'getImage'>;
 
 export interface ExportCanvasParams {
     composition: Composition;
@@ -13,7 +15,7 @@ export interface ExportCanvasParams {
     crops: Crop[];
     mode: 'panels' | 'freeform' | string;
     placedItems?: PlacedItem[];
-    basePath?: string;
+    storage: ExportImageSource;
 }
 
 /**
@@ -23,8 +25,7 @@ async function exportPanelMode(
     ctx: CanvasRenderingContext2D,
     composition: Composition,
     panels: Panel[],
-    crops: Crop[],
-    _basePath: string
+    crops: Crop[]
 ): Promise<void> {
     for (const panel of panels) {
         const assignment = composition.assignments[panel.index];
@@ -118,14 +119,14 @@ async function drawRotatedItem(
     ctx: CanvasRenderingContext2D,
     item: PlacedItem,
     crop: Crop,
-    basePath: string
+    storage: ExportImageSource
 ): Promise<void> {
     const { x, y, width, height } = item;
     const rotation = item.rotation ?? crop.rotation ?? 0;
 
     try {
         if (!crop.imageId) throw new Error('No imageId on crop');
-        const originalImageData = await getImage(crop.imageId, basePath);
+        const originalImageData = await storage.getImage(crop.imageId);
         if (!originalImageData?.data) throw new Error('No original image data');
 
         const origImg = new Image();
@@ -232,7 +233,7 @@ async function exportFreeformMode(
     ctx: CanvasRenderingContext2D,
     placedItems: PlacedItem[],
     crops: Crop[],
-    basePath: string
+    storage: ExportImageSource
 ): Promise<void> {
     for (const item of placedItems) {
         const crop = crops.find(c => String(c.id) === String(item.cropId));
@@ -250,7 +251,7 @@ async function exportFreeformMode(
 
         // Draw the image (with or without rotation)
         if (rotation !== 0 && crop.imageId) {
-            await drawRotatedItem(ctx, item, crop, basePath);
+            await drawRotatedItem(ctx, item, crop, storage);
         } else {
             await drawNonRotatedItem(ctx, crop, x, y, width, height);
         }
@@ -271,7 +272,7 @@ export async function exportCanvas({
     crops,
     mode,
     placedItems = [],
-    basePath = '/api'
+    storage
 }: ExportCanvasParams): Promise<void> {
     const canvas = document.createElement('canvas');
     canvas.width = composition.pageWidth;
@@ -284,9 +285,9 @@ export async function exportCanvas({
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (mode === 'panels') {
-        await exportPanelMode(ctx, composition, panels, crops, basePath);
+        await exportPanelMode(ctx, composition, panels, crops);
     } else {
-        await exportFreeformMode(ctx, placedItems, crops, basePath);
+        await exportFreeformMode(ctx, placedItems, crops, storage);
     }
 
     // Trigger download

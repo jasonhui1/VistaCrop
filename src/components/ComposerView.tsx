@@ -15,6 +15,7 @@ import {
     PAGE_PRESETS
 } from '../utils/panelLayouts'
 import { exportCanvas } from '../utils/exportCanvas'
+import { useStorageAdapter } from '../lib/storage'
 import { CanvasMode, Composition, Crop, PlacedItem, SavedCanvas } from '../types'
 
 export interface ComposerViewProps {
@@ -26,6 +27,8 @@ export interface ComposerViewProps {
  * Supports both panel-based layouts and freeform placement
  */
 function ComposerView({ crops }: ComposerViewProps) {
+    const storage = useStorageAdapter()
+
     // === MODE STATE ===
     const [mode, setMode] = useState<CanvasMode>('freeform')
 
@@ -216,8 +219,8 @@ function ComposerView({ crops }: ComposerViewProps) {
 
     // === EXPORT HANDLER ===
     const handleExport = useCallback(async () => {
-        await exportCanvas({ composition, panels, crops, mode, placedItems })
-    }, [composition, panels, crops, mode, placedItems])
+        await exportCanvas({ composition, panels, crops, mode, placedItems, storage })
+    }, [composition, panels, crops, mode, placedItems, storage])
 
     // === KEYBOARD SHORTCUTS ===
     useKeyboardShortcuts({

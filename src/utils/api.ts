@@ -15,10 +15,6 @@ import type {
     StorageAdapter
 } from '../types';
 
-export interface ApiClientOptions {
-    basePath?: string;
-}
-
 export function createApiClient(basePath: string = '/api'): StorageAdapter & {
     uploadExportedCanvas(canvasId: string, imageBlob: Blob, options?: { format?: string; [key: string]: unknown }): Promise<OperationSuccessResponse>;
 } {
@@ -291,77 +287,4 @@ export function createApiClient(basePath: string = '/api'): StorageAdapter & {
             return response.json();
         }
     };
-}
-
-// Standalone functions with default basePath = '/api'
-export async function saveCrops(imageId: string, crops: Partial<Crop>[], basePath: string = '/api'): Promise<SaveCropsResponse & { success?: boolean; count?: number; imageCreated?: boolean }> {
-    return createApiClient(basePath).saveCrops(imageId, crops);
-}
-
-export async function loadAllCrops(basePath: string = '/api'): Promise<Crop[]> {
-    return createApiClient(basePath).loadAllCrops();
-}
-
-export async function loadCrops(imageId: string, basePath: string = '/api'): Promise<Crop[]> {
-    return createApiClient(basePath).loadCrops(imageId);
-}
-
-export async function getCrop(cropId: string | number, basePath: string = '/api'): Promise<Crop | null> {
-    return createApiClient(basePath).getCrop(cropId);
-}
-
-export async function updateCrop(imageId: string, cropId: string | number, updates: Partial<Crop>, basePath: string = '/api'): Promise<Crop> {
-    return createApiClient(basePath).updateCrop(imageId, cropId, updates);
-}
-
-export async function deleteCrop(imageId: string, cropId: string | number, basePath: string = '/api'): Promise<OperationSuccessResponse> {
-    return createApiClient(basePath).deleteCrop(imageId, cropId);
-}
-
-export async function uploadImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}, basePath: string = '/api'): Promise<StoredImage> {
-    return createApiClient(basePath).uploadImage(imageId, base64Data, metadata);
-}
-
-export async function saveImage(imageId: string, base64Data: string, metadata: { width?: number; height?: number } = {}, basePath: string = '/api'): Promise<StoredImage & { success?: boolean; path?: string }> {
-    return createApiClient(basePath).saveImage(imageId, base64Data, metadata);
-}
-
-export async function listImages(basePath: string = '/api'): Promise<StoredImage[]> {
-    return createApiClient(basePath).listImages();
-}
-
-export async function getImage(imageId: string, basePath: string = '/api'): Promise<StoredImage | null> {
-    return createApiClient(basePath).getImage(imageId);
-}
-
-export async function deleteImage(imageId: string, deleteCrops: boolean = false, basePath: string = '/api'): Promise<OperationSuccessResponse & { cropsDeleted?: number }> {
-    return createApiClient(basePath).deleteImage(imageId, deleteCrops);
-}
-
-export async function createCanvas(options: { name?: string; mode?: string; [key: string]: unknown } = {}, basePath: string = '/api'): Promise<CreateCanvasResponse> {
-    return createApiClient(basePath).createCanvas(options);
-}
-
-export async function saveCanvas(canvasId: string, composition: Composition, placedItems: PlacedItem[] = [], basePath: string = '/api'): Promise<OperationSuccessResponse> {
-    return createApiClient(basePath).saveCanvas(canvasId, composition, placedItems);
-}
-
-export async function getCanvas(canvasId: string, basePath: string = '/api'): Promise<SavedCanvas | null> {
-    return createApiClient(basePath).getCanvas(canvasId);
-}
-
-export async function loadCanvas(canvasId: string, basePath: string = '/api'): Promise<SavedCanvas | null> {
-    return createApiClient(basePath).loadCanvas(canvasId);
-}
-
-export async function listCanvases(basePath: string = '/api'): Promise<SavedCanvas[]> {
-    return createApiClient(basePath).listCanvases();
-}
-
-export async function deleteCanvas(canvasId: string, basePath: string = '/api'): Promise<OperationSuccessResponse> {
-    return createApiClient(basePath).deleteCanvas(canvasId);
-}
-
-export async function uploadExportedCanvas(canvasId: string, imageBlob: Blob, options: { format?: string; [key: string]: unknown } = {}, basePath: string = '/api'): Promise<OperationSuccessResponse> {
-    return createApiClient(basePath).uploadExportedCanvas(canvasId, imageBlob, options);
 }

@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createApiClient, loadAllCrops, saveCanvas } from '../src/utils/api.ts';
+import { createApiClient } from '../src/index.ts';
+import * as api from '../src/utils/api.ts';
+
+test('the API module exports createApiClient and no module-level convenience wrappers', () => {
+    assert.deepEqual(Object.keys(api), ['createApiClient']);
+});
 
 test('createApiClient defaults basePath to /api', async () => {
     let requestedUrl = null;
@@ -37,7 +42,7 @@ test('createApiClient accepts custom basePath', async () => {
     assert.equal(requestOptions.method, 'PUT');
 });
 
-test('standalone API functions support custom basePath parameter', async () => {
+test('createApiClient strips trailing slashes from basePath', async () => {
     let requestedUrl = null;
     global.fetch = async (url) => {
         requestedUrl = url;
@@ -47,6 +52,6 @@ test('standalone API functions support custom basePath parameter', async () => {
         };
     };
 
-    await loadAllCrops('/v1/app-api');
+    await createApiClient('/v1/app-api//').loadAllCrops();
     assert.equal(requestedUrl, '/v1/app-api/crops');
 });

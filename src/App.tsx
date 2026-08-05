@@ -1,7 +1,14 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import ImageUploader from './components/ImageUploader'
-import { CanvasView, GalleryView, ComposerView, StorageAdapterProvider, Crop, CropData } from './index'
-import { createApiClient } from './utils/api'
+import {
+  CanvasView,
+  ComposerView,
+  createApiClient,
+  GalleryView,
+  ImageUploader,
+  StorageAdapterProvider,
+  type Crop,
+  type CropData
+} from './index'
 
 type View = 'canvas' | 'gallery' | 'composer'
 
