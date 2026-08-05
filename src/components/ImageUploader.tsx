@@ -1,14 +1,20 @@
-import { useRef } from 'react'
+import { useRef, ChangeEvent } from 'react'
 
-function ImageUploader({ onImageUpload }) {
-    const fileInputRef = useRef(null)
+export interface ImageUploaderProps {
+    onImageUpload: (imageDataUrl: string) => void
+}
 
-    const handleFileChange = (e) => {
+function ImageUploader({ onImageUpload }: ImageUploaderProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file && file.type.startsWith('image/')) {
             const reader = new FileReader()
-            reader.onload = (event) => {
-                onImageUpload(event.target.result)
+            reader.onload = (event: ProgressEvent<FileReader>) => {
+                if (event.target?.result && typeof event.target.result === 'string') {
+                    onImageUpload(event.target.result)
+                }
             }
             reader.readAsDataURL(file)
         }
