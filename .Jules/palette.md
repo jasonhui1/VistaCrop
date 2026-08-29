@@ -1,0 +1,3 @@
+## 2024-05-08 - Focus Rings Clipped in Tightly Packed Flex Layouts
+**Learning:** When using Tailwind utility classes for keyboard focus (`focus-visible:ring-2`), tightly packed interactive elements (like the navigation tabs in a flex row without a gap, or a container with `p-1`) can cause the focus ring of an active element to be clipped or partially obscured by adjacent sibling elements due to normal HTML stacking context.
+**Action:** When adding focus rings to tightly-packed interactive elements inside a flex or grid container, always apply `relative z-10` along with the `focus-visible` utilities (e.g., `relative z-10 focus-visible:outline-none focus-visible:ring-2`) to ensure the focus ring renders above adjacent elements.
